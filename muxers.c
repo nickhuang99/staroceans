@@ -18,13 +18,6 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111, USA.
  *****************************************************************************/
 
-#define _LARGEFILE_SOURCE
-#define _FILE_OFFSET_BITS 64
-
-#include <stdio.h>
-#include <string.h>
-#include <sys/types.h>
-
 #include "common/common.h"
 #include "x264.h"
 #include "matroska.h"
@@ -34,6 +27,8 @@
 #include "config.h"
 #endif
 
+#include <sys/types.h>
+
 #ifdef AVIS_INPUT
 #include <windows.h>
 #include <vfw.h>
@@ -42,6 +37,18 @@
 #ifdef MP4_OUTPUT
 #include <gpac/isomedia.h>
 #endif
+
+static int64_t gcd( int64_t a, int64_t b )
+{
+    while (1)
+    {
+        int64_t c = a % b;
+        if( !c )
+            return b;
+        a = b;
+        b = c;
+    }
+}
 
 typedef struct {
     FILE *fh;
@@ -245,7 +252,7 @@ int get_frame_total_y4m( hnd_t handle )
 {
     y4m_input_t *h             = handle;
     int          i_frame_total = 0;
-    off_t        init_pos      = ftell(h->fh);
+    uint64_t     init_pos      = ftell(h->fh);
 
     if( !fseek( h->fh, 0, SEEK_END ) )
     {
@@ -321,20 +328,6 @@ typedef struct {
     PAVISTREAM p_avi;
     int width, height;
 } avis_input_t;
-
-int gcd(int a, int b)
-{
-    int c;
-
-    while (1)
-    {
-        c = a % b;
-        if (!c)
-            return b;
-        a = b;
-        b = c;
-    }
-}
 
 int open_file_avis( char *psz_filename, hnd_t *p_handle, x264_param_t *p_param )
 {
@@ -427,7 +420,7 @@ typedef struct {
     int (*p_close_infile)( hnd_t handle );
     hnd_t p_handle;
     x264_picture_t pic;
-    pthread_t tid;
+    x264_pthread_t tid;
     int next_frame;
     int frame_total;
     struct thread_input_arg_t *next_args;
@@ -476,7 +469,7 @@ int read_frame_thread( x264_picture_t *p_pic, hnd_t handle, int i_frame )
 
     if( h->next_frame >= 0 )
     {
-        pthread_join( h->tid, &stuff );
+        x264_pthread_join( h->tid, &stuff );
         ret |= h->next_args->status;
     }
 
@@ -494,7 +487,7 @@ int read_frame_thread( x264_picture_t *p_pic, hnd_t handle, int i_frame )
         h->next_frame =
         h->next_args->i_frame = i_frame+1;
         h->next_args->pic = &h->pic;
-        pthread_create( &h->tid, NULL, (void*)read_frame_thread_int, h->next_args );
+        x264_pthread_create( &h->tid, NULL, (void*)read_frame_thread_int, h->next_args );
     }
     else
         h->next_frame = -1;
@@ -899,19 +892,9 @@ int set_param_mkv( hnd_t handle, x264_param_t *p_param )
 
     if( dw > 0 && dh > 0 )
     {
-        int64_t a = dw, b = dh;
-
-        for (;;)
-        {
-            int64_t c = a % b;
-            if( c == 0 )
-              break;
-            a = b;
-            b = c;
-        }
-
-        dw /= b;
-        dh /= b;
+        int64_t x = gcd( dw, dh );
+        dw /= x;
+        dh /= x;
     }
 
     p_mkv->d_width = (int)dw;

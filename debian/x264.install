@@ -1,1 +1,4 @@
 /usr/bin/x264
+/usr/bin/x264_gtk_encode
+/usr/share/locale/fr/LC_MESSAGES/x264_gtk.mo
+/usr/share/x264/x264.png

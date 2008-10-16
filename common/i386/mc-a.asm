@@ -56,37 +56,17 @@ pw_64: times 4 dw 64
 
 SECTION .text
 
-cglobal x264_pixel_avg_w4_mmxext
-cglobal x264_pixel_avg_w8_mmxext
-cglobal x264_pixel_avg_w16_mmxext
-cglobal x264_pixel_avg_w16_sse2
-
-cglobal x264_pixel_avg_weight_4x4_mmxext
-cglobal x264_pixel_avg_weight_w8_mmxext
-cglobal x264_pixel_avg_weight_w16_mmxext
-
-cglobal x264_mc_copy_w4_mmx
-cglobal x264_mc_copy_w8_mmx
-cglobal x264_mc_copy_w16_mmx
-cglobal x264_mc_copy_w16_sse2
-
-cglobal x264_mc_chroma_mmxext
-
-cglobal x264_prefetch_fenc_mmxext
-cglobal x264_prefetch_ref_mmxext
-
 ;=============================================================================
 ; pixel avg
 ;=============================================================================
 
-ALIGN 16
 ;-----------------------------------------------------------------------------
 ; void x264_pixel_avg_w4_mmxext( uint8_t *dst,  int i_dst_stride,
 ;                                uint8_t *src1, int i_src1_stride,
 ;                                uint8_t *src2, int i_src2_stride,
 ;                                int i_height );
 ;-----------------------------------------------------------------------------
-x264_pixel_avg_w4_mmxext:
+cglobal x264_pixel_avg_w4_mmxext
     push        ebp
     push        ebx
     push        esi
@@ -112,7 +92,7 @@ ALIGN 4
     lea         ebx, [ebx+eax*2]
     lea         ecx, [ecx+edx*2]
     lea         edi, [edi+esi*2]
-    jne         .height_loop
+    jg          .height_loop
 
     pop         edi
     pop         esi
@@ -122,14 +102,13 @@ ALIGN 4
 
                           
 
-ALIGN 16
 ;-----------------------------------------------------------------------------
 ; void x264_pixel_avg_w8_mmxext( uint8_t *dst,  int i_dst_stride,
 ;                                uint8_t *src1, int i_src1_stride,
 ;                                uint8_t *src2, int i_src2_stride,
 ;                                int i_height );
 ;-----------------------------------------------------------------------------
-x264_pixel_avg_w8_mmxext:
+cglobal x264_pixel_avg_w8_mmxext
     push        ebp
     push        ebx
     push        esi
@@ -151,7 +130,7 @@ ALIGN 4
     lea         ebx, [ebx+eax]
     lea         ecx, [ecx+edx]
     lea         edi, [edi+esi]
-    jne         .height_loop
+    jg          .height_loop
 
     pop         edi
     pop         esi
@@ -161,14 +140,13 @@ ALIGN 4
 
 
 
-ALIGN 16
 ;-----------------------------------------------------------------------------
 ; void x264_pixel_avg_w16_mmxext( uint8_t *dst,  int i_dst_stride,
 ;                                 uint8_t *src1, int i_src1_stride,
 ;                                 uint8_t *src2, int i_src2_stride,
 ;                                 int i_height );
 ;-----------------------------------------------------------------------------
-x264_pixel_avg_w16_mmxext:
+cglobal x264_pixel_avg_w16_mmxext
     push        ebp
     push        ebx
     push        esi
@@ -193,13 +171,59 @@ ALIGN 4
     lea         ebx, [ebx+eax]
     lea         ecx, [ecx+edx]
     lea         edi, [edi+esi]
-    jne         .height_loop
+    jg          .height_loop
 
     pop         edi
     pop         esi
     pop         ebx
     pop         ebp
     ret
+
+
+
+;-----------------------------------------------------------------------------
+; void x264_pixel_avg_w20_mmxext( uint8_t *dst,  int i_dst_stride,
+;                                 uint8_t *src1, int i_src1_stride,
+;                                 uint8_t *src2, int i_src2_stride,
+;                                 int i_height );
+;-----------------------------------------------------------------------------
+cglobal x264_pixel_avg_w20_mmxext
+    push        ebp
+    push        ebx
+    push        esi
+    push        edi
+
+    mov         edi, [esp+20]       ; dst
+    mov         ebx, [esp+28]       ; src1
+    mov         ecx, [esp+36]       ; src2
+    mov         esi, [esp+24]       ; i_dst_stride
+    mov         eax, [esp+32]       ; i_src1_stride
+    mov         edx, [esp+40]       ; i_src2_stride
+    mov         ebp, [esp+44]       ; i_height
+ALIGN 4
+.height_loop    
+    movq        mm0, [ebx   ]
+    movq        mm1, [ebx+8 ]
+    movd        mm2, [ebx+16]
+    pavgb       mm0, [ecx   ]
+    pavgb       mm1, [ecx+8 ]
+    pavgb       mm2, [ecx+16]
+    movq        [edi   ], mm0
+    movq        [edi+8 ], mm1
+    movd        [edi+16], mm2
+    dec         ebp
+    lea         ebx, [ebx+eax]
+    lea         ecx, [ecx+edx]
+    lea         edi, [edi+esi]
+    jg          .height_loop
+
+    pop         edi
+    pop         esi
+    pop         ebx
+    pop         ebp
+    ret
+
+
 
 ALIGN 16
 ;-----------------------------------------------------------------------------
@@ -208,7 +232,7 @@ ALIGN 16
 ;                               uint8_t *src2, int i_src2_stride,
 ;                               int i_height );
 ;-----------------------------------------------------------------------------
-x264_pixel_avg_w16_sse2:
+cglobal x264_pixel_avg_w16_sse2
     push        ebp
     push        ebx
     push        esi
@@ -231,7 +255,7 @@ ALIGN 4
     lea         ebx, [ebx+eax]
     lea         ecx, [ecx+edx]
     lea         edi, [edi+esi]
-    jne         .height_loop
+    jg          .height_loop
 
     pop         edi
     pop         esi
@@ -284,11 +308,10 @@ ALIGN 4
     ret
 %endmacro
 
-ALIGN 16
 ;-----------------------------------------------------------------------------
 ;   int __cdecl x264_pixel_avg_weight_w16_mmxext( uint8_t *, int, uint8_t *, int, int, int )
 ;-----------------------------------------------------------------------------
-x264_pixel_avg_weight_w16_mmxext:
+cglobal x264_pixel_avg_weight_w16_mmxext
     BIWEIGHT_START_MMX
     mov     eax, [picesp+32] ; i_height
     ALIGN 4
@@ -302,14 +325,13 @@ x264_pixel_avg_weight_w16_mmxext:
     add  edi, esi
     add  edx, ecx
     dec  eax
-    jnz  .height_loop
+    jg   .height_loop
     BIWEIGHT_END_MMX
 
-ALIGN 16
 ;-----------------------------------------------------------------------------
 ;   int __cdecl x264_pixel_avg_weight_w8_mmxext( uint8_t *, int, uint8_t *, int, int, int )
 ;-----------------------------------------------------------------------------
-x264_pixel_avg_weight_w8_mmxext:
+cglobal x264_pixel_avg_weight_w8_mmxext
     BIWEIGHT_START_MMX
     mov     eax, [picesp+32]
     ALIGN 4
@@ -323,14 +345,13 @@ x264_pixel_avg_weight_w8_mmxext:
     lea  edi, [edi+esi*2]
     lea  edx, [edx+ecx*2]
     sub  eax, byte 2
-    jnz  .height_loop
+    jg   .height_loop
     BIWEIGHT_END_MMX
 
-ALIGN 16
 ;-----------------------------------------------------------------------------
 ;   int __cdecl x264_pixel_avg_weight_4x4_mmxext( uint8_t *, int, uint8_t *, int, int )
 ;-----------------------------------------------------------------------------
-x264_pixel_avg_weight_4x4_mmxext:
+cglobal x264_pixel_avg_weight_4x4_mmxext
     BIWEIGHT_START_MMX
     BIWEIGHT_4P_MMX  [edi      ], [edx      ]
     BIWEIGHT_4P_MMX  [edi+esi  ], [edx+ecx  ]
@@ -346,12 +367,11 @@ x264_pixel_avg_weight_4x4_mmxext:
 ; pixel copy
 ;=============================================================================
 
-ALIGN 16
 ;-----------------------------------------------------------------------------
 ;  void x264_mc_copy_w4_mmx( uint8_t *src, int i_src_stride,
 ;                            uint8_t *dst, int i_dst_stride, int i_height )
 ;-----------------------------------------------------------------------------
-x264_mc_copy_w4_mmx:
+cglobal x264_mc_copy_w4_mmx
     push    ebx
     push    esi
     push    edi
@@ -371,19 +391,18 @@ ALIGN 4
     lea     edi, [edi+edx*2]
     dec     ecx
     dec     ecx
-    jne     .height_loop
+    jg      .height_loop
 
     pop     edi
     pop     esi
     pop     ebx
     ret
 
-ALIGN 16
 ;-----------------------------------------------------------------------------
 ;   void x264_mc_copy_w8_mmx( uint8_t *src, int i_src_stride,
 ;                             uint8_t *dst, int i_dst_stride, int i_height )
 ;-----------------------------------------------------------------------------
-x264_mc_copy_w8_mmx:
+cglobal x264_mc_copy_w8_mmx
     push    ebx
     push    esi
     push    edi
@@ -409,19 +428,18 @@ ALIGN 4
     lea     edi, [edi+edx*2]
     
     sub     ecx, byte 4
-    jnz     .height_loop
+    jg      .height_loop
 
     pop     edi
     pop     esi
     pop     ebx
     ret
 
-ALIGN 16
 ;-----------------------------------------------------------------------------
 ;   void x264_mc_copy_w16_mmx( uint8_t *src, int i_src_stride,
 ;                              uint8_t *dst, int i_dst_stride, int i_height )
 ;-----------------------------------------------------------------------------
-x264_mc_copy_w16_mmx:
+cglobal x264_mc_copy_w16_mmx
     push    ebx
     push    esi
     push    edi
@@ -455,7 +473,7 @@ ALIGN 4
     lea     esi, [esi+ebx*2]
     lea     edi, [edi+edx*2]
     sub     ecx, byte 4
-    jnz     .height_loop
+    jg      .height_loop
     
     pop     edi
     pop     esi
@@ -463,11 +481,10 @@ ALIGN 4
     ret
 
 
-ALIGN 16
 ;-----------------------------------------------------------------------------
 ;   void x264_mc_copy_w16_sse2( uint8_t *src, int i_src_stride, uint8_t *dst, int i_dst_stride, int i_height )
 ;-----------------------------------------------------------------------------
-x264_mc_copy_w16_sse2:
+cglobal x264_mc_copy_w16_sse2
     push    ebx
     push    esi
     push    edi
@@ -488,7 +505,7 @@ ALIGN 4
     dec     ecx
     lea     esi, [esi+ebx*2]
     lea     edi, [edi+edx*2]
-    jnz     .height_loop
+    jg      .height_loop
     
     pop     edi
     pop     esi
@@ -501,7 +518,6 @@ ALIGN 4
 ; chroma MC
 ;=============================================================================
 
-ALIGN 16
 ;-----------------------------------------------------------------------------
 ;   void x264_mc_chroma_mmxext( uint8_t *src, int i_src_stride,
 ;                               uint8_t *dst, int i_dst_stride,
@@ -509,7 +525,7 @@ ALIGN 16
 ;                               int i_width, int i_height )
 ;-----------------------------------------------------------------------------
 
-x264_mc_chroma_mmxext:
+cglobal x264_mc_chroma_mmxext
     picpush ebx
     picgetgot ebx
     push    edi
@@ -608,8 +624,7 @@ ALIGN 4
 ; void x264_prefetch_fenc_mmxext( uint8_t *pix_y, int stride_y, 
 ;                                 uint8_t *pix_uv, int stride_uv, int mb_x )
 ;-----------------------------------------------------------------------------
-ALIGN 16
-x264_prefetch_fenc_mmxext:
+cglobal x264_prefetch_fenc_mmxext
     mov   eax, [esp+20]
     mov   ecx, [esp+8]
     mov   edx, [esp+4]
@@ -635,8 +650,7 @@ x264_prefetch_fenc_mmxext:
 ;-----------------------------------------------------------------------------
 ; void x264_prefetch_ref_mmxext( uint8_t *pix, int stride, int parity )
 ;-----------------------------------------------------------------------------
-ALIGN 16
-x264_prefetch_ref_mmxext:
+cglobal x264_prefetch_ref_mmxext
     mov   eax, [esp+12]
     mov   ecx, [esp+8]
     mov   edx, [esp+4]

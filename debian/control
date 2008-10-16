@@ -1,17 +1,16 @@
 Source: x264
 Section: libs
-Priority: extra
-Maintainer: Debian multimedia packages maintainers <pkg-multimedia-maintainers@lists.alioth.debian.org>
-Uploaders: Sam Hocevar (Debian packages) <sam+deb@zoy.org>, Fabian Greffrath <fabian@debian-unofficial.org>
-Build-Depends: debhelper (>= 5), nasm [i386 hurd-i386 kfreebsd-i386 lpia], yasm [amd64 kfreebsd-amd64], quilt
+Priority: optional
+Maintainer: Ubuntu MOTU Developers <ubuntu-motu@lists.ubuntu.com>
+XSBC-Original-Maintainer: Christian Marillat <marillat@debian.org>
+Bugs: mailto:marillat@debian.org
 Standards-Version: 3.7.2
-XS-Vcs-Svn: svn://svn.debian.org/pkg-multimedia/unstable/x264
-XS-Vcs-Browser: http://svn.debian.org/wsvn/pkg-multimedia/unstable/x264/
+Build-Depends: debhelper (>= 5), yasm [amd64], nasm [i386 lpia], libgtk2.0-dev, libgpac-dev, dpatch
 
 Package: x264
 Section: graphics
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}
+Depends: ${shlibs:Depends}
 Conflicts: x264-bin
 Replaces: x264-bin
 Description: video encoder for the H.264/MPEG-4 AVC standard
@@ -37,10 +36,10 @@ Description: video encoder for the H.264/MPEG-4 AVC standard
   * parallel encoding on multiple CPUs
   * interlaced streams
 
-Package: libx264-54
+Package: libx264-56
 Section: libs
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}
+Depends: ${shlibs:Depends}
 Description: x264 video coding library
  libx264 is an advanced encoding library for creating H.264 (MPEG-4 AVC)
  video streams.
@@ -50,11 +49,10 @@ Description: x264 video coding library
 Package: libx264-dev
 Section: libdevel
 Architecture: any
-Depends: libx264-54 (= ${Source-Version}), ${shlibs:Depends}, ${misc:Depends}
+Depends: libx264-56 (= ${binary:Version})
 Description: development files for libx264
  libx264 is an advanced encoding library for creating H.264 (MPEG-4 AVC)
  video streams.
  .
  This package contains the static library and headers used to build programs
  that use libx264.
-

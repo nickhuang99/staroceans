@@ -21,33 +21,23 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111, USA.
  *****************************************************************************/
 
-#define _LARGEFILE_SOURCE
-#define _FILE_OFFSET_BITS 64
-
 #include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
 #include <math.h>
 
 #include <signal.h>
 #define _GNU_SOURCE
 #include <getopt.h>
 
-#ifdef _MSC_VER
-#include <io.h>     /* _setmode() */
-#include <fcntl.h>  /* _O_BINARY */
-#endif
+#include "common/common.h"
+#include "x264.h"
+#include "muxers.h"
 
 #ifndef _MSC_VER
 #include "config.h"
 #endif
 
-#include "common/common.h"
-#include "x264.h"
-#include "muxers.h"
-
-#define DATA_MAX 3000000
-uint8_t data[DATA_MAX];
+uint8_t *mux_buffer = NULL;
+int mux_buffer_size = 0;
 
 /* Ctrl-C handler */
 static int     b_ctrl_c = 0;
@@ -711,7 +701,7 @@ static void parse_qpfile( cli_opt_t *opt, x264_picture_t *pic, int i_frame )
 }
 
 /*****************************************************************************
- * Decode:
+ * Encode:
  *****************************************************************************/
 
 static int  Encode_frame( x264_t *h, hnd_t hout, x264_picture_t *pic )
@@ -729,17 +719,17 @@ static int  Encode_frame( x264_t *h, hnd_t hout, x264_picture_t *pic )
     for( i = 0; i < i_nal; i++ )
     {
         int i_size;
-        int i_data;
 
-        i_data = DATA_MAX;
-        if( ( i_size = x264_nal_encode( data, &i_data, 1, &nal[i] ) ) > 0 )
+        if( mux_buffer_size < nal[i].i_payload * 3/2 + 4 )
         {
-            i_file += p_write_nalu( hout, data, i_size );
+            mux_buffer_size = nal[i].i_payload * 2 + 4;
+            x264_free( mux_buffer );
+            mux_buffer = x264_malloc( mux_buffer_size );
         }
-        else if( i_size < 0 )
-        {
-            fprintf( stderr, "x264 [error]: need to increase buffer size (size=%d)\n", -i_size );
-        }
+
+        i_size = mux_buffer_size;
+        x264_nal_encode( mux_buffer, &i_size, 1, &nal[i] );
+        i_file += p_write_nalu( hout, mux_buffer, i_size );
     }
     if (i_nal)
         p_set_eop( hout, &pic_out );
@@ -747,9 +737,6 @@ static int  Encode_frame( x264_t *h, hnd_t hout, x264_picture_t *pic )
     return i_file;
 }
 
-/*****************************************************************************
- * Encode:
- *****************************************************************************/
 static int  Encode( x264_param_t *param, cli_opt_t *opt )
 {
     x264_t *h;

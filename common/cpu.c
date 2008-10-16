@@ -33,11 +33,9 @@
 #include <sys/sysctl.h>
 #endif
 
-#include <string.h>
-
 #include "common.h"
 
-#if defined(ARCH_X86) || defined(ARCH_X86_64)
+#ifdef HAVE_MMX
 extern int  x264_cpu_cpuid_test( void );
 extern uint32_t  x264_cpu_cpuid( uint32_t op, uint32_t *eax, uint32_t *ebx, uint32_t *ecx, uint32_t *edx );
 extern void x264_emms( void );
@@ -48,7 +46,6 @@ uint32_t x264_cpu_detect( void )
 
     uint32_t eax, ebx, ecx, edx;
     int      b_amd;
-
 
     if( !x264_cpu_cpuid_test() )
     {
@@ -80,6 +77,16 @@ uint32_t x264_cpu_detect( void )
         /* Is it OK ? */
         cpu |= X264_CPU_SSE2;
     }
+#ifdef HAVE_SSE3
+    if( (ecx&0x00000001) )
+    {
+        cpu |= X264_CPU_SSE3;
+    }
+    if( (ecx&0x00000200) )
+    {
+        cpu |= X264_CPU_SSSE3;
+    }
+#endif
 
     x264_cpu_cpuid( 0x80000000, &eax, &ebx, &ecx, &edx );
     if( eax < 0x80000001 )
@@ -132,9 +139,43 @@ uint32_t x264_cpu_detect( void )
 }
 
 #elif defined( SYS_LINUX )
+#include <signal.h>
+#include <setjmp.h>
+static sigjmp_buf jmpbuf;
+static volatile sig_atomic_t canjump = 0;
+
+static void sigill_handler( int sig )
+{
+    if( !canjump )
+    {
+        signal( sig, SIG_DFL );
+        raise( sig );
+    }
+
+    canjump = 0;
+    siglongjmp( jmpbuf, 1 );
+}
+
 uint32_t x264_cpu_detect( void )
 {
-    /* FIXME (Linux PPC) */
+    static void (* oldsig)( int );
+
+    oldsig = signal( SIGILL, sigill_handler );
+    if( sigsetjmp( jmpbuf, 1 ) )
+    {
+        signal( SIGILL, oldsig );
+        return 0;
+    }
+
+    canjump = 1;
+    asm volatile( "mtspr 256, %0\n\t"
+                  "vand 0, 0, 0\n\t"
+                  :
+                  : "r"(-1) );
+    canjump = 0;
+
+    signal( SIGILL, oldsig );
+
     return X264_CPU_ALTIVEC;
 }
 #endif

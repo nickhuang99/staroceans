@@ -1,15 +1,62 @@
-x264 (1:0.svn20070309-4ubuntu2) hardy; urgency=low
+x264 (1:0.svn20070930-0.0ubuntu1) hardy; urgency=low
 
-  * Build-dep on nasm on lpia; thanks John L. Villalovos.
+  * Fakesync with debian-multimedia (LP: #138854)
+    - Set epoch
+    - b-d nasm on lpia
+    - Drop b-d version on nasm,  associated Debian issue not relevant
+      to Ubuntu.
 
- -- Loic Minier <lool@dooz.org>  Wed, 31 Oct 2007 15:16:28 +0100
+ -- John Dong <jdong@ubuntu.com>  Sun, 18 Nov 2007 15:14:01 -0500
 
-x264 (1:0.svn20070309-4ubuntu1) gutsy; urgency=low
+x264 (0.svn20070930-0.0) unstable; urgency=low
 
-  * 'fakesync' due to unfortunate epoch in ubuntu.
-  * dropping all ubuntu changes
+  * New svn release 680.
 
- -- Reinhard Tartler <siretart@tauware.de>  Sun, 29 Apr 2007 20:18:55 +0200
+ -- Christian Marillat <marillat@debian.org>  Sun, 30 Sep 2007 09:25:00 +0200
+
+x264 (0.svn20070823-0.1) unstable; urgency=low
+
+  * Same bug as in 0.svn20070613-0.2 yasm doesn't work and the latest nasm
+    (0.99.01-1) doesn't work too... So make a Build-Depends on
+    nasm (= 0.98.38-1.2).
+
+
+ -- Christian Marillat <marillat@debian.org>  Fri, 31 Aug 2007 18:41:42 +0200
+
+x264 (0.svn20070823-0.0) unstable; urgency=low
+
+  * New svn release 671.
+  * Back to yasm for i386 (doesn't build with latest nasm and yasm support
+    for i386 seem's to be fixed).
+
+ -- Christian Marillat <marillat@debian.org>  Thu, 23 Aug 2007 10:19:52 +0200
+
+x264 (0.svn20070613-0.2) unstable; urgency=low
+
+  * Build with nasm for i386.
+
+ -- Christian Marillat <marillat@debian.org>  Sat, 23 Jun 2007 11:50:58 +0200
+
+x264 (0.svn20070613-0.1) unstable; urgency=low
+
+  * Forgot to add dpatch in Build-Depends. Also this package is build with
+    --enable-mp4-output
+
+ -- Christian Marillat <marillat@debian.org>  Wed, 13 Jun 2007 23:31:55 +0200
+
+x264 (0.svn20070613-0.0) unstable; urgency=low
+
+  * New svn release.
+  * Build with --enable-gtk, --enable-mp4-output  and --enable-visualize
+  * Use yasm instead of nasm for i386.
+
+ -- Christian Marillat <marillat@debian.org>  Wed, 13 Jun 2007 17:45:02 +0200
+
+x264 (0.svn20070309-5) unstable; urgency=low
+
+  * Upload for my repository.
+
+ -- Christian Marillat <marillat@debian.org>  Wed, 16 May 2007 15:29:36 +0200
 
 x264 (0.svn20070309-4) unstable; urgency=low
 
@@ -51,4 +98,3 @@ x264 (0.svn20070309-1) unstable; urgency=low
   * Initial release (Closes: #405212).
 
  -- Sam Hocevar (Debian packages) <sam+deb@zoy.org>  Fri,  9 Mar 2007 22:59:37 +0100
-

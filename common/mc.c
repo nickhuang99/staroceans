@@ -21,13 +21,10 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111, USA.
  *****************************************************************************/
 
-#include <stdio.h>
-#include <string.h>
-
 #include "common.h"
 #include "clip1.h"
 
-#ifdef HAVE_MMXEXT
+#ifdef HAVE_MMX
 #include "i386/mc.h"
 #endif
 #ifdef ARCH_PPC
@@ -228,7 +225,7 @@ static const int hpel_ref1[16] = {0,0,0,0,2,2,3,2,2,2,3,2,2,2,3,2};
 
 static void mc_luma( uint8_t *src[4], int i_src_stride,
                      uint8_t *dst,    int i_dst_stride,
-                     int mvx,int mvy,
+                     int mvx, int mvy,
                      int i_width, int i_height )
 {
     int qpel_idx = ((mvy&3)<<2) + (mvx&3);
@@ -238,7 +235,6 @@ static void mc_luma( uint8_t *src[4], int i_src_stride,
     if( qpel_idx & 5 ) /* qpel interpolation needed */
     {
         uint8_t *src2 = src[hpel_ref1[qpel_idx]] + offset + ((mvx&3) == 3);
-
         pixel_avg( dst, i_dst_stride, src1, i_src_stride,
                    src2, i_src_stride, i_width, i_height );
     }
@@ -249,8 +245,8 @@ static void mc_luma( uint8_t *src[4], int i_src_stride,
 }
 
 static uint8_t *get_ref( uint8_t *src[4], int i_src_stride,
-                         uint8_t *dst,    int * i_dst_stride,
-                         int mvx,int mvy,
+                         uint8_t *dst,   int *i_dst_stride,
+                         int mvx, int mvy,
                          int i_width, int i_height )
 {
     int qpel_idx = ((mvy&3)<<2) + (mvx&3);
@@ -260,10 +256,8 @@ static uint8_t *get_ref( uint8_t *src[4], int i_src_stride,
     if( qpel_idx & 5 ) /* qpel interpolation needed */
     {
         uint8_t *src2 = src[hpel_ref1[qpel_idx]] + offset + ((mvx&3) == 3);
-
         pixel_avg( dst, *i_dst_stride, src1, i_src_stride,
                    src2, i_src_stride, i_width, i_height );
-
         return dst;
     }
     else
@@ -371,13 +365,11 @@ void x264_mc_init( int cpu, x264_mc_functions_t *pf )
     pf->prefetch_fenc = prefetch_fenc_null;
     pf->prefetch_ref  = prefetch_ref_null;
 
-#ifdef HAVE_MMXEXT
+#ifdef HAVE_MMX
     if( cpu&X264_CPU_MMXEXT ) {
         x264_mc_mmxext_init( pf );
         pf->mc_chroma = x264_mc_chroma_mmxext;
     }
-#endif
-#ifdef HAVE_SSE2
     if( cpu&X264_CPU_SSE2 )
         x264_mc_sse2_init( pf );
 #endif
@@ -394,15 +386,15 @@ void x264_frame_filter( int cpu, x264_frame_t *frame, int b_interlaced, int mb_y
 {
     const int x_inc = 16, y_inc = 16;
     const int stride = frame->i_stride[0] << b_interlaced;
-    const int start = (mb_y*16 >> b_interlaced) - 8;
-    const int height = ((b_end ? frame->i_lines[0] : mb_y*16) >> b_interlaced) + 8;
+    int start = (mb_y*16 >> b_interlaced) - 8;
+    int height = ((b_end ? frame->i_lines[0] : mb_y*16) >> b_interlaced) + 8;
     int x, y;
 
     if( mb_y & b_interlaced )
         return;
     mb_y >>= b_interlaced;
 
-#ifdef HAVE_MMXEXT
+#ifdef HAVE_MMX
     if ( cpu & X264_CPU_MMXEXT )
     {
         // buffer = 4 for deblock + 3 for 6tap, rounded to 8
@@ -440,28 +432,33 @@ void x264_frame_filter( int cpu, x264_frame_t *frame, int b_interlaced, int mb_y
     /* generate integral image:
      * frame->integral contains 2 planes. in the upper plane, each element is
      * the sum of an 8x8 pixel region with top-left corner on that point.
-     * in the lower plane, 4x4 sums (needed only with --analyse p4x4). */
+     * in the lower plane, 4x4 sums (needed only with --partitions p4x4). */
 
-    if( frame->integral && b_end )
+    if( frame->integral )
     {
-        //FIXME slice
-        memset( frame->integral - 32 * stride - 32, 0, stride * sizeof(uint16_t) );
-        for( y = -32; y < frame->i_lines[0] + 31; y++ )
+        if( start < 0 )
+        {
+            memset( frame->integral - 32 * stride - 32, 0, stride * sizeof(uint16_t) );
+            start = -32;
+        }
+        if( b_end )
+            height += 24;
+        for( y = start; y < height; y++ )
         {
             uint8_t  *ref  = frame->plane[0] + y * stride - 32;
             uint16_t *line = frame->integral + (y+1) * stride - 31;
             uint16_t v = line[0] = 0;
             for( x = 0; x < stride-1; x++ )
                 line[x] = v += ref[x] + line[x-stride] - line[x-stride-1];
-        }
-        for( y = -31; y < frame->i_lines[0] + 24; y++ )
-        {
-            uint16_t *line = frame->integral + y * stride - 31;
-            uint16_t *sum4 = line + frame->i_stride[0] * (frame->i_lines[0] + 64);
-            for( x = -31; x < stride - 40; x++, line++, sum4++ )
+            line -= 8*stride;
+            if( y >= 8-31 )
             {
-                sum4[0] =  line[4+4*stride] - line[4] - line[4*stride] + line[0];
-                line[0] += line[8+8*stride] - line[8] - line[8*stride];
+                uint16_t *sum4 = line + frame->i_stride[0] * (frame->i_lines[0] + 64);
+                for( x = 1; x < stride-8; x++, line++, sum4++ )
+                {
+                    sum4[0] =  line[4+4*stride] - line[4] - line[4*stride] + line[0];
+                    line[0] += line[8+8*stride] - line[8] - line[8*stride];
+                }
             }
         }
     }

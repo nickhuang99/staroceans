@@ -22,9 +22,6 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111, USA.
  *****************************************************************************/
 
-#include <stdio.h>
-#include <string.h>
-
 #include "common/common.h"
 #include "me.h"
 
@@ -55,7 +52,7 @@ static void refine_subpel( x264_t *h, x264_me_t *m, int hpel_iters, int qpel_ite
     COPY3_IF_LT( bcost, cost, bmx, mx, bmy, my );\
 }
 
-#define COST_MV_PRED( mx, my ) \
+#define COST_MV_HPEL( mx, my ) \
 { \
     int stride = 16; \
     uint8_t *src = h->mc.get_ref( m->p_fref, m->i_stride[0], pix, &stride, mx, my, bw, bh ); \
@@ -184,13 +181,13 @@ void x264_me_search_ref( x264_t *h, x264_me_t *m, int (*mvc)[2], int i_mvc, int 
     /* try extra predictors if provided */
     if( h->mb.i_subpel_refine >= 3 )
     {
-        COST_MV_PRED( bmx, bmy );
+        COST_MV_HPEL( bmx, bmy );
         for( i = 0; i < i_mvc; i++ )
         {
              const int mx = x264_clip3( mvc[i][0], mv_x_min*4, mv_x_max*4 );
              const int my = x264_clip3( mvc[i][1], mv_y_min*4, mv_y_max*4 );
              if( mx != bpred_mx || my != bpred_my )
-                 COST_MV_PRED( mx, my );
+                 COST_MV_HPEL( mx, my );
         }
         bmx = ( bpred_mx + 2 ) >> 2;
         bmy = ( bpred_my + 2 ) >> 2;
@@ -460,7 +457,7 @@ me_hex2:
             int enc_dc[4];
             int sad_size = i_pixel <= PIXEL_8x8 ? PIXEL_8x8 : PIXEL_4x4;
             int delta = x264_pixel_size[sad_size].w;
-            uint16_t *ads = x264_alloca((max_x-min_x+8) * sizeof(uint16_t));
+            uint16_t *ads = x264_malloc((max_x-min_x+8) * sizeof(uint16_t));
 
             h->pixf.sad_x4[sad_size]( zero, m->p_fenc[0], m->p_fenc[0]+delta,
                 m->p_fenc[0]+delta*FENC_STRIDE, m->p_fenc[0]+delta+delta*FENC_STRIDE,
@@ -495,6 +492,8 @@ me_hex2:
                 for( i=0; i<i_mvs; i++ )
                     COST_MV( mvs[i], my );
             }
+
+            x264_free(ads);
 #endif
         }
         break;
@@ -586,7 +585,7 @@ static void refine_subpel( x264_t *h, x264_me_t *m, int hpel_iters, int qpel_ite
     const int i_pixel = m->i_pixel;
     const int b_chroma_me = h->mb.b_chroma_me && i_pixel <= PIXEL_8x8;
 
-    DECLARE_ALIGNED( uint8_t, pix[4][16*16], 16 );
+    DECLARE_ALIGNED( uint8_t, pix[2][32*18], 16 ); // really 17x17, but round up for alignment
     int omx, omy;
     int i;
 
@@ -610,20 +609,12 @@ static void refine_subpel( x264_t *h, x264_me_t *m, int hpel_iters, int qpel_ite
     {
         int omx = bmx, omy = bmy;
         int costs[4];
-        int stride = 16; // candidates are either all hpel or all qpel, so one stride is enough
+        int stride = 32; // candidates are either all hpel or all qpel, so one stride is enough
         uint8_t *src0, *src1, *src2, *src3;
-        src0 = h->mc.get_ref( m->p_fref, m->i_stride[0], pix[0], &stride, omx, omy-2, bw, bh );
-        src2 = h->mc.get_ref( m->p_fref, m->i_stride[0], pix[2], &stride, omx-2, omy, bw, bh );
-        if( (omx|omy)&1 )
-        {
-            src1 = h->mc.get_ref( m->p_fref, m->i_stride[0], pix[1], &stride, omx, omy+2, bw, bh );
-            src3 = h->mc.get_ref( m->p_fref, m->i_stride[0], pix[3], &stride, omx+2, omy, bw, bh );
-        }
-        else
-        {
-            src1 = src0 + stride;
-            src3 = src2 + 1;
-        }
+        src0 = h->mc.get_ref( m->p_fref, m->i_stride[0], pix[0], &stride, omx, omy-2, bw, bh+1 );
+        src2 = h->mc.get_ref( m->p_fref, m->i_stride[0], pix[1], &stride, omx-2, omy, bw+4, bh );
+        src1 = src0 + stride;
+        src3 = src2 + 1;
         h->pixf.sad_x4[i_pixel]( m->p_fenc[0], src0, src1, src2, src3, stride, costs );
         COPY2_IF_LT( bcost, costs[0] + p_cost_mvx[omx  ] + p_cost_mvy[omy-2], bmy, omy-2 );
         COPY2_IF_LT( bcost, costs[1] + p_cost_mvx[omx  ] + p_cost_mvy[omy+2], bmy, omy+2 );

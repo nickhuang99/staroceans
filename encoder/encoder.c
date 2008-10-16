@@ -21,8 +21,6 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111, USA.
  *****************************************************************************/
 
-#include <stdio.h>
-#include <string.h>
 #include <math.h>
 
 #include "common/common.h"
@@ -352,18 +350,12 @@ static int x264_validate_parameters( x264_t *h )
     if( h->param.i_threads == 0 )
         h->param.i_threads = x264_cpu_num_processors() * 3/2;
     h->param.i_threads = x264_clip3( h->param.i_threads, 1, X264_THREAD_MAX );
-    h->param.i_threads = X264_MIN( h->param.i_threads, 1 + (h->param.i_height >> h->param.b_interlaced) / (X264_THREAD_HEIGHT + 16) ); // FIXME exact limit?
     if( h->param.i_threads > 1 )
     {
 #ifndef HAVE_PTHREAD
         x264_log( h, X264_LOG_WARNING, "not compiled with pthread support!\n");
         h->param.i_threads = 1;
 #else
-        if( h->param.analyse.i_me_method == X264_ME_ESA )
-        {
-            x264_log( h, X264_LOG_WARNING, "threads are not yet compatible with ESA\n");
-            h->param.analyse.i_me_method = X264_ME_UMH;
-        }
         if( h->param.i_scenecut_threshold >= 0 )
             h->param.b_pre_scenecut = 1;
 #endif
@@ -385,7 +377,7 @@ static int x264_validate_parameters( x264_t *h )
 
     if( h->param.rc.i_rc_method < 0 || h->param.rc.i_rc_method > 2 )
     {
-        x264_log( h, X264_LOG_ERROR, "invalid RC method\n" );
+        x264_log( h, X264_LOG_ERROR, "no ratecontrol method specified\n" );
         return -1;
     }
     h->param.rc.f_rf_constant = x264_clip3f( h->param.rc.f_rf_constant, 0, 51 );
@@ -410,9 +402,21 @@ static int x264_validate_parameters( x264_t *h )
         h->param.analyse.i_noise_reduction = 0;
         h->param.analyse.i_subpel_refine = x264_clip3( h->param.analyse.i_subpel_refine, 1, 6 );
     }
-
-    if( ( h->param.i_width % 16 || h->param.i_height % 16 ) && !h->mb.b_lossless )
+    if( h->param.rc.i_rc_method == X264_RC_CQP )
     {
+        float qp_p = h->param.rc.i_qp_constant;
+        float qp_i = qp_p - 6*log(h->param.rc.f_ip_factor)/log(2);
+        float qp_b = qp_p + 6*log(h->param.rc.f_pb_factor)/log(2);
+        h->param.rc.i_qp_min = x264_clip3( (int)(X264_MIN3( qp_p, qp_i, qp_b )), 0, 51 );
+        h->param.rc.i_qp_max = x264_clip3( (int)(X264_MAX3( qp_p, qp_i, qp_b ) + .999), 0, 51 );
+    }
+
+    if( ( h->param.i_width % 16 || h->param.i_height % 16 )
+        && h->param.i_height != 1080 && !h->mb.b_lossless )
+    {
+        // There's nothing special about 1080 in that the warning still applies to it,
+        // but chances are the user can't help it if his content is already 1080p,
+        // so there's no point in warning in that case.
         x264_log( h, X264_LOG_WARNING, 
                   "width or height not divisible by 16 (%dx%d), compression will suffer.\n",
                   h->param.i_width, h->param.i_height );
@@ -438,8 +442,6 @@ static int x264_validate_parameters( x264_t *h )
     h->param.i_deblocking_filter_beta    = x264_clip3( h->param.i_deblocking_filter_beta, -6, 6 );
     h->param.analyse.i_luma_deadzone[0] = x264_clip3( h->param.analyse.i_luma_deadzone[0], 0, 32 );
     h->param.analyse.i_luma_deadzone[1] = x264_clip3( h->param.analyse.i_luma_deadzone[1], 0, 32 );
-    h->mb.i_luma_deadzone[0] = 32 - h->param.analyse.i_luma_deadzone[0];
-    h->mb.i_luma_deadzone[1] = 32 - h->param.analyse.i_luma_deadzone[1];
 
     h->param.i_cabac_init_idc = x264_clip3( h->param.i_cabac_init_idc, 0, 2 );
 
@@ -484,7 +486,7 @@ static int x264_validate_parameters( x264_t *h )
         if( h->param.analyse.i_mv_range <= 0 )
             h->param.analyse.i_mv_range = l->mv_range;
         else
-            h->param.analyse.i_mv_range = x264_clip3(h->param.analyse.i_mv_range, 32, 2048);
+            h->param.analyse.i_mv_range = x264_clip3(h->param.analyse.i_mv_range, 32, 512);
         if( h->param.analyse.i_direct_8x8_inference < 0 )
             h->param.analyse.i_direct_8x8_inference = l->direct8x8;
     }
@@ -625,7 +627,11 @@ x264_t *x264_encoder_open   ( x264_param_t *param )
 
     x264_validate_levels( h );
 
-    x264_cqm_init( h );
+    if( x264_cqm_init( h ) < 0 )
+    {
+        x264_free( h );
+        return NULL;
+    }
     
     h->mb.i_mb_count = h->sps->i_mb_width * h->sps->i_mb_height;
 
@@ -666,18 +672,20 @@ x264_t *x264_encoder_open   ( x264_param_t *param )
 
     mbcmp_init( h );
 
-    x264_log( h, X264_LOG_INFO, "using cpu capabilities %s%s%s%s%s%s\n",
+    x264_log( h, X264_LOG_INFO, "using cpu capabilities: %s%s%s%s%s%s%s%s\n",
              param->cpu&X264_CPU_MMX ? "MMX " : "",
              param->cpu&X264_CPU_MMXEXT ? "MMXEXT " : "",
              param->cpu&X264_CPU_SSE ? "SSE " : "",
              param->cpu&X264_CPU_SSE2 ? "SSE2 " : "",
+             param->cpu&X264_CPU_SSSE3 ? "SSSE3 " : "",
              param->cpu&X264_CPU_3DNOW ? "3DNow! " : "",
-             param->cpu&X264_CPU_ALTIVEC ? "Altivec " : "" );
+             param->cpu&X264_CPU_ALTIVEC ? "Altivec " : "",
+             param->cpu ? "" : "none!" );
 
     h->out.i_nal = 0;
-    h->out.i_bitstream = X264_MAX( 1000000, h->param.i_width * h->param.i_height * 1.7
-        * ( h->param.rc.i_rc_method == X264_RC_ABR ? pow( 0.5, h->param.rc.i_qp_min )
-          : pow( 0.5, h->param.rc.i_qp_constant ) * X264_MAX( 1, h->param.rc.f_ip_factor )));
+    h->out.i_bitstream = X264_MAX( 1000000, h->param.i_width * h->param.i_height * 4
+        * ( h->param.rc.i_rc_method == X264_RC_ABR ? pow( 0.95, h->param.rc.i_qp_min )
+          : pow( 0.95, h->param.rc.i_qp_constant ) * X264_MAX( 1, h->param.rc.f_ip_factor )));
 
     h->thread[0] = h;
     h->i_thread_num = 0;
@@ -742,10 +750,12 @@ int x264_encoder_reconfig( x264_t *h, x264_param_t *param )
     COPY( analyse.b_dct_decimate );
     COPY( analyse.b_fast_pskip );
     COPY( analyse.b_mixed_references );
-#undef COPY
-
+    // can only twiddle these if they were enabled to begin with:
     if( h->pps->b_transform_8x8_mode )
-        h->param.analyse.b_transform_8x8 = param->analyse.b_transform_8x8;
+        COPY( analyse.b_transform_8x8 );
+    if( h->frames.i_max_ref1 > 1 )
+        COPY( b_bframe_pyramid );
+#undef COPY
 
     mbcmp_init( h );
 
@@ -760,19 +770,13 @@ static void x264_nal_start( x264_t *h, int i_type, int i_ref_idc )
     nal->i_ref_idc = i_ref_idc;
     nal->i_type    = i_type;
 
-    bs_align_0( &h->out.bs );   /* not needed */
-
     nal->i_payload= 0;
-    nal->p_payload= &h->out.p_bitstream[bs_pos( &h->out.bs) / 8];
+    nal->p_payload= &h->out.p_bitstream[bs_pos( &h->out.bs ) / 8];
 }
 static void x264_nal_end( x264_t *h )
 {
     x264_nal_t *nal = &h->out.nal[h->out.i_nal];
-
-    bs_align_0( &h->out.bs );   /* not needed */
-
-    nal->i_payload = &h->out.p_bitstream[bs_pos( &h->out.bs)/8] - nal->p_payload;
-
+    nal->i_payload = &h->out.p_bitstream[bs_pos( &h->out.bs ) / 8] - nal->p_payload;
     h->out.i_nal++;
 }
 
@@ -1012,7 +1016,7 @@ static inline void x264_slice_init( x264_t *h, int i_nal_type, int i_global_qp )
     x264_macroblock_slice_init( h );
 }
 
-static int x264_slice_write( x264_t *h )
+static void x264_slice_write( x264_t *h )
 {
     int i_skip;
     int mb_xy;
@@ -1033,7 +1037,7 @@ static int x264_slice_write( x264_t *h )
 
         /* init cabac */
         x264_cabac_context_init( &h->cabac, h->sh.i_type, h->sh.i_qp, h->sh.i_cabac_init_idc );
-        x264_cabac_encode_init ( &h->cabac, &h->out.bs );
+        x264_cabac_encode_init ( &h->cabac, h->out.bs.p, h->out.bs.p_end );
     }
     h->mb.i_last_qp = h->sh.i_qp;
     h->mb.i_last_dqp = 0;
@@ -1042,7 +1046,7 @@ static int x264_slice_write( x264_t *h )
     {
         const int i_mb_y = mb_xy / h->sps->i_mb_width;
         const int i_mb_x = mb_xy % h->sps->i_mb_width;
-        int mb_spos = bs_pos(&h->out.bs);
+        int mb_spos = bs_pos(&h->out.bs) + x264_cabac_pos(&h->cabac);
 
         if( i_mb_x == 0 )
             x264_fdec_filter_row( h, i_mb_y );
@@ -1128,7 +1132,7 @@ static int x264_slice_write( x264_t *h )
         }
 
         if( h->mb.b_variable_qp )
-            x264_ratecontrol_mb(h, bs_pos(&h->out.bs) - mb_spos);
+            x264_ratecontrol_mb(h, bs_pos(&h->out.bs) + x264_cabac_pos(&h->cabac) - mb_spos);
 
         if( h->sh.b_mbaff )
         {
@@ -1156,7 +1160,7 @@ static int x264_slice_write( x264_t *h )
     if( h->param.b_cabac )
     {
         x264_cabac_encode_flush( &h->cabac );
-
+        h->out.bs.p = h->cabac.p;
     }
     else
     {
@@ -1172,8 +1176,6 @@ static int x264_slice_write( x264_t *h )
                               - h->stat.frame.i_itex_bits
                               - h->stat.frame.i_ptex_bits
                               - h->stat.frame.i_hdr_bits;
-
-    return 0;
 }
 
 static void x264_thread_sync_context( x264_t *dst, x264_t *src )
@@ -1212,7 +1214,7 @@ static int x264_slices_write( x264_t *h )
         x264_visualize_init( h );
 #endif
 
-    x264_slice_write( h );
+    x264_stack_align( x264_slice_write, h );
     i_frame_size = h->out.nal[h->out.i_nal-1].i_payload;
     x264_fdec_filter_row( h, h->sps->i_mb_height );
 
@@ -1472,7 +1474,7 @@ do_encode:
     /* Write frame */
     if( h->param.i_threads > 1 )
     {
-        pthread_create( &h->thread_handle, NULL, (void*)x264_slices_write, h );
+        x264_pthread_create( &h->thread_handle, NULL, (void*)x264_slices_write, h );
         h->b_thread_active = 1;
     }
     else
@@ -1592,7 +1594,7 @@ static void x264_encoder_frame_end( x264_t *h, x264_t *thread_current,
 
     if( h->b_thread_active )
     {
-        pthread_join( h->thread_handle, NULL );
+        x264_pthread_join( h->thread_handle, NULL );
         h->b_thread_active = 0;
     }
     if( !h->out.i_nal )
@@ -1767,7 +1769,7 @@ void    x264_encoder_close  ( x264_t *h )
     {
         // don't strictly have to wait for the other threads, but it's simpler than cancelling them
         if( h->thread[i]->b_thread_active )
-            pthread_join( h->thread[i]->thread_handle, NULL );
+            x264_pthread_join( h->thread[i]->thread_handle, NULL );
     }
 
 #ifdef DEBUG_BENCHMARK

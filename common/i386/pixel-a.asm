@@ -62,21 +62,17 @@ BITS 32
 %macro SAD_INC_2x4P 0
     movd    mm1,    [eax]
     movd    mm2,    [ecx]
-    movd    mm3,    [eax+ebx]
-    movd    mm4,    [ecx+edx]
-
+    punpckldq mm1,  [eax+ebx]
+    punpckldq mm2,  [ecx+edx]
     psadbw  mm1,    mm2
-    psadbw  mm3,    mm4
     paddw   mm0,    mm1
-    paddw   mm0,    mm3
-
     lea     eax,    [eax+2*ebx]
     lea     ecx,    [ecx+2*edx]
 %endmacro
 
 ; sad x3 / x4
 
-%macro SAD_X3_START_1x8P 1
+%macro SAD_X3_START 0
     push    edi
     push    esi
     mov     edi,    [esp+12]
@@ -84,20 +80,23 @@ BITS 32
     mov     ecx,    [esp+20]
     mov     edx,    [esp+24]
     mov     esi,    [esp+28]
-    mov%1   mm3,    [edi]
-    mov%1   mm0,    [eax]
-    mov%1   mm1,    [ecx]
-    mov%1   mm2,    [edx]
+%endmacro
+
+%macro SAD_X3_START_1x8P 0
+    movq    mm3,    [edi]
+    movq    mm0,    [eax]
+    movq    mm1,    [ecx]
+    movq    mm2,    [edx]
     psadbw  mm0,    mm3
     psadbw  mm1,    mm3
     psadbw  mm2,    mm3
 %endmacro
 
-%macro SAD_X3_1x8P 3
-    mov%1   mm3,    [edi+%2]
-    mov%1   mm4,    [eax+%3]
-    mov%1   mm5,    [ecx+%3]
-    mov%1   mm6,    [edx+%3]
+%macro SAD_X3_1x8P 2
+    movq    mm3,    [edi+%1]
+    movq    mm4,    [eax+%2]
+    movq    mm5,    [ecx+%2]
+    movq    mm6,    [edx+%2]
     psadbw  mm4,    mm3
     psadbw  mm5,    mm3
     psadbw  mm6,    mm3
@@ -106,15 +105,30 @@ BITS 32
     paddw   mm2,    mm6
 %endmacro
 
+%macro SAD_X3_START_2x4P 3
+    movd      mm3,  [edi]
+    movd      %1,   [eax]
+    movd      %2,   [ecx]
+    movd      %3,   [edx]
+    punpckldq mm3,  [edi+FENC_STRIDE]
+    punpckldq %1,   [eax+esi]
+    punpckldq %2,   [ecx+esi]
+    punpckldq %3,   [edx+esi]
+    psadbw    %1,   mm3
+    psadbw    %2,   mm3
+    psadbw    %3,   mm3
+%endmacro
+
 %macro SAD_X3_2x16P 1
 %if %1
-    SAD_X3_START_1x8P q
+    SAD_X3_START
+    SAD_X3_START_1x8P
 %else
-    SAD_X3_1x8P q, 0, 0
+    SAD_X3_1x8P 0, 0
 %endif
-    SAD_X3_1x8P q, 8, 8
-    SAD_X3_1x8P q, FENC_STRIDE, esi
-    SAD_X3_1x8P q, FENC_STRIDE+8, esi+8
+    SAD_X3_1x8P 8, 8
+    SAD_X3_1x8P FENC_STRIDE, esi
+    SAD_X3_1x8P FENC_STRIDE+8, esi+8
     add     edi, 2*FENC_STRIDE
     lea     eax, [eax+2*esi]
     lea     ecx, [ecx+2*esi]
@@ -123,11 +137,12 @@ BITS 32
 
 %macro SAD_X3_2x8P 1
 %if %1
-    SAD_X3_START_1x8P q
+    SAD_X3_START
+    SAD_X3_START_1x8P
 %else
-    SAD_X3_1x8P q, 0, 0
+    SAD_X3_1x8P 0, 0
 %endif
-    SAD_X3_1x8P q, FENC_STRIDE, esi
+    SAD_X3_1x8P FENC_STRIDE, esi
     add     edi, 2*FENC_STRIDE
     lea     eax, [eax+2*esi]
     lea     ecx, [ecx+2*esi]
@@ -136,18 +151,21 @@ BITS 32
 
 %macro SAD_X3_2x4P 1
 %if %1
-    SAD_X3_START_1x8P d
+    SAD_X3_START
+    SAD_X3_START_2x4P mm0, mm1, mm2
 %else
-    SAD_X3_1x8P d, 0, 0
+    SAD_X3_START_2x4P mm4, mm5, mm6
+    paddw   mm0, mm4
+    paddw   mm1, mm5
+    paddw   mm2, mm6
 %endif
-    SAD_X3_1x8P d, FENC_STRIDE, esi
     add     edi, 2*FENC_STRIDE
     lea     eax, [eax+2*esi]
     lea     ecx, [ecx+2*esi]
     lea     edx, [edx+2*esi]
 %endmacro
 
-%macro SAD_X4_START_1x8P 1
+%macro SAD_X4_START 0
     push    edi
     push    esi
     push    ebx
@@ -157,11 +175,14 @@ BITS 32
     mov     ecx,    [esp+28]
     mov     edx,    [esp+32]
     mov     esi,    [esp+36]
-    mov%1   mm7,    [edi]
-    mov%1   mm0,    [eax]
-    mov%1   mm1,    [ebx]
-    mov%1   mm2,    [ecx]
-    mov%1   mm3,    [edx]
+%endmacro
+
+%macro SAD_X4_START_1x8P 0
+    movq    mm7,    [edi]
+    movq    mm0,    [eax]
+    movq    mm1,    [ebx]
+    movq    mm2,    [ecx]
+    movq    mm3,    [edx]
     psadbw  mm0,    mm7
     psadbw  mm1,    mm7
     psadbw  mm2,    mm7
@@ -183,25 +204,48 @@ BITS 32
     paddw   mm3,    mm7
 %endmacro
 
-%macro SAD_X4_1x4P 2
-    movd    mm7,    [edi+%1]
-    movd    mm4,    [eax+%2]
-    movd    mm5,    [ebx+%2]
-    movd    mm6,    [ecx+%2]
-    psadbw  mm4,    mm7
-    psadbw  mm5,    mm7
-    paddw   mm0,    mm4
-    psadbw  mm6,    mm7
-    movd    mm4,    [edx+%2]
-    paddw   mm1,    mm5
-    psadbw  mm4,    mm7
-    paddw   mm2,    mm6
-    paddw   mm3,    mm4
+%macro SAD_X4_START_2x4P 0
+    movd      mm7,  [edi]
+    movd      mm0,  [eax]
+    movd      mm1,  [ebx]
+    movd      mm2,  [ecx]
+    movd      mm3,  [edx]
+    punpckldq mm7,  [edi+FENC_STRIDE]
+    punpckldq mm0,  [eax+esi]
+    punpckldq mm1,  [ebx+esi]
+    punpckldq mm2,  [ecx+esi]
+    punpckldq mm3,  [edx+esi]
+    psadbw    mm0,  mm7
+    psadbw    mm1,  mm7
+    psadbw    mm2,  mm7
+    psadbw    mm3,  mm7
+%endmacro   
+    
+%macro SAD_X4_INC_2x4P 0
+    movd      mm7,  [edi]
+    movd      mm4,  [eax]
+    movd      mm5,  [ebx]
+    punpckldq mm7,  [edi+FENC_STRIDE]
+    punpckldq mm4,  [eax+esi]
+    punpckldq mm5,  [ebx+esi]
+    psadbw    mm4,  mm7
+    psadbw    mm5,  mm7
+    paddw     mm0,  mm4
+    paddw     mm1,  mm5
+    movd      mm4,  [ecx]
+    movd      mm5,  [edx]
+    punpckldq mm4,  [ecx+esi]
+    punpckldq mm5,  [edx+esi]
+    psadbw    mm4,  mm7
+    psadbw    mm5,  mm7
+    paddw     mm2,  mm4
+    paddw     mm3,  mm5
 %endmacro
 
 %macro SAD_X4_2x16P 1
 %if %1
-    SAD_X4_START_1x8P q
+    SAD_X4_START
+    SAD_X4_START_1x8P
 %else
     SAD_X4_1x8P 0, 0
 %endif
@@ -217,7 +261,8 @@ BITS 32
 
 %macro SAD_X4_2x8P 1
 %if %1
-    SAD_X4_START_1x8P q
+    SAD_X4_START
+    SAD_X4_START_1x8P
 %else
     SAD_X4_1x8P 0, 0
 %endif
@@ -231,11 +276,11 @@ BITS 32
 
 %macro SAD_X4_2x4P 1
 %if %1
-    SAD_X4_START_1x8P d
+    SAD_X4_START
+    SAD_X4_START_2x4P
 %else
-    SAD_X4_1x4P 0, 0
+    SAD_X4_INC_2x4P
 %endif
-    SAD_X4_1x4P FENC_STRIDE, esi
     add     edi, 2*FENC_STRIDE
     lea     eax, [eax+2*esi]
     lea     ebx, [ebx+2*esi]
@@ -438,64 +483,6 @@ BITS 32
 
 SECTION .text
 
-cglobal x264_pixel_sad_16x16_mmxext
-cglobal x264_pixel_sad_16x8_mmxext
-cglobal x264_pixel_sad_8x16_mmxext
-cglobal x264_pixel_sad_8x8_mmxext
-cglobal x264_pixel_sad_8x4_mmxext
-cglobal x264_pixel_sad_4x8_mmxext
-cglobal x264_pixel_sad_4x4_mmxext
-
-cglobal x264_pixel_sad_x3_16x16_mmxext
-cglobal x264_pixel_sad_x3_16x8_mmxext
-cglobal x264_pixel_sad_x3_8x16_mmxext
-cglobal x264_pixel_sad_x3_8x8_mmxext
-cglobal x264_pixel_sad_x3_8x4_mmxext
-cglobal x264_pixel_sad_x3_4x8_mmxext
-cglobal x264_pixel_sad_x3_4x4_mmxext
-
-cglobal x264_pixel_sad_x4_16x16_mmxext
-cglobal x264_pixel_sad_x4_16x8_mmxext
-cglobal x264_pixel_sad_x4_8x16_mmxext
-cglobal x264_pixel_sad_x4_8x8_mmxext
-cglobal x264_pixel_sad_x4_8x4_mmxext
-cglobal x264_pixel_sad_x4_4x8_mmxext
-cglobal x264_pixel_sad_x4_4x4_mmxext
-
-cglobal x264_pixel_sad_pde_16x16_mmxext
-cglobal x264_pixel_sad_pde_16x8_mmxext
-cglobal x264_pixel_sad_pde_8x16_mmxext
-
-cglobal x264_pixel_ssd_16x16_mmx
-cglobal x264_pixel_ssd_16x8_mmx
-cglobal x264_pixel_ssd_8x16_mmx
-cglobal x264_pixel_ssd_8x8_mmx
-cglobal x264_pixel_ssd_8x4_mmx
-cglobal x264_pixel_ssd_4x8_mmx
-cglobal x264_pixel_ssd_4x4_mmx
-
-cglobal x264_pixel_satd_4x4_mmxext
-cglobal x264_pixel_satd_4x8_mmxext
-cglobal x264_pixel_satd_8x4_mmxext
-cglobal x264_pixel_satd_8x8_mmxext
-cglobal x264_pixel_satd_16x8_mmxext
-cglobal x264_pixel_satd_8x16_mmxext
-cglobal x264_pixel_satd_16x16_mmxext
-
-cglobal x264_pixel_sa8d_16x16_mmxext
-cglobal x264_pixel_sa8d_8x8_mmxext
-
-cglobal x264_intra_satd_x3_4x4_mmxext
-cglobal x264_intra_satd_x3_8x8c_mmxext
-cglobal x264_intra_satd_x3_16x16_mmxext
-cglobal x264_intra_sa8d_x3_8x8_core_mmxext
-
-cglobal x264_pixel_ssim_4x4x2_core_mmxext
-
-cglobal x264_pixel_ads4_mmxext
-cglobal x264_pixel_ads2_mmxext
-cglobal x264_pixel_ads1_mmxext
-
 %macro SAD_START 0
     push    ebx
 
@@ -517,8 +504,7 @@ cglobal x264_pixel_ads1_mmxext
 ;   int __cdecl x264_pixel_sad_16x16_mmxext (uint8_t *, int, uint8_t *, int )
 ;-----------------------------------------------------------------------------
 %macro SAD 2
-ALIGN 16
-x264_pixel_sad_%1x%2_mmxext:
+cglobal x264_pixel_sad_%1x%2_mmxext
     SAD_START
 %rep %2/2
     SAD_INC_2x%1P
@@ -539,8 +525,7 @@ SAD  4,  4
 ;                                       uint8_t *pix2, int i_stride, int scores[3] )
 ;-----------------------------------------------------------------------------
 %macro SAD_X 3
-ALIGN 16
-x264_pixel_sad_x%1_%2x%3_mmxext:
+cglobal x264_pixel_sad_x%1_%2x%3_mmxext
     SAD_X%1_2x%2P 1
 %rep %3/2-1
     SAD_X%1_2x%2P 0
@@ -568,8 +553,7 @@ SAD_X 4,  4,  4
 ;   int __cdecl x264_pixel_sad_pde_16x16_mmxext (uint8_t *, int, uint8_t *, int, int )
 ;-----------------------------------------------------------------------------
 %macro SAD_PDE 2
-ALIGN 16
-x264_pixel_sad_pde_%1x%2_mmxext:
+cglobal x264_pixel_sad_pde_%1x%2_mmxext
     SAD_START
 %rep %2/4
     SAD_INC_2x%1P
@@ -623,8 +607,7 @@ SAD_PDE  8, 16
 ;   int __cdecl x264_pixel_ssd_16x16_mmx (uint8_t *, int, uint8_t *, int )
 ;-----------------------------------------------------------------------------
 %macro SSD 2
-ALIGN 16
-x264_pixel_ssd_%1x%2_mmx:
+cglobal x264_pixel_ssd_%1x%2_mmx
     SSD_START
 %rep %2
     SSD_INC_1x%1P
@@ -662,31 +645,28 @@ SSD  4,  4
     ret
 %endmacro
 
-ALIGN 16
 ;-----------------------------------------------------------------------------
 ;   int __cdecl x264_pixel_satd_4x4_mmxext (uint8_t *, int, uint8_t *, int )
 ;-----------------------------------------------------------------------------
-x264_pixel_satd_4x4_mmxext:
+cglobal x264_pixel_satd_4x4_mmxext
     SATD_START
     LOAD_DIFF_HADAMARD_SUM mm0, 0, 0
     SATD_END
 
-ALIGN 16
 ;-----------------------------------------------------------------------------
 ;   int __cdecl x264_pixel_satd_4x8_mmxext (uint8_t *, int, uint8_t *, int )
 ;-----------------------------------------------------------------------------
-x264_pixel_satd_4x8_mmxext:
+cglobal x264_pixel_satd_4x8_mmxext
     SATD_START
     LOAD_DIFF_HADAMARD_SUM mm0, 0, 1
     LOAD_DIFF_HADAMARD_SUM mm1, 0, 0
     paddw       mm0, mm1
     SATD_END
 
-ALIGN 16
 ;-----------------------------------------------------------------------------
 ;   int __cdecl x264_pixel_satd_8x4_mmxext (uint8_t *, int, uint8_t *, int )
 ;-----------------------------------------------------------------------------
-x264_pixel_satd_8x4_mmxext:
+cglobal x264_pixel_satd_8x4_mmxext
     SATD_START
     LOAD_DIFF_HADAMARD_SUM mm0, 0, 0
     sub         eax, ebx
@@ -695,11 +675,10 @@ x264_pixel_satd_8x4_mmxext:
     paddw       mm0, mm1
     SATD_END
 
-ALIGN 16
 ;-----------------------------------------------------------------------------
 ;   int __cdecl x264_pixel_satd_8x8_mmxext (uint8_t *, int, uint8_t *, int )
 ;-----------------------------------------------------------------------------
-x264_pixel_satd_8x8_mmxext:
+cglobal x264_pixel_satd_8x8_mmxext
     SATD_START
     LOAD_DIFF_HADAMARD_SUM mm0, 0, 1
     LOAD_DIFF_HADAMARD_SUM mm1, 0, 0
@@ -713,11 +692,10 @@ x264_pixel_satd_8x8_mmxext:
     paddw       mm0, mm1
     SATD_END
 
-ALIGN 16
 ;-----------------------------------------------------------------------------
 ;   int __cdecl x264_pixel_satd_16x8_mmxext (uint8_t *, int, uint8_t *, int )
 ;-----------------------------------------------------------------------------
-x264_pixel_satd_16x8_mmxext:
+cglobal x264_pixel_satd_16x8_mmxext
     SATD_START
     LOAD_DIFF_HADAMARD_SUM mm0, 0, 1
     LOAD_DIFF_HADAMARD_SUM mm1, 0, 0
@@ -745,11 +723,10 @@ x264_pixel_satd_16x8_mmxext:
     paddw       mm0, mm1
     SATD_END
 
-ALIGN 16
 ;-----------------------------------------------------------------------------
 ;   int __cdecl x264_pixel_satd_8x16_mmxext (uint8_t *, int, uint8_t *, int )
 ;-----------------------------------------------------------------------------
-x264_pixel_satd_8x16_mmxext:
+cglobal x264_pixel_satd_8x16_mmxext
     SATD_START
     LOAD_DIFF_HADAMARD_SUM mm0, 0, 1
     LOAD_DIFF_HADAMARD_SUM mm1, 0, 1
@@ -771,11 +748,10 @@ x264_pixel_satd_8x16_mmxext:
     paddw       mm0, mm1
     SATD_END
 
-ALIGN 16
 ;-----------------------------------------------------------------------------
 ;   int __cdecl x264_pixel_satd_16x16_mmxext (uint8_t *, int, uint8_t *, int )
 ;-----------------------------------------------------------------------------
-x264_pixel_satd_16x16_mmxext:
+cglobal x264_pixel_satd_16x16_mmxext
     SATD_START
     LOAD_DIFF_HADAMARD_SUM mm0, 0, 1
     LOAD_DIFF_HADAMARD_SUM mm1, 0, 1
@@ -875,11 +851,10 @@ x264_pixel_satd_16x16_mmxext:
     paddw    mm0, mm1
 %endmacro
 
-ALIGN 16
 ;-----------------------------------------------------------------------------
 ;   int __cdecl x264_pixel_sa8d_8x8_mmxext( uint8_t *, int, uint8_t *, int )
 ;-----------------------------------------------------------------------------
-x264_pixel_sa8d_8x8_mmxext:
+cglobal x264_pixel_sa8d_8x8_mmxext
     SATD_START
     sub    esp, 0x70
 %define args  esp+0x74
@@ -952,12 +927,11 @@ x264_pixel_sa8d_8x8_mmxext:
 %undef spill
 %undef trans
 
-ALIGN 16
 ;-----------------------------------------------------------------------------
 ;   int __cdecl x264_pixel_sa8d_16x16_mmxext( uint8_t *, int, uint8_t *, int )
 ;-----------------------------------------------------------------------------
 ;; violates calling convention
-x264_pixel_sa8d_16x16_mmxext:
+cglobal x264_pixel_sa8d_16x16_mmxext
     push   esi
     push   edi
     push   ebp
@@ -1036,11 +1010,10 @@ x264_pixel_sa8d_16x16_mmxext:
     %8          %3, %6
 %endmacro
 
-ALIGN 16
 ;-----------------------------------------------------------------------------
 ;  void x264_intra_satd_x3_4x4_mmxext( uint8_t *fenc, uint8_t *fdec, int *res )
 ;-----------------------------------------------------------------------------
-x264_intra_satd_x3_4x4_mmxext:
+cglobal x264_intra_satd_x3_4x4_mmxext
     push ebx
     push edi
     push esi
@@ -1119,11 +1092,10 @@ x264_intra_satd_x3_4x4_mmxext:
     pop  ebx
     ret
 
-ALIGN 16
 ;-----------------------------------------------------------------------------
 ;  void x264_intra_satd_x3_16x16_mmxext( uint8_t *fenc, uint8_t *fdec, int *res )
 ;-----------------------------------------------------------------------------
-x264_intra_satd_x3_16x16_mmxext:
+cglobal x264_intra_satd_x3_16x16_mmxext
     push ebx
     push ebp
     push edi
@@ -1250,11 +1222,10 @@ x264_intra_satd_x3_16x16_mmxext:
     pop  ebx
     ret
 
-ALIGN 16
 ;-----------------------------------------------------------------------------
 ;  void x264_intra_satd_x3_8x8c_mmxext( uint8_t *fenc, uint8_t *fdec, int *res )
 ;-----------------------------------------------------------------------------
-x264_intra_satd_x3_8x8c_mmxext:
+cglobal x264_intra_satd_x3_8x8c_mmxext
     push ebx
     push ebp
     push edi
@@ -1417,11 +1388,10 @@ x264_intra_satd_x3_8x8c_mmxext:
     movq        mm7, [spill]
 %endmacro
 
-ALIGN 16
 ;-----------------------------------------------------------------------------
 ;  void x264_intra_sa8d_x3_8x8_core_mmxext( uint8_t *fenc, int16_t edges[2][8], int *res )
 ;-----------------------------------------------------------------------------
-x264_intra_sa8d_x3_8x8_core_mmxext:
+cglobal x264_intra_sa8d_x3_8x8_core_mmxext
     mov    eax, [esp+4]
     mov    ecx, [esp+8]
     sub    esp, 0x70
@@ -1582,8 +1552,7 @@ x264_intra_sa8d_x3_8x8_core_mmxext:
 ; void x264_pixel_ssim_4x4x2_core_mmxext( const uint8_t *pix1, int stride1,
 ;                                         const uint8_t *pix2, int stride2, int sums[2][4] )
 ;-----------------------------------------------------------------------------
-ALIGN 16
-x264_pixel_ssim_4x4x2_core_mmxext:
+cglobal x264_pixel_ssim_4x4x2_core_mmxext
     push      ebx
     push      edi
     mov       ebx, [esp+16]
@@ -1646,8 +1615,7 @@ x264_pixel_ssim_4x4x2_core_mmxext:
 ;  void x264_pixel_ads4_mmxext( int enc_dc[4], uint16_t *sums, int delta,
 ;                               uint16_t *res, int width )
 ;-----------------------------------------------------------------------------
-ALIGN 16
-x264_pixel_ads4_mmxext:
+cglobal x264_pixel_ads4_mmxext
     push    ebx
     mov     eax, [esp+8]
     movq    mm6, [eax]
@@ -1685,8 +1653,7 @@ x264_pixel_ads4_mmxext:
     pop     ebx
     ret
 
-ALIGN 16
-x264_pixel_ads2_mmxext:
+cglobal x264_pixel_ads2_mmxext
     push    ebx
     mov     eax, [esp+8]
     movq    mm6, [eax]
@@ -1713,8 +1680,7 @@ x264_pixel_ads2_mmxext:
     pop     ebx
     ret
 
-ALIGN 16
-x264_pixel_ads1_mmxext:
+cglobal x264_pixel_ads1_mmxext
     mov     eax, [esp+4]
     pshufw  mm7, [eax], 0
     mov     eax, [esp+8]
