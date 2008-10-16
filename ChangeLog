@@ -1,0 +1,4199 @@
+------------------------------------------------------------------------
+r714 | pengvado | 2007-12-21 02:57:14 +0100 (ven, 21 déc 2007) | 2 lines
+
+tweak x264_pixel_sad_x4_16x16_sse2 horizontal sum. 168 -> 166 cycles on core2.
+
+------------------------------------------------------------------------
+r713 | pengvado | 2007-12-20 20:24:17 +0100 (jeu, 20 déc 2007) | 2 lines
+
+fix a nondeterminism involving 8x8dct, rdo, and threads.
+
+------------------------------------------------------------------------
+r712 | gpoirier | 2007-12-13 16:43:41 +0100 (jeu, 13 déc 2007) | 3 lines
+
+also test arch-specific x264_zigzag_* implementations in checkasm.c
+patch by Patch by Noboru Asai % noboru P asai A gmail P com%
+
+------------------------------------------------------------------------
+r711 | gpoirier | 2007-12-10 23:09:13 +0100 (lun, 10 déc 2007) | 8 lines
+
+Add AltiVec implementation of
+- x264_zigzag_scan_4x4_frame_altivec()
+- x264_zigzag_scan_4x4ac_frame_altivec()
+- x264_zigzag_scan_4x4_field_altivec()
+- x264_zigzag_scan_4x4ac_field_altivec()
+each around 1.3 tp 1.8x faster than C version
+Patch by Noboru Asai % noboru P asai A gmail P com%
+
+------------------------------------------------------------------------
+r710 | gpoirier | 2007-12-09 16:50:52 +0100 (dim, 09 déc 2007) | 3 lines
+
+adds AliVec implementation of predict_16x16_p()
+over 4x faster than C version
+
+------------------------------------------------------------------------
+r709 | pengvado | 2007-12-04 22:56:18 +0100 (mar, 04 déc 2007) | 2 lines
+
+revert the x86_32 part of r708. elf shared libraries aren't important enough to be worth the extra lines of code to check for nasm.
+
+------------------------------------------------------------------------
+r708 | pengvado | 2007-12-03 02:17:23 +0100 (lun, 03 déc 2007) | 2 lines
+
+mark asm functions as hidden
+
+------------------------------------------------------------------------
+r707 | pengvado | 2007-12-03 02:16:57 +0100 (lun, 03 déc 2007) | 2 lines
+
+check whether ld supports -Bsymbolic before using it
+
+------------------------------------------------------------------------
+r706 | pengvado | 2007-12-02 16:57:43 +0100 (dim, 02 déc 2007) | 2 lines
+
+reduce the data type used in some tables. 16KB smaller exe.
+
+------------------------------------------------------------------------
+r705 | pengvado | 2007-12-01 19:03:16 +0100 (sam, 01 déc 2007) | 2 lines
+
+faster removal of duplicate mv predictors
+
+------------------------------------------------------------------------
+r704 | pengvado | 2007-12-01 16:17:19 +0100 (sam, 01 déc 2007) | 3 lines
+
+avoid a division in x264_mb_predict_mv_ref16x16.
+patch by Dark Shikari.
+
+------------------------------------------------------------------------
+r703 | pengvado | 2007-12-01 03:58:34 +0100 (sam, 01 déc 2007) | 3 lines
+
+avoid a division in umh.
+patch by Dark Shikari.
+
+------------------------------------------------------------------------
+r702 | pengvado | 2007-11-26 12:44:37 +0100 (lun, 26 nov 2007) | 2 lines
+
+fix a memleak in h->mb.mvr
+
+------------------------------------------------------------------------
+r701 | pengvado | 2007-11-25 13:38:19 +0100 (dim, 25 nov 2007) | 2 lines
+
+fix compilation as a shared library on x86_64 (regression in r696)
+
+------------------------------------------------------------------------
+r700 | gpoirier | 2007-11-21 19:30:49 +0100 (mer, 21 nov 2007) | 3 lines
+
+add support for x86_64 on Darwin9.0 (Mac OS X 10.5, aka Leopard)
+Patch by Antoine Gerschenfeld %gerschen A clipper P ens P fr%
+
+------------------------------------------------------------------------
+r699 | pengvado | 2007-11-21 12:52:19 +0100 (mer, 21 nov 2007) | 3 lines
+
+cover some more options in fprofile. (esa, bime, cqm, nr, no-dct-decimate, trellis2)
+previously, esa was slower with fprofile than without, since gcc thought it wasn't important. now esa benefits like anything else.
+
+------------------------------------------------------------------------
+r698 | gpoirier | 2007-11-20 19:22:03 +0100 (mar, 20 nov 2007) | 4 lines
+
+Add AltiVec implementation of x264_pixel_ssd_8x8, 3x faster than C version
+Overall speed-up: 0.7% with  --bframes 3 --ref 5 -m 7 --b-rdo
+Patch by Noboru Asai %noboru P asai A gmail P com%
+
+------------------------------------------------------------------------
+r697 | pengvado | 2007-11-20 09:53:26 +0100 (mar, 20 nov 2007) | 2 lines
+
+limit mvs to [-512,511.75] instead of [-512,512]
+
+------------------------------------------------------------------------
+r696 | pengvado | 2007-11-20 07:07:17 +0100 (mar, 20 nov 2007) | 4 lines
+
+avoid memory loads that span the border between two cachelines.
+on core2 this makes x264_pixel_sad an average of 2x faster. other intel cpus gain various amounts. amd are unaffected.
+overall speedup: 1-10%, depending on how much time is spent in fullpel motion estimation.
+
+------------------------------------------------------------------------
+r695 | pengvado | 2007-11-20 06:57:29 +0100 (mar, 20 nov 2007) | 2 lines
+
+add cache info to cpu_detect. also print sse3.
+
+------------------------------------------------------------------------
+r694 | pengvado | 2007-11-19 18:10:57 +0100 (lun, 19 nov 2007) | 2 lines
+
+cosmetics: reorder mc_luma/mc_chroma/get_ref arguments for consistency with other functions
+
+------------------------------------------------------------------------
+r693 | pengvado | 2007-11-19 18:08:07 +0100 (lun, 19 nov 2007) | 2 lines
+
+separate pixel_avg into cases for mc and for bipred
+
+------------------------------------------------------------------------
+r692 | gpoirier | 2007-11-19 00:58:18 +0100 (lun, 19 nov 2007) | 4 lines
+
+add AltiVec implementation of ssim_4x4x2_core, about 4x faster than C version.
+Overall: 0.1-0.2% faster with default encoding settings
+Patch by Noboru Asai %noboru P asai A gmail P com%
+
+------------------------------------------------------------------------
+r691 | gpoirier | 2007-11-19 00:47:41 +0100 (lun, 19 nov 2007) | 3 lines
+
+Add AltiVec implementation ofx264_hpel_filter. Provides a 10-11% overall speed-up with default encoding options
+Patch by Noboru Asai %noboru P asai A gmail P com%
+
+------------------------------------------------------------------------
+r690 | pengvado | 2007-11-18 02:45:44 +0100 (dim, 18 nov 2007) | 2 lines
+
+cosmetics in dsp function selection
+
+------------------------------------------------------------------------
+r689 | pengvado | 2007-11-17 11:21:46 +0100 (sam, 17 nov 2007) | 2 lines
+
+remove sad_pde. it's been unused ever since successive elimination replaced it.
+
+------------------------------------------------------------------------
+r688 | pengvado | 2007-11-16 11:27:14 +0100 (ven, 16 nov 2007) | 2 lines
+
+cosmetics: use symbolic constants for frame padding radius
+
+------------------------------------------------------------------------
+r687 | pengvado | 2007-11-16 10:17:58 +0100 (ven, 16 nov 2007) | 2 lines
+
+move hpel_filter cpu detection to a function pointer like everything else
+
+------------------------------------------------------------------------
+r686 | pengvado | 2007-11-15 11:50:37 +0100 (jeu, 15 nov 2007) | 2 lines
+
+cosmetics: use separate variables for frame width and stride
+
+------------------------------------------------------------------------
+r685 | gpoirier | 2007-11-12 21:36:33 +0100 (lun, 12 nov 2007) | 4 lines
+
+Add AltiVec implementation of add4x4_idct, add8x8_idct, add16x16_idct, 3.2x faster on average
+1.05x faster overall with default encoding options
+Patch by Noboru Asai % noboru DD asai AA gmail DD com %
+
+------------------------------------------------------------------------
+r684 | gpoirier | 2007-11-12 21:28:30 +0100 (lun, 12 nov 2007) | 4 lines
+
+add AltiVec implementation of dequant_4x4 and dequant_8x8, 2.8x faster than C,
+ 1.01x faster than previous revision with default encoding options
+Patch by Noboru Asai % noboru DD asai AA gmail DD com %
+
+------------------------------------------------------------------------
+r683 | gpoirier | 2007-11-12 13:47:38 +0100 (lun, 12 nov 2007) | 4 lines
+
+Add AltiVec implementation of quant_2x2_dc,
+fix Altivec implementation of quant_(4x4|8x8)(|_dc) wrt current C implementation
+Patch by Noboru Asai % noboru DD asai AA gmail DD com %
+
+------------------------------------------------------------------------
+r682 | pengvado | 2007-11-01 13:21:13 +0100 (jeu, 01 nov 2007) | 2 lines
+
+fix a possible nondeterminism with me=umh + threads.
+
+------------------------------------------------------------------------
+r681 | pengvado | 2007-10-29 15:48:46 +0100 (lun, 29 oct 2007) | 3 lines
+
+use hex instead of dia for rdo mv refinement. ~0.5% lower bitrate at subme=7.
+patch by Dark Shikari.
+
+------------------------------------------------------------------------
+r680 | pengvado | 2007-09-24 15:37:44 +0200 (lun, 24 sep 2007) | 2 lines
+
+port sad_*_x3_sse2 to x86_64
+
+------------------------------------------------------------------------
+r679 | pengvado | 2007-09-24 13:24:28 +0200 (lun, 24 sep 2007) | 2 lines
+
+don't overwrite pthread* namespace, because system headers might define those functions even if we don't want them
+
+------------------------------------------------------------------------
+r678 | pengvado | 2007-09-21 22:20:22 +0200 (ven, 21 sep 2007) | 2 lines
+
+faster 4x4 sad
+
+------------------------------------------------------------------------
+r677 | pengvado | 2007-09-20 10:10:45 +0200 (jeu, 20 sep 2007) | 2 lines
+
+fix an arithmetic overflow in trellis at high qp.
+
+------------------------------------------------------------------------
+r676 | pengvado | 2007-09-15 08:34:05 +0200 (sam, 15 sep 2007) | 2 lines
+
+implement multithreaded me=esa
+
+------------------------------------------------------------------------
+r675 | pengvado | 2007-09-12 07:42:23 +0200 (mer, 12 sep 2007) | 2 lines
+
+fix some integer overflows. now vbv size can exceed 2 Gbit.
+
+------------------------------------------------------------------------
+r674 | pengvado | 2007-09-09 05:17:20 +0200 (dim, 09 sep 2007) | 2 lines
+
+allow --vbv-init to take absolute values (in kbit), in addition to the previous fractions of vbv-bufsize.
+
+------------------------------------------------------------------------
+r673 | pengvado | 2007-09-07 22:40:13 +0200 (ven, 07 sep 2007) | 2 lines
+
+remove a bashism
+
+------------------------------------------------------------------------
+r672 | pengvado | 2007-09-02 06:32:17 +0200 (dim, 02 sep 2007) | 2 lines
+
+reorder headers so that largefile support is defined before the first copy of stdio
+
+------------------------------------------------------------------------
+r671 | pengvado | 2007-08-20 18:44:42 +0200 (lun, 20 aoû 2007) | 2 lines
+
+regression in r669: broke saving of configure args if make has to re-run configure
+
+------------------------------------------------------------------------
+r670 | pengvado | 2007-08-18 03:13:22 +0200 (sam, 18 aoû 2007) | 2 lines
+
+regression in r669: --enable-shared should imply --enable-pic on some archs.
+
+------------------------------------------------------------------------
+r669 | lool | 2007-08-12 14:46:15 +0200 (dim, 12 aoû 2007) | 6 lines
+
+* Add a --host flag to allow overriding config.guess; this is particularly
+  useful with a 64-bits kernel running a 32-bits userland to build 32-bits
+  apps.
+* Normalize any host triplet into a quadruplet via config.sub.
+* Move option parsing before any use of architecture information.
+
+------------------------------------------------------------------------
+r668 | lool | 2007-08-12 14:36:23 +0200 (dim, 12 aoû 2007) | 2 lines
+
+* Update config.guess.
+
+------------------------------------------------------------------------
+r667 | pengvado | 2007-07-17 13:24:26 +0200 (mar, 17 jui 2007) | 2 lines
+
+mingw doesn't have strtok_r
+
+------------------------------------------------------------------------
+r666 | pengvado | 2007-07-17 13:11:19 +0200 (mar, 17 jui 2007) | 2 lines
+
+move os/compiler specific defines to their own header
+
+------------------------------------------------------------------------
+r665 | pengvado | 2007-07-13 01:48:23 +0200 (ven, 13 jui 2007) | 2 lines
+
+extend zones to support (some) encoding parameters in addition to ratecontrol.
+
+------------------------------------------------------------------------
+r664 | pengvado | 2007-07-06 19:08:26 +0200 (ven, 06 jui 2007) | 2 lines
+
+cosmetics
+
+------------------------------------------------------------------------
+r663 | pengvado | 2007-06-28 23:26:21 +0200 (jeu, 28 jun 2007) | 2 lines
+
+limit vertical motion vectors to +/-512, since some decoders actually depend on that limit.
+
+------------------------------------------------------------------------
+r662 | gpoirier | 2007-06-22 23:42:41 +0200 (ven, 22 jun 2007) | 4 lines
+
+Add vertical and horizontal luma deblocking accelerated with Altivec,
+based on Graham Booker's code written for FFmpeg with slight modifications
+to re-use x264's macros
+
+------------------------------------------------------------------------
+r661 | pengvado | 2007-06-16 06:09:01 +0200 (sam, 16 jun 2007) | 2 lines
+
+cosmetics in cpu detection
+
+------------------------------------------------------------------------
+r660 | pengvado | 2007-06-16 06:02:48 +0200 (sam, 16 jun 2007) | 2 lines
+
+fix compilation without asm on x86_32 (r658 worked only on x86_64).
+
+------------------------------------------------------------------------
+r659 | pengvado | 2007-06-11 01:46:31 +0200 (lun, 11 jun 2007) | 2 lines
+
+exempt 1080p from the non-mod16 warning.
+
+------------------------------------------------------------------------
+r658 | aizvorski | 2007-06-05 20:38:31 +0200 (mar, 05 jun 2007) | 1 line
+
+allow compiling without yasm/nasm on x86 and x86-64 platforms
+------------------------------------------------------------------------
+r657 | aizvorski | 2007-06-05 20:32:13 +0200 (mar, 05 jun 2007) | 1 line
+
+updated MS VC8/VC7 build, patch by Gabriel Bouvigne
+------------------------------------------------------------------------
+r656 | aizvorski | 2007-05-26 05:13:08 +0200 (sam, 26 mai 2007) | 1 line
+
+replace alloca with malloc everywhere. per manpage, use of alloca is discouraged. this may have a minor effect on the speed of ssim and esa, but that appears too small to measure.
+------------------------------------------------------------------------
+r655 | pengvado | 2007-05-02 23:33:43 +0200 (mer, 02 mai 2007) | 2 lines
+
+require a ratecontrol method to be specified, it no longer defaults to cqp=26.
+
+------------------------------------------------------------------------
+r654 | pengvado | 2007-04-23 10:34:52 +0200 (lun, 23 avr 2007) | 2 lines
+
+fix nnz computation in cavlc+8x8dct+deblock. (regression in r607)
+
+------------------------------------------------------------------------
+r653 | pengvado | 2007-04-23 09:09:30 +0200 (lun, 23 avr 2007) | 2 lines
+
+fix the computation of bits used for vbv. (regression in r651)
+
+------------------------------------------------------------------------
+r652 | pengvado | 2007-04-22 05:37:56 +0200 (dim, 22 avr 2007) | 2 lines
+
+c89 compile fix
+
+------------------------------------------------------------------------
+r651 | pengvado | 2007-04-21 13:32:34 +0200 (sam, 21 avr 2007) | 3 lines
+
+cabac: use bytestream instead of bitstream.
+35% faster cabac, 20% faster overall lossless, ~1% faster overall at normal bitrates.
+
+------------------------------------------------------------------------
+r650 | pengvado | 2007-04-12 00:21:15 +0200 (jeu, 12 avr 2007) | 2 lines
+
+remove the restriction on number of threads as a function of resolution (it was wrong anyway in the presence of B-frames), and raise the max number of threads in general (though more will have to be done before it can really scale to lots of cores).
+
+------------------------------------------------------------------------
+r649 | pengvado | 2007-04-11 00:37:18 +0200 (mer, 11 avr 2007) | 2 lines
+
+tweak ssse3 quant
+
+------------------------------------------------------------------------
+r648 | pengvado | 2007-04-07 06:53:16 +0200 (sam, 07 avr 2007) | 2 lines
+
+change some tables from int to int8_t. 13KB smaller executable.
+
+------------------------------------------------------------------------
+r647 | pengvado | 2007-04-06 23:45:33 +0200 (ven, 06 avr 2007) | 2 lines
+
+faster cabac rdo. up to 10% faster at q0, but negligible at normal bitrates.
+
+------------------------------------------------------------------------
+r646 | pengvado | 2007-04-06 23:17:34 +0200 (ven, 06 avr 2007) | 3 lines
+
+workaround gcc's inability to align variables on the stack.
+this crash was introduced in r642, but only because previous versions didn't use sse2 on the stack.
+
+------------------------------------------------------------------------
+r645 | pengvado | 2007-04-05 18:11:03 +0200 (jeu, 05 avr 2007) | 3 lines
+
+32bit version of ssse3 satd.
+switch default assembler to yasm. it will still fallback to nasm if you don't have yasm.
+
+------------------------------------------------------------------------
+r644 | pengvado | 2007-04-04 21:34:02 +0200 (mer, 04 avr 2007) | 2 lines
+
+simplify trellis
+
+------------------------------------------------------------------------
+r643 | pengvado | 2007-04-04 20:59:20 +0200 (mer, 04 avr 2007) | 2 lines
+
+fix an arithmetic overflow in trellis with QP >= 42
+
+------------------------------------------------------------------------
+r642 | pengvado | 2007-04-04 20:45:25 +0200 (mer, 04 avr 2007) | 8 lines
+
+2x faster quant. 2% overall.
+side effects:
+not bit-identical to the previous algorithm.
+while the new algorithm covers a wider range of cqms than the previous one did,
+I couldn't find a good way to fallback to a general version for the extreme
+cqms. so now it refuses to encode extreme cqms instead of just being slower.
+lays a framework for custom deadzone matrices, though I didn't add an api.
+
+------------------------------------------------------------------------
+r641 | pengvado | 2007-04-04 20:35:51 +0200 (mer, 04 avr 2007) | 2 lines
+
+when encoding with a cqm, probe_skip now also uses the cqm, instead of the flat matrix
+
+------------------------------------------------------------------------
+r640 | pengvado | 2007-04-04 02:48:55 +0200 (mer, 04 avr 2007) | 2 lines
+
+cosmetics in asm macros
+
+------------------------------------------------------------------------
+r639 | aizvorski | 2007-04-03 19:18:17 +0200 (mar, 03 avr 2007) | 1 line
+
+use only c-style comments in public header (patch by Vincent Torres)
+------------------------------------------------------------------------
+r638 | pengvado | 2007-04-03 01:56:09 +0200 (mar, 03 avr 2007) | 2 lines
+
+in hpel search, merge two 16x16 mc calls into one 16x17. 15% faster hpel, .3% overall.
+
+------------------------------------------------------------------------
+r637 | xtophe | 2007-04-02 21:17:28 +0200 (lun, 02 avr 2007) | 2 lines
+
+Compile fix
+
+------------------------------------------------------------------------
+r636 | pengvado | 2007-03-30 22:20:36 +0200 (ven, 30 mar 2007) | 2 lines
+
+remove private stuff from public headers. no more need for -D__X264__
+
+------------------------------------------------------------------------
+r635 | pengvado | 2007-03-24 13:58:27 +0100 (sam, 24 mar 2007) | 2 lines
+
+adjust bitstream buffer sizes for very large frames
+
+------------------------------------------------------------------------
+r634 | pengvado | 2007-03-14 23:41:50 +0100 (mer, 14 mar 2007) | 2 lines
+
+conflate HAVE_MMXEXT with HAVE_SSE2, since they were never used distinctly.
+
+------------------------------------------------------------------------
+r633 | sam | 2007-03-14 22:53:47 +0100 (mer, 14 mar 2007) | 2 lines
+
+  * Made -DNEED_ALTIVEC unnecessary, thanks to Guillaume Poirier.
+
+------------------------------------------------------------------------
+r632 | sam | 2007-03-14 22:31:50 +0100 (mer, 14 mar 2007) | 2 lines
+
+  * check x264_cpu_detect() before calling AltiVec functions.
+
+------------------------------------------------------------------------
+r631 | pengvado | 2007-03-14 22:11:11 +0100 (mer, 14 mar 2007) | 3 lines
+
+ssse3 detection. x86_64 ssse3 satd and quant.
+requires yasm >= 0.6.0
+
+------------------------------------------------------------------------
+r630 | sam | 2007-03-14 21:40:24 +0100 (mer, 14 mar 2007) | 3 lines
+
+  * Use -maltivec when building dependencies, or <altivec.h> cannot be used.
+  * Do not declare vectors in non-AltiVec files.
+
+------------------------------------------------------------------------
+r629 | sam | 2007-03-14 19:04:06 +0100 (mer, 14 mar 2007) | 4 lines
+
+  * common/cpu.c: runtime AltiVec autodetection on Linux.
+  * configure, Makefile: do not build the whole project with -maltivec because
+    it generates AltiVec code in weird places.
+
+------------------------------------------------------------------------
+r628 | pengvado | 2007-03-05 16:35:42 +0100 (lun, 05 mar 2007) | 3 lines
+
+fix a small memleak.
+patch by Limin Wang.
+
+------------------------------------------------------------------------
+r627 | gpoirier | 2007-03-03 13:59:23 +0100 (sam, 03 mar 2007) | 5 lines
+
+compile fix for GCC-3.3 on OSX, based on a patch by
+Patrice Bensoussan % patrice P bensoussan A free P fr%
+Note: regression test still do not pass with GCC-3.3,
+but they never did as far as I can remember.
+
+------------------------------------------------------------------------
+r626 | pengvado | 2007-03-03 13:12:54 +0100 (sam, 03 mar 2007) | 2 lines
+
+cosmetics in regression test
+
+------------------------------------------------------------------------
+r625 | aizvorski | 2007-03-03 12:44:01 +0100 (sam, 03 mar 2007) | 1 line
+
+regression testing, run similar to fprofiled: VIDS='vid_720x480.yuv' make test 
+------------------------------------------------------------------------
+r624 | aizvorski | 2007-02-28 19:47:04 +0100 (mer, 28 fév 2007) | 1 line
+
+add ability to generate doxygen documentation; make dox
+------------------------------------------------------------------------
+r623 | pengvado | 2007-02-22 06:01:38 +0100 (jeu, 22 fév 2007) | 2 lines
+
+oops, scenecut detection failed to activate when using threads and not using B-frames
+
+------------------------------------------------------------------------
+r622 | pengvado | 2007-01-29 15:42:42 +0100 (lun, 29 jan 2007) | 2 lines
+
+extras/getopt.c was BSD licensed. replace with a LGPL version (from glibc).
+
+------------------------------------------------------------------------
+r621 | gpoirier | 2007-01-25 09:32:16 +0100 (jeu, 25 jan 2007) | 3 lines
+
+Fix build issues on Linux. Only gcc-4.x is supported, as on OSX.
+Cleans up a few inconsistencies in the code too.
+
+------------------------------------------------------------------------
+r620 | pengvado | 2007-01-21 13:12:04 +0100 (dim, 21 jan 2007) | 3 lines
+
+tweak block_residual_write_cavlc.
+up to 1% faster lossless, no difference at normal bitrates.
+
+------------------------------------------------------------------------
+r619 | pengvado | 2007-01-20 06:07:44 +0100 (sam, 20 jan 2007) | 2 lines
+
+don't assume int is exactly 4 bytes
+
+------------------------------------------------------------------------
+r618 | pengvado | 2007-01-12 00:55:51 +0100 (ven, 12 jan 2007) | 2 lines
+
+make array_non_zero() compatible with -fstrict-aliasing
+
+------------------------------------------------------------------------
+r617 | xtophe | 2007-01-09 21:25:32 +0100 (mar, 09 jan 2007) | 2 lines
+
+Honor CFLAGS and LDFLAGS set by the user
+
+------------------------------------------------------------------------
+r616 | titer | 2007-01-02 15:51:10 +0100 (mar, 02 jan 2007) | 2 lines
+
+Check whether 'echo -n' works, otherwise try printf (fixes build on current OS X 10.5)
+
+------------------------------------------------------------------------
+r615 | titer | 2007-01-01 23:41:44 +0100 (lun, 01 jan 2007) | 2 lines
+
+Check version of nasm on OS X / Intel
+
+------------------------------------------------------------------------
+r614 | pengvado | 2006-12-20 05:22:59 +0100 (mer, 20 déc 2006) | 2 lines
+
+wrong reference frames were used with refs>=14 + pyramid (regression in r607)
+
+------------------------------------------------------------------------
+r613 | pengvado | 2006-12-19 22:24:47 +0100 (mar, 19 déc 2006) | 2 lines
+
+enable thread synchronization primitives on linux too
+
+------------------------------------------------------------------------
+r612 | pengvado | 2006-12-19 10:35:45 +0100 (mar, 19 déc 2006) | 2 lines
+
+fix a crash with x264_encoder_headers() + threads
+
+------------------------------------------------------------------------
+r611 | pengvado | 2006-12-16 01:46:37 +0100 (sam, 16 déc 2006) | 2 lines
+
+don't skip autodection on configure --enable-pthread
+
+------------------------------------------------------------------------
+r610 | pengvado | 2006-12-16 01:32:38 +0100 (sam, 16 déc 2006) | 2 lines
+
+more win32threads -> pthreads
+
+------------------------------------------------------------------------
+r609 | pengvado | 2006-12-16 00:08:57 +0100 (sam, 16 déc 2006) | 2 lines
+
+cosmetics: rename list operators to be consistent with Perl, and move them to common/
+
+------------------------------------------------------------------------
+r608 | pengvado | 2006-12-16 00:06:21 +0100 (sam, 16 déc 2006) | 2 lines
+
+win32: use pthreads instead of win32threads. for some reason, pthreads is much faster.
+
+------------------------------------------------------------------------
+r607 | pengvado | 2006-12-16 00:03:36 +0100 (sam, 16 déc 2006) | 13 lines
+
+New threading method:
+Encode multiple frames in prallel instead of dividing each frame into slices.
+Improves speed, and reduces the bitrate penalty of threading.
+
+Side effects:
+It is no longer possible to re-encode a frame, so threaded scenecut detection
+must run in the pre-me pass, which is faster but less precise. 
+It is now useful to use more threads than you have cpus. --threads=auto has
+been updated to use cpus*1.5.
+Minor changes to ratecontrol.
+
+New options: --pre-scenecut, --mvrange-thread, --non-deterministic
+
+------------------------------------------------------------------------
+r606 | sam | 2006-12-12 03:17:44 +0100 (mar, 12 déc 2006) | 2 lines
+
+  * Do not assume anything about sizeof(cpu_set_t).
+
+------------------------------------------------------------------------
+r605 | sam | 2006-12-11 17:01:49 +0100 (lun, 11 déc 2006) | 2 lines
+
+  * Add support for kFreeBSD (FreeBSD kernel with GNU userland).
+
+------------------------------------------------------------------------
+r604 | gpoirier | 2006-11-27 22:40:21 +0100 (lun, 27 nov 2006) | 3 lines
+
+Add Altivec implementations of add8x8_idct8, add16x16_idct8, sa8d_8x8 and sa8d_16x16
+Note: doesn't take advantage of some possible aligned memory accesses, so there's still room for improvement
+
+------------------------------------------------------------------------
+r603 | titer | 2006-11-25 17:31:24 +0100 (sam, 25 nov 2006) | 2 lines
+
+Force alignment of the fake .rodata on MacIntel
+
+------------------------------------------------------------------------
+r602 | pengvado | 2006-11-23 04:13:18 +0100 (jeu, 23 nov 2006) | 2 lines
+
+don't treat vbv_maxrate as a minrate too if it's higher than target average bitrate.
+
+------------------------------------------------------------------------
+r601 | titer | 2006-11-18 15:38:07 +0100 (sam, 18 nov 2006) | 5 lines
+
+Merges Guillaume Poirier's AltiVec changes:
+ * Adds optimized quant and sub*dct8 routines
+ * Faster sub*dct routines
+~8% overall speed-up with default settings
+
+------------------------------------------------------------------------
+r600 | pengvado | 2006-11-06 23:49:41 +0100 (lun, 06 nov 2006) | 2 lines
+
+10% faster deblock mmx functions. ported from ffmpeg.
+
+------------------------------------------------------------------------
+r599 | pengvado | 2006-11-06 23:38:42 +0100 (lun, 06 nov 2006) | 2 lines
+
+checkasm: ignore insignificant differences in floating-point ssim
+
+------------------------------------------------------------------------
+r598 | pengvado | 2006-10-30 03:31:48 +0100 (lun, 30 oct 2006) | 2 lines
+
+display final ratefactor in abr when a loose vbv is applied. (still disabled in true cbr)
+
+------------------------------------------------------------------------
+r597 | pengvado | 2006-10-30 01:09:21 +0100 (lun, 30 oct 2006) | 2 lines
+
+fix parsing of --deblock %d,%d  (beta was ignored)
+
+------------------------------------------------------------------------
+r596 | pengvado | 2006-10-29 06:48:57 +0100 (dim, 29 oct 2006) | 2 lines
+
+compute chroma_qp only once per mb
+
+------------------------------------------------------------------------
+r595 | pengvado | 2006-10-29 02:17:33 +0100 (dim, 29 oct 2006) | 3 lines
+
+rd refinement of intra chroma direction (enabled in --subme 7)
+patch by Alex Wright.
+
+------------------------------------------------------------------------
+r594 | pengvado | 2006-10-18 06:06:44 +0200 (mer, 18 oct 2006) | 2 lines
+
+fix a crash in avc2avi
+
+------------------------------------------------------------------------
+r593 | pengvado | 2006-10-16 01:39:03 +0200 (lun, 16 oct 2006) | 2 lines
+
+skip deblocking and motion interpolation when using only I-frames
+
+------------------------------------------------------------------------
+r592 | pengvado | 2006-10-14 01:50:57 +0200 (sam, 14 oct 2006) | 2 lines
+
+cosmetics
+
+------------------------------------------------------------------------
+r591 | pengvado | 2006-10-13 22:04:58 +0200 (ven, 13 oct 2006) | 2 lines
+
+allow fractional values of crf
+
+------------------------------------------------------------------------
+r590 | pengvado | 2006-10-10 23:26:31 +0200 (mar, 10 oct 2006) | 2 lines
+
+prefetch pixels for motion compensation and deblocking.
+
+------------------------------------------------------------------------
+r589 | pengvado | 2006-10-10 21:16:39 +0200 (mar, 10 oct 2006) | 2 lines
+
+fix a crash on interlace + >8 reference frames
+
+------------------------------------------------------------------------
+r588 | pengvado | 2006-10-10 07:05:55 +0200 (mar, 10 oct 2006) | 2 lines
+
+no more decoder. it never worked anyway, and the presence of defunct code was confusing people.
+
+------------------------------------------------------------------------
+r587 | pengvado | 2006-10-10 01:31:45 +0200 (mar, 10 oct 2006) | 2 lines
+
+compute pskip_mv only once per macroblock, and store it
+
+------------------------------------------------------------------------
+r586 | pengvado | 2006-10-09 22:55:54 +0200 (lun, 09 oct 2006) | 2 lines
+
+slightly faster chroma_mc_mmx
+
+------------------------------------------------------------------------
+r585 | pengvado | 2006-10-09 19:44:47 +0200 (lun, 09 oct 2006) | 2 lines
+
+missing emms in plane_copy_mmx
+
+------------------------------------------------------------------------
+r584 | pengvado | 2006-10-07 01:25:41 +0200 (sam, 07 oct 2006) | 2 lines
+
+merge center_filter_mmx with horizontal_filter_mmx
+
+------------------------------------------------------------------------
+r583 | pengvado | 2006-10-06 07:43:53 +0200 (ven, 06 oct 2006) | 2 lines
+
+1.5x faster center_filter_mmx (amd64)
+
+------------------------------------------------------------------------
+r582 | pengvado | 2006-10-06 02:02:59 +0200 (ven, 06 oct 2006) | 2 lines
+
+mmx/prefetch implementation of plane_copy
+
+------------------------------------------------------------------------
+r581 | pengvado | 2006-10-05 10:15:55 +0200 (jeu, 05 oct 2006) | 2 lines
+
+no more vfw
+
+------------------------------------------------------------------------
+r580 | pengvado | 2006-10-05 09:44:22 +0200 (jeu, 05 oct 2006) | 13 lines
+
+gtk fixes:
+in Makefile
+- fix datadir for mingw users
+- remove the shared lib during the clean rule
+- use $(ENCODE_BIN) instead of x264_gtk_encode
+- add some $(DESTDIR) and create some directories when necessary
+- remove -lintl
+statfile_length -> statsfile_length
+fix the "sensitivity" of the widget of update_statfile
+the logo is now handled correctly on windows
+added: beginning of multipass support
+patch by Vincent Torri.
+
+------------------------------------------------------------------------
+r579 | pengvado | 2006-10-05 03:57:00 +0200 (jeu, 05 oct 2006) | 2 lines
+
+accept mencoder's option names as synonyms (api only, not in x264cli)
+
+------------------------------------------------------------------------
+r578 | pengvado | 2006-10-03 03:39:38 +0200 (mar, 03 oct 2006) | 2 lines
+
+simplify satd_sse2
+
+------------------------------------------------------------------------
+r577 | pengvado | 2006-10-02 10:31:48 +0200 (lun, 02 oct 2006) | 3 lines
+
+better error checking in x264_param_parse.
+add synonyms for a few options.
+
+------------------------------------------------------------------------
+r576 | pengvado | 2006-10-02 04:46:23 +0200 (lun, 02 oct 2006) | 2 lines
+
+fix some strides that weren't a multiple of 16.
+
+------------------------------------------------------------------------
+r575 | pengvado | 2006-10-01 15:08:42 +0200 (dim, 01 oct 2006) | 2 lines
+
+tweak motion compensation amd64 asm. 0.3% overall speedup.
+
+------------------------------------------------------------------------
+r574 | pengvado | 2006-10-01 10:06:22 +0200 (dim, 01 oct 2006) | 2 lines
+
+strip local symbols from asm .o files, since they confuse oprofile
+
+------------------------------------------------------------------------
+r573 | pengvado | 2006-10-01 09:25:01 +0200 (dim, 01 oct 2006) | 4 lines
+
+add an option to control direct_8x8_inference_flag, default to enabled.
+slightly faster encoding and decoding of p4x4 + B-frames,
+and is needed for strict Levels compliance.
+
+------------------------------------------------------------------------
+r572 | pengvado | 2006-10-01 05:05:15 +0200 (dim, 01 oct 2006) | 3 lines
+
+allow custom deadzones for non-trellis quantization.
+patch by Alex Wright.
+
+------------------------------------------------------------------------
+r571 | pengvado | 2006-10-01 04:44:36 +0200 (dim, 01 oct 2006) | 3 lines
+
+move zigzag scan functions to dsp function pointers.
+mmx implementation of interlaced zigzag.
+
+------------------------------------------------------------------------
+r570 | pengvado | 2006-10-01 04:41:22 +0200 (dim, 01 oct 2006) | 2 lines
+
+support interlace. uses MBAFF syntax, but is not adaptive yet.
+
+------------------------------------------------------------------------
+r569 | pengvado | 2006-09-27 08:37:19 +0200 (mer, 27 sep 2006) | 2 lines
+
+allow --zones in cqp encodes
+
+------------------------------------------------------------------------
+r568 | pengvado | 2006-09-26 21:27:07 +0200 (mar, 26 sep 2006) | 3 lines
+
+cli: fix some typos in vui parameters from r542.
+patch by Foxy Shadis.
+
+------------------------------------------------------------------------
+r567 | sam | 2006-09-25 12:25:55 +0200 (lun, 25 sep 2006) | 3 lines
+
+  * Add an "all" rule to the Makefile. Ideally "default" should be renamed,
+    but I don't want to break existing scripts.
+
+------------------------------------------------------------------------
+r566 | pengvado | 2006-09-24 23:35:56 +0200 (dim, 24 sep 2006) | 2 lines
+
+workaround: on some systems, alloca() isn't aligned
+
+------------------------------------------------------------------------
+r565 | pengvado | 2006-09-22 18:39:05 +0200 (ven, 22 sep 2006) | 2 lines
+
+missing picpop
+
+------------------------------------------------------------------------
+r564 | pengvado | 2006-09-13 21:24:13 +0200 (mer, 13 sep 2006) | 2 lines
+
+fix a buffer overread from r540
+
+------------------------------------------------------------------------
+r563 | pengvado | 2006-09-13 01:32:21 +0200 (mer, 13 sep 2006) | 2 lines
+
+cosmetics (spelling)
+
+------------------------------------------------------------------------
+r562 | pengvado | 2006-09-13 00:21:23 +0200 (mer, 13 sep 2006) | 2 lines
+
+faster ESA
+
+------------------------------------------------------------------------
+r561 | pengvado | 2006-09-13 00:18:29 +0200 (mer, 13 sep 2006) | 2 lines
+
+faster ESA
+
+------------------------------------------------------------------------
+r560 | sam | 2006-09-10 19:37:13 +0200 (dim, 10 sep 2006) | 4 lines
+
+  * Use the autotool's config.guess script instead of uname to check the
+    system and CPU types, to avoid issues when using for instance a 32-bit
+    userland on top of a 64-bit kernel.
+
+------------------------------------------------------------------------
+r559 | sam | 2006-09-10 19:16:21 +0200 (dim, 10 sep 2006) | 3 lines
+
+  * Add the autotool's config.guess script so that we can use it instead
+    of uname in the configure script.
+
+------------------------------------------------------------------------
+r558 | pengvado | 2006-08-22 09:43:14 +0200 (mar, 22 aoû 2006) | 2 lines
+
+10l in r553
+
+------------------------------------------------------------------------
+r557 | pengvado | 2006-08-21 02:46:20 +0200 (lun, 21 aoû 2006) | 2 lines
+
+ssim broke on amd64 w/ pic.
+
+------------------------------------------------------------------------
+r556 | robux4 | 2006-08-18 22:50:10 +0200 (ven, 18 aoû 2006) | 1 line
+
+MSVC compatibility fix from Haali
+------------------------------------------------------------------------
+r555 | pengvado | 2006-08-18 00:49:45 +0200 (ven, 18 aoû 2006) | 2 lines
+
+support changing some more parameters in x264_encoder_reconfig()
+
+------------------------------------------------------------------------
+r554 | pengvado | 2006-08-17 23:57:59 +0200 (jeu, 17 aoû 2006) | 2 lines
+
+SSIM computation. (default on, disable by --no-ssim)
+
+------------------------------------------------------------------------
+r553 | pengvado | 2006-08-16 22:13:06 +0200 (mer, 16 aoû 2006) | 2 lines
+
+configure: --enable-debug reduces optimization to -O1
+
+------------------------------------------------------------------------
+r552 | pengvado | 2006-08-16 21:57:08 +0200 (mer, 16 aoû 2006) | 2 lines
+
+cosmetics
+
+------------------------------------------------------------------------
+r551 | pengvado | 2006-08-04 05:12:43 +0200 (ven, 04 aoû 2006) | 2 lines
+
+gcc -fprofile-generate isn't threadsafe
+
+------------------------------------------------------------------------
+r550 | pengvado | 2006-08-03 21:49:17 +0200 (jeu, 03 aoû 2006) | 2 lines
+
+cli: move some options from --help to --longhelp
+
+------------------------------------------------------------------------
+r549 | pengvado | 2006-08-03 20:22:08 +0200 (jeu, 03 aoû 2006) | 2 lines
+
+cli: don't try to get resolution from filename unless input is rawyuv
+
+------------------------------------------------------------------------
+r548 | pengvado | 2006-08-03 20:13:56 +0200 (jeu, 03 aoû 2006) | 2 lines
+
+r542 broke --visualize
+
+------------------------------------------------------------------------
+r547 | titer | 2006-08-02 20:11:21 +0200 (mer, 02 aoû 2006) | 2 lines
+
+Nicer OS X x264_cpu_num_processors (thanks David)
+
+------------------------------------------------------------------------
+r546 | titer | 2006-08-01 17:20:35 +0200 (mar, 01 aoû 2006) | 2 lines
+
+Support OS X and BeOS in x264_cpu_num_processors
+
+------------------------------------------------------------------------
+r545 | titer | 2006-08-01 17:18:31 +0200 (mar, 01 aoû 2006) | 2 lines
+
+Fixes contexts allocation with threads=auto
+
+------------------------------------------------------------------------
+r544 | pengvado | 2006-08-01 04:22:36 +0200 (mar, 01 aoû 2006) | 2 lines
+
+select initial qp for abr and cbr baased on satd and bitrate, rather than cq24.
+
+------------------------------------------------------------------------
+r543 | pengvado | 2006-08-01 02:17:18 +0200 (mar, 01 aoû 2006) | 2 lines
+
+--threads=auto to detect number of cpus
+
+------------------------------------------------------------------------
+r542 | pengvado | 2006-07-31 23:59:04 +0200 (lun, 31 jui 2006) | 2 lines
+
+api addition: x264_param_parse() to set options by name
+
+------------------------------------------------------------------------
+r541 | pengvado | 2006-07-31 08:34:53 +0200 (lun, 31 jui 2006) | 2 lines
+
+fix a rare NaN in ratecontrol
+
+------------------------------------------------------------------------
+r540 | pengvado | 2006-07-30 04:39:05 +0200 (dim, 30 jui 2006) | 2 lines
+
+move quant_mf[] from x264_t to the heap, and merge duplicate entries
+
+------------------------------------------------------------------------
+r539 | pengvado | 2006-07-28 23:39:07 +0200 (ven, 28 jui 2006) | 11 lines
+
+GTK update. patch by Vincent Torri.
+  fixed:
+cleaning of Makefile
+time elapsed seems broken ('total time' label replaced by 'time remaining')
+text entries of the status window are now not editable
+  added:
+compilation from x264/ (add --enable-gtk option to configure)
+shared lib creation if --enable-shared is passed to configure
+x264gtk.pc
+--b-rdo, --no-dct-decimate
+
+------------------------------------------------------------------------
+r538 | pengvado | 2006-07-23 21:19:40 +0200 (dim, 23 jui 2006) | 3 lines
+
+new option: --qpfile forces frames types and QPs.
+(intended for ratecontrol experiments, not for real encodes)
+
+------------------------------------------------------------------------
+r537 | pengvado | 2006-07-18 03:10:54 +0200 (mar, 18 jui 2006) | 2 lines
+
+api change: select ratecontrol method with an enum (param.rc.i_rc_method) instead of a bunch of booleans.
+
+------------------------------------------------------------------------
+r536 | pengvado | 2006-07-16 20:28:39 +0200 (dim, 16 jui 2006) | 3 lines
+
+slightly faster mmx dct
+
+
+------------------------------------------------------------------------
+r535 | pengvado | 2006-07-16 20:25:38 +0200 (dim, 16 jui 2006) | 3 lines
+
+OpenBSD build fixes.
+patch by Vizeli Pascal (pvizeli at yahoo dot de)
+
+------------------------------------------------------------------------
+r534 | pengvado | 2006-07-08 19:56:22 +0200 (sam, 08 jui 2006) | 3 lines
+
+mc_chroma width2 mmx
+
+
+------------------------------------------------------------------------
+r533 | mru | 2006-06-28 23:58:58 +0200 (mer, 28 jun 2006) | 2 lines
+
+make libx264.so symlink relative
+
+------------------------------------------------------------------------
+r532 | pengvado | 2006-06-12 10:22:09 +0200 (lun, 12 jun 2006) | 20 lines
+
+GTK update. patch by Vincent Torri.
+  added:
+direct=auto
+no-fast-pskip
+vbv
+cqm
+tooltips (without descriptions yet)
+translations
+`make clean` for .exe
+when file exists, ask for override
+  fixes:
+debug level bug 
+bitrate slider bug
+mixed-refs can be set only if ref>1
+i8x8 can be set only if 8x8 transform is enabled
+# of threads capped at 4
+fourcc can't be removed
+cosmetics
+
+
+------------------------------------------------------------------------
+r531 | pengvado | 2006-06-01 01:55:35 +0200 (jeu, 01 jun 2006) | 4 lines
+
+vfw installer: tweak nsis compression.
+patch by Francesco Corriga.
+
+
+------------------------------------------------------------------------
+r530 | titer | 2006-05-30 12:05:56 +0200 (mar, 30 mai 2006) | 2 lines
+
+Fixed typo that caused x264_encoder_open to always fail
+
+------------------------------------------------------------------------
+r529 | pengvado | 2006-05-30 09:07:55 +0200 (mar, 30 mai 2006) | 3 lines
+
+check some mallocs' return value
+
+
+------------------------------------------------------------------------
+r528 | pengvado | 2006-05-28 23:14:24 +0200 (dim, 28 mai 2006) | 3 lines
+
+make -> $(MAKE)
+
+
+------------------------------------------------------------------------
+r527 | pengvado | 2006-05-24 05:59:19 +0200 (mer, 24 mai 2006) | 3 lines
+
+convert non-fatal errors to message level "warning".
+
+
+------------------------------------------------------------------------
+r526 | pengvado | 2006-05-23 01:07:58 +0200 (mar, 23 mai 2006) | 3 lines
+
+fix a memory alignment. (no effect on x86, but might be needed for other simd)
+
+
+------------------------------------------------------------------------
+r525 | pengvado | 2006-05-19 22:10:41 +0200 (ven, 19 mai 2006) | 4 lines
+
+when using DEBUG_DUMP_FRAME, write decoded pictures in display order.
+patch by Loic Le Loarer.
+
+
+------------------------------------------------------------------------
+r524 | pengvado | 2006-05-19 21:14:29 +0200 (ven, 19 mai 2006) | 4 lines
+
+non-referenced B-frames should have the same frame_num as the following ref frame, not the previous.
+patch by Loic Le Loarer.
+
+
+------------------------------------------------------------------------
+r523 | pengvado | 2006-05-12 10:17:53 +0200 (ven, 12 mai 2006) | 3 lines
+
+set the SPS constraint_set[01]_flag based on the profile in use, just in case some decoder cares
+
+
+------------------------------------------------------------------------
+r522 | pengvado | 2006-05-10 18:47:05 +0200 (mer, 10 mai 2006) | 3 lines
+
+msvc doesn't like C99 named array initializers
+
+
+------------------------------------------------------------------------
+r521 | pengvado | 2006-05-10 18:42:07 +0200 (mer, 10 mai 2006) | 4 lines
+
+allow sar=1/1.
+patch by Loic Le Loarer.
+
+
+------------------------------------------------------------------------
+r520 | pengvado | 2006-05-10 08:09:48 +0200 (mer, 10 mai 2006) | 3 lines
+
+faster intra search: filter i8x8 edges only once, and reuse for multiple predictions.
+
+
+------------------------------------------------------------------------
+r519 | pengvado | 2006-05-09 08:11:42 +0200 (mar, 09 mai 2006) | 4 lines
+
+faster intra search: some prediction modes don't have to compute a full hadamard transform.
+x86 and amd64 asm.
+
+
+------------------------------------------------------------------------
+r518 | pengvado | 2006-05-06 19:12:23 +0200 (sam, 06 mai 2006) | 3 lines
+
+--sps-id, to allow concatenating streams with different settings.
+
+
+------------------------------------------------------------------------
+r517 | pengvado | 2006-05-03 19:59:23 +0200 (mer, 03 mai 2006) | 3 lines
+
+typo in expand_border_mod16
+
+
+------------------------------------------------------------------------
+r516 | pengvado | 2006-04-30 03:21:49 +0200 (dim, 30 avr 2006) | 3 lines
+
+typo impaired 2pass bitrate prediction.
+
+
+------------------------------------------------------------------------
+r515 | titer | 2006-04-29 13:13:04 +0200 (sam, 29 avr 2006) | 2 lines
+
+ Let the user choose the compiler with "CC=xxx ./configure"
+
+------------------------------------------------------------------------
+r514 | titer | 2006-04-29 13:12:16 +0200 (sam, 29 avr 2006) | 2 lines
+
+ More vector types fixes for gcc 3.3
+
+------------------------------------------------------------------------
+r513 | titer | 2006-04-28 19:13:37 +0200 (ven, 28 avr 2006) | 2 lines
+
+More vector casts to try and make compilers happier
+
+------------------------------------------------------------------------
+r512 | pengvado | 2006-04-25 06:08:21 +0200 (mar, 25 avr 2006) | 4 lines
+
+Use sa8d instead of satd for i8x8 search.
++.01 dB, -.5% speed
+
+
+------------------------------------------------------------------------
+r511 | pengvado | 2006-04-24 21:34:06 +0200 (lun, 24 avr 2006) | 5 lines
+
+Before evaluating the RD score of any mode, check satd and abort if it's much worse than some other mode.
+Also apply more early termination to intra search.
+speed at -m1:+1%, -m4:+3%, -m6:+8%, -m7:+20%
+
+
+------------------------------------------------------------------------
+r510 | sam | 2006-04-24 21:01:10 +0200 (lun, 24 avr 2006) | 2 lines
+
+  * common/ppc/pixel.c: fixed illegal implicit casts of vector types.
+
+------------------------------------------------------------------------
+r509 | sam | 2006-04-24 20:49:50 +0200 (lun, 24 avr 2006) | 2 lines
+
+  * Added %$#@#$! support for #@%$!#@ armv4l CPU.
+
+------------------------------------------------------------------------
+r508 | pengvado | 2006-04-24 10:27:26 +0200 (lun, 24 avr 2006) | 5 lines
+
+When evaluating predictors to start fullpel motion search, use subpel positions instead of rounding to fullpel.
+about +.02 dB, -1.6% speed at subme>=3
+patch by Alex Wright.
+
+
+------------------------------------------------------------------------
+r507 | pengvado | 2006-04-24 05:52:55 +0200 (lun, 24 avr 2006) | 3 lines
+
+mmx implementation of x264_pixel_sa8d
+
+
+------------------------------------------------------------------------
+r506 | pengvado | 2006-04-21 01:48:46 +0200 (ven, 21 avr 2006) | 3 lines
+
+10l in r463 (q0 i16x16 dc was permuted)
+
+
+------------------------------------------------------------------------
+r505 | pengvado | 2006-04-20 22:33:25 +0200 (jeu, 20 avr 2006) | 3 lines
+
+typo in r504
+
+
+------------------------------------------------------------------------
+r504 | pengvado | 2006-04-20 06:38:45 +0200 (jeu, 20 avr 2006) | 4 lines
+
+update msvc project files.
+patch by anonymous.
+
+
+------------------------------------------------------------------------
+r503 | pengvado | 2006-04-19 11:02:19 +0200 (mer, 19 avr 2006) | 4 lines
+
+Before, we eliminated dct blocks containing only a small single coefficient. Now that behavior is optional, by --no-dct-decimate.
+based on a patch by Alex Wright.
+
+
+------------------------------------------------------------------------
+r502 | titer | 2006-04-17 13:08:58 +0200 (lun, 17 avr 2006) | 6 lines
+
+Enables more agressive optimizations (-fastf -mcpu=G4) on OS X.
+Adds AltiVec interleaved SAD and SSD16x16.
+Overall speedup up to 20%.
+
+Patch by anonymous
+
+------------------------------------------------------------------------
+r501 | pengvado | 2006-04-17 03:19:47 +0200 (lun, 17 avr 2006) | 3 lines
+
+faster cabac_encode_bypass
+
+
+------------------------------------------------------------------------
+r500 | titer | 2006-04-16 20:24:38 +0200 (dim, 16 avr 2006) | 2 lines
+
+restored AltiVec dct
+
+------------------------------------------------------------------------
+r499 | titer | 2006-04-16 18:38:16 +0200 (dim, 16 avr 2006) | 2 lines
+
+more AltiVec mc, ~4.5% overall speedup
+
+------------------------------------------------------------------------
+r498 | pengvado | 2006-04-12 23:21:59 +0200 (mer, 12 avr 2006) | 3 lines
+
+slightly faster loopfilter
+
+
+------------------------------------------------------------------------
+r497 | pengvado | 2006-04-12 08:28:52 +0200 (mer, 12 avr 2006) | 3 lines
+
+3% faster satd_mmx
+
+
+------------------------------------------------------------------------
+r496 | pengvado | 2006-04-12 02:45:07 +0200 (mer, 12 avr 2006) | 3 lines
+
+cosmetics in sad/ssd/satd mmx
+
+
+------------------------------------------------------------------------
+r495 | pengvado | 2006-04-11 23:16:44 +0200 (mar, 11 avr 2006) | 3 lines
+
+store quoted configure options. needed e.g. for multiple args under --extra-cflags.
+
+
+------------------------------------------------------------------------
+r494 | pengvado | 2006-04-11 12:45:00 +0200 (mar, 11 avr 2006) | 3 lines
+
+fix a yasm-incompatible syntax in x86 asm
+
+
+------------------------------------------------------------------------
+r493 | pengvado | 2006-04-11 04:41:43 +0200 (mar, 11 avr 2006) | 3 lines
+
+yasm noexec stack
+
+
+------------------------------------------------------------------------
+r492 | pengvado | 2006-04-10 20:46:54 +0200 (lun, 10 avr 2006) | 4 lines
+
+more interleaved SAD.
+25% faster halfpel.
+
+
+------------------------------------------------------------------------
+r491 | pengvado | 2006-04-10 19:56:02 +0200 (lun, 10 avr 2006) | 4 lines
+
+more interleaved SAD.
+1% faster umh, 6% faster esa.
+
+
+------------------------------------------------------------------------
+r490 | pengvado | 2006-04-10 05:03:13 +0200 (lun, 10 avr 2006) | 4 lines
+
+interleave multiple calls to SAD.
+15% faster fullpel motion estimation.
+
+
+------------------------------------------------------------------------
+r489 | sam | 2006-04-09 15:20:17 +0200 (dim, 09 avr 2006) | 2 lines
+
+  * Added support for ppc64. I'm really fucking tired of having to do this.
+
+------------------------------------------------------------------------
+r488 | mru | 2006-04-08 03:33:13 +0200 (sam, 08 avr 2006) | 2 lines
+
+use LDFLAGS when linking shared lib
+
+------------------------------------------------------------------------
+r487 | fkuehne | 2006-03-29 08:37:55 +0200 (mer, 29 mar 2006) | 1 line
+
+* compilation fix for mingw, darwin (off_t was undefined)
+------------------------------------------------------------------------
+r486 | pengvado | 2006-03-27 10:11:37 +0200 (lun, 27 mar 2006) | 4 lines
+
+GTK: support yuv4mpeg input.
+patch by Vincent Torri.
+
+
+------------------------------------------------------------------------
+r485 | pengvado | 2006-03-26 22:54:33 +0200 (dim, 26 mar 2006) | 4 lines
+
+GTK: fix avs input
+patch by Vincent Torri.
+
+
+------------------------------------------------------------------------
+r484 | pengvado | 2006-03-26 22:40:20 +0200 (dim, 26 mar 2006) | 4 lines
+
+cli: support yuv4mpeg input.
+patch by anonymous.
+
+
+------------------------------------------------------------------------
+r483 | pengvado | 2006-03-26 03:09:09 +0200 (dim, 26 mar 2006) | 3 lines
+
+GTK: compilation fixes
+
+
+------------------------------------------------------------------------
+r482 | pengvado | 2006-03-26 00:26:07 +0100 (dim, 26 mar 2006) | 7 lines
+
+GTK: compilation fixes on mingw,
+add avs input for the app (if avalaible),
+add filters for the filechooser,
+add icon for the main window.
+patch by Vincent Torri.
+
+
+------------------------------------------------------------------------
+r481 | pengvado | 2006-03-25 11:13:12 +0100 (sam, 25 mar 2006) | 4 lines
+
+GTK-based graphical frontend.
+patch by Vincent Torri.
+
+
+------------------------------------------------------------------------
+r480 | pengvado | 2006-03-25 11:06:15 +0100 (sam, 25 mar 2006) | 3 lines
+
+silence some gcc warnings
+
+
+------------------------------------------------------------------------
+r479 | pengvado | 2006-03-24 22:45:39 +0100 (ven, 24 mar 2006) | 4 lines
+
+use FDEC_STRIDE instead of a parameter in mmx dct
+.5% speedup
+
+
+------------------------------------------------------------------------
+r478 | sam | 2006-03-22 15:21:53 +0100 (mer, 22 mar 2006) | 2 lines
+
+  * configure: support for 64 bits MIPS.
+
+------------------------------------------------------------------------
+r477 | pengvado | 2006-03-21 00:32:43 +0100 (mar, 21 mar 2006) | 3 lines
+
+10l in r473 and stdin
+
+
+------------------------------------------------------------------------
+r476 | pengvado | 2006-03-21 00:00:52 +0100 (mar, 21 mar 2006) | 3 lines
+
+RD subpel motion estimation (--subme 7)
+
+
+------------------------------------------------------------------------
+r475 | pengvado | 2006-03-20 23:46:38 +0100 (lun, 20 mar 2006) | 3 lines
+
+cosmetics in cabac_mb_cbf
+
+
+------------------------------------------------------------------------
+r474 | pengvado | 2006-03-19 12:00:02 +0100 (dim, 19 mar 2006) | 3 lines
+
+separate --thread-input from --threads
+
+
+------------------------------------------------------------------------
+r473 | pengvado | 2006-03-18 10:20:06 +0100 (sam, 18 mar 2006) | 3 lines
+
+if --threads > 1, then read the input stream in its own thread.
+
+
+------------------------------------------------------------------------
+r472 | mru | 2006-03-17 23:27:31 +0100 (ven, 17 mar 2006) | 2 lines
+
+FreeBSD uses ELF
+
+------------------------------------------------------------------------
+r471 | pengvado | 2006-03-17 23:10:34 +0100 (ven, 17 mar 2006) | 2 lines
+
+10l in r470 on x86_64
+
+------------------------------------------------------------------------
+r470 | pengvado | 2006-03-17 22:36:27 +0100 (ven, 17 mar 2006) | 3 lines
+
+some mmxext functions really only required mmx.
+
+
+------------------------------------------------------------------------
+r469 | pengvado | 2006-03-17 08:36:06 +0100 (ven, 17 mar 2006) | 3 lines
+
+simplify get_ref and mc_luma
+
+
+------------------------------------------------------------------------
+r468 | pengvado | 2006-03-15 05:38:57 +0100 (mer, 15 mar 2006) | 3 lines
+
+b16x16 wpred analysis used wrong weight
+
+
+------------------------------------------------------------------------
+r467 | pengvado | 2006-03-11 04:32:37 +0100 (sam, 11 mar 2006) | 3 lines
+
+configure: --enable-shared for libx264.so
+
+
+------------------------------------------------------------------------
+r466 | pengvado | 2006-03-10 19:58:29 +0100 (ven, 10 mar 2006) | 3 lines
+
+wrong modulus when delta_qp = +26
+
+
+------------------------------------------------------------------------
+r465 | pengvado | 2006-03-09 17:56:33 +0100 (jeu, 09 mar 2006) | 3 lines
+
+10l in vbv + 2pass
+
+
+------------------------------------------------------------------------
+r464 | pengvado | 2006-03-09 16:59:08 +0100 (jeu, 09 mar 2006) | 3 lines
+
+macroblock-level ratecontrol: improved vbv strictness, and improved quality when using vbv.
+
+
+------------------------------------------------------------------------
+r463 | pengvado | 2006-03-09 06:30:08 +0100 (jeu, 09 mar 2006) | 3 lines
+
+keep transposed dct coefs. ~1% overall speedup.
+
+
+------------------------------------------------------------------------
+r462 | pengvado | 2006-03-09 06:24:02 +0100 (jeu, 09 mar 2006) | 3 lines
+
+tweak rounding of 8x8dct
+
+
+------------------------------------------------------------------------
+r461 | pengvado | 2006-03-08 20:58:30 +0100 (mer, 08 mar 2006) | 3 lines
+
+cosmetics in makefile
+
+
+------------------------------------------------------------------------
+r460 | pengvado | 2006-03-08 17:03:30 +0100 (mer, 08 mar 2006) | 2 lines
+
+cosmetics: muxers -> muxers.c
+
+------------------------------------------------------------------------
+r459 | pengvado | 2006-03-06 19:38:44 +0100 (lun, 06 mar 2006) | 3 lines
+
+no --nr in intra blocks. intra prediction doesn't work well enough for the residual to be indicative of noise.
+
+
+------------------------------------------------------------------------
+r458 | pengvado | 2006-03-06 04:21:38 +0100 (lun, 06 mar 2006) | 3 lines
+
+10l in direct auto + multiref + 1pass
+
+
+------------------------------------------------------------------------
+r457 | pengvado | 2006-03-05 08:01:58 +0100 (dim, 05 mar 2006) | 4 lines
+
+--direct auto
+selects direct mode per frame. works best in 2pass (enable in both passes).
+
+
+------------------------------------------------------------------------
+r456 | pengvado | 2006-03-05 07:59:06 +0100 (dim, 05 mar 2006) | 3 lines
+
+change default direct mode to spatial
+
+
+------------------------------------------------------------------------
+r455 | pengvado | 2006-03-05 07:28:40 +0100 (dim, 05 mar 2006) | 3 lines
+
+remove TODO. most of it is done, and the rest is out of date.
+
+
+------------------------------------------------------------------------
+r454 | pengvado | 2006-03-05 03:26:32 +0100 (dim, 05 mar 2006) | 3 lines
+
+more amd64 mmx intra prediction
+
+
+------------------------------------------------------------------------
+r453 | pengvado | 2006-03-05 03:16:19 +0100 (dim, 05 mar 2006) | 3 lines
+
+for i8x8 neighbors, don't assume a new slice starts at the edge of the frame
+
+
+------------------------------------------------------------------------
+r452 | sam | 2006-03-04 03:49:44 +0100 (sam, 04 mar 2006) | 2 lines
+
+  * common/i386/i386inc.asm: got PIC to work for real on OS X x86.
+
+------------------------------------------------------------------------
+r451 | sam | 2006-03-02 21:48:08 +0100 (jeu, 02 mar 2006) | 3 lines
+
+  * common/i386/*.asm: don't use the "GLOBAL" reserved word, some versions
+    NASM complain about it. Replaced it with "GOT_ebx".
+
+------------------------------------------------------------------------
+r450 | sam | 2006-03-02 21:46:54 +0100 (jeu, 02 mar 2006) | 3 lines
+
+  * configure: activate minor nasm optimisations, such as assembling
+    "add eax, 8" as "add eax, byte 8".
+
+------------------------------------------------------------------------
+r449 | sam | 2006-03-01 23:21:47 +0100 (mer, 01 mar 2006) | 2 lines
+
+  * common/i386: factored the .rodata section declaration into i386inc.asm.
+
+------------------------------------------------------------------------
+r448 | sam | 2006-03-01 23:16:16 +0100 (mer, 01 mar 2006) | 3 lines
+
+  * configure common/i386/i386inc.asm: got rid of -DFORMAT_* nasm flags
+    and use built-in preprocessor tests instead.
+
+------------------------------------------------------------------------
+r447 | sam | 2006-03-01 23:12:22 +0100 (mer, 01 mar 2006) | 3 lines
+
+  * common/i386/i386inc.asm: tell the ELF linker about our stack properties
+    so that it does not assume the stack has to be executable.
+
+------------------------------------------------------------------------
+r446 | pengvado | 2006-02-28 20:49:00 +0100 (mar, 28 fév 2006) | 3 lines
+
+10l in r443 (p4x4 chroma)
+
+
+------------------------------------------------------------------------
+r445 | pengvado | 2006-02-27 08:31:36 +0100 (lun, 27 fév 2006) | 4 lines
+
+copy current macroblock to a smaller buffer, to improve cache coherency and reduce stride computations.
+part 3: asm
+
+
+------------------------------------------------------------------------
+r444 | pengvado | 2006-02-27 08:29:24 +0100 (lun, 27 fév 2006) | 4 lines
+
+copy current macroblock to a smaller buffer, to improve cache coherency and reduce stride computations.
+part 2: intra prediction
+
+
+------------------------------------------------------------------------
+r443 | pengvado | 2006-02-27 08:28:20 +0100 (lun, 27 fév 2006) | 4 lines
+
+copy current macroblock to a smaller buffer, to improve cache coherency and reduce stride computations.
+part 1: memory arrangement.
+
+
+------------------------------------------------------------------------
+r442 | pengvado | 2006-02-27 08:18:23 +0100 (lun, 27 fév 2006) | 3 lines
+
+h->mc.copy()
+
+
+------------------------------------------------------------------------
+r441 | pengvado | 2006-02-27 07:32:43 +0100 (lun, 27 fév 2006) | 3 lines
+
+lowres intra used wrong neighboring pixels
+
+
+------------------------------------------------------------------------
+r440 | pengvado | 2006-02-23 23:46:21 +0100 (jeu, 23 fév 2006) | 3 lines
+
+trellis=2 slightly affected intra analysis even without subme=6
+
+
+------------------------------------------------------------------------
+r439 | sam | 2006-02-16 23:00:46 +0100 (jeu, 16 fév 2006) | 2 lines
+
+  * encoder/ratecontrol.c: OS X support for exp2f and sqrtf.
+
+------------------------------------------------------------------------
+r438 | pengvado | 2006-02-16 02:32:56 +0100 (jeu, 16 fév 2006) | 3 lines
+
+allow delta_qp > 26
+
+
+------------------------------------------------------------------------
+r437 | pengvado | 2006-02-14 02:21:43 +0100 (mar, 14 fév 2006) | 3 lines
+
+ratecontrol didn't always account for header bits, causing an undersize in multipass with --ratetol inf.
+
+
+------------------------------------------------------------------------
+r436 | pengvado | 2006-02-13 18:36:22 +0100 (lun, 13 fév 2006) | 3 lines
+
+-q0 --b-rdo wasn't lossless
+
+
+------------------------------------------------------------------------
+r435 | pengvado | 2006-02-13 05:34:15 +0100 (lun, 13 fév 2006) | 3 lines
+
+cosmetics
+
+
+------------------------------------------------------------------------
+r434 | pengvado | 2006-02-12 07:50:19 +0100 (dim, 12 fév 2006) | 3 lines
+
+allow ',' separator for --filter
+
+
+------------------------------------------------------------------------
+r433 | pengvado | 2006-02-12 07:28:22 +0100 (dim, 12 fév 2006) | 3 lines
+
+VfW: 10l in bime and refs
+
+
+------------------------------------------------------------------------
+r432 | pengvado | 2006-02-12 02:36:21 +0100 (dim, 12 fév 2006) | 3 lines
+
+more lowres mv clipping fixes
+
+
+------------------------------------------------------------------------
+r431 | pengvado | 2006-02-11 23:04:57 +0100 (sam, 11 fév 2006) | 3 lines
+
+VfW: cosmetics
+
+
+------------------------------------------------------------------------
+r430 | pengvado | 2006-02-11 21:11:05 +0100 (sam, 11 fév 2006) | 4 lines
+
+VfW: support trellis, brdo, nr, bime.
+patch by Dan Nelson (dnelson at allantgroup dot com).
+
+
+------------------------------------------------------------------------
+r429 | pengvado | 2006-02-10 22:58:43 +0100 (ven, 10 fév 2006) | 3 lines
+
+amd64 mmx for some intra pred functions
+
+
+------------------------------------------------------------------------
+r428 | pengvado | 2006-02-10 21:52:48 +0100 (ven, 10 fév 2006) | 4 lines
+
+dequant_mmx made incorrect assumptions about extreme inputs. now uses 32bit in more cases.
+patch by Christian Heine.
+
+
+------------------------------------------------------------------------
+r427 | pengvado | 2006-02-10 02:16:40 +0100 (ven, 10 fév 2006) | 3 lines
+
+lowres can reuse the normal mv cost table
+
+
+------------------------------------------------------------------------
+r426 | pengvado | 2006-02-09 05:51:55 +0100 (jeu, 09 fév 2006) | 3 lines
+
+r422 broke x264_center_filter_mmxext
+
+
+------------------------------------------------------------------------
+r425 | sam | 2006-02-08 13:45:21 +0100 (mer, 08 fév 2006) | 2 lines
+
+  * configure: define FORMAT_ELF under Linux and FORMAT_AOUTB under *BSD.
+
+------------------------------------------------------------------------
+r424 | sam | 2006-02-08 12:07:06 +0100 (mer, 08 fév 2006) | 2 lines
+
+  * common/i386/i386inc.asm: support for ELF, a.out and Mach-O objects.
+
+------------------------------------------------------------------------
+r423 | sam | 2006-02-08 10:32:03 +0100 (mer, 08 fév 2006) | 2 lines
+
+  * configure: added a --enable-pic flag.
+
+------------------------------------------------------------------------
+r422 | sam | 2006-02-08 10:26:56 +0100 (mer, 08 fév 2006) | 4 lines
+
+  * Additional fixes to the PIC versions of assembly routines. They now pass
+    all checkasm tests and output streams are bit-by-bit identical, which
+    sounds good.
+
+------------------------------------------------------------------------
+r421 | sam | 2006-02-08 10:03:28 +0100 (mer, 08 fév 2006) | 4 lines
+
+  * tools/checkasm.c: print the random seed used for the test, to allow for
+    replays. It looks like dequant_4x4 fails 1 time out of 600, with the
+    following seeds for instance: 1423 1957 2149 2455 3385 3403 3724 4095.
+
+------------------------------------------------------------------------
+r420 | pengvado | 2006-02-08 01:53:35 +0100 (mer, 08 fév 2006) | 3 lines
+
+cosmetics in mc_chroma
+
+
+------------------------------------------------------------------------
+r419 | sam | 2006-02-07 20:05:47 +0100 (mar, 07 fév 2006) | 3 lines
+
+  * Oh, so what I thought was unused code was in fact used. This fixes my
+    breakage but makes the code rather slow in PIC mode. I will fix it later.
+
+------------------------------------------------------------------------
+r418 | sam | 2006-02-07 18:40:56 +0100 (mar, 07 fév 2006) | 3 lines
+
+  * Support for x86 position-independent code (PIC), needed for dynamic libs
+    on Mac OS X Intel. I tried to make this as little intrusive as possible.
+
+------------------------------------------------------------------------
+r417 | pengvado | 2006-02-06 22:34:52 +0100 (lun, 06 fév 2006) | 3 lines
+
+msvc: #define isfinite()
+
+
+------------------------------------------------------------------------
+r416 | pengvado | 2006-02-06 07:14:04 +0100 (lun, 06 fév 2006) | 3 lines
+
+x86 mmx for some intra pred functions
+
+
+------------------------------------------------------------------------
+r415 | pengvado | 2006-02-06 06:53:44 +0100 (lun, 06 fév 2006) | 3 lines
+
+cosmetics: reorganize intra prediction dsp
+
+
+------------------------------------------------------------------------
+r414 | pengvado | 2006-02-06 04:49:38 +0100 (lun, 06 fév 2006) | 3 lines
+
+too many systems don't have off_t; use uint64_t instead.
+
+
+------------------------------------------------------------------------
+r413 | pengvado | 2006-02-04 06:39:02 +0100 (sam, 04 fév 2006) | 3 lines
+
+fix order of frame evaluation in pre-me
+
+
+------------------------------------------------------------------------
+r412 | pengvado | 2006-02-03 19:23:26 +0100 (ven, 03 fév 2006) | 3 lines
+
+update AUTHORS
+
+
+------------------------------------------------------------------------
+r411 | pengvado | 2006-02-02 05:37:05 +0100 (jeu, 02 fév 2006) | 3 lines
+
+fix a check for NaN in ratecontrol
+
+
+------------------------------------------------------------------------
+r410 | pengvado | 2006-01-29 09:46:20 +0100 (dim, 29 jan 2006) | 3 lines
+
+fix mv predictors in pre-me for b-adapt.
+
+
+------------------------------------------------------------------------
+r409 | pengvado | 2006-01-23 03:02:50 +0100 (lun, 23 jan 2006) | 3 lines
+
+print --nr in sei params. tweak ratecontrol param checking.
+
+
+------------------------------------------------------------------------
+r408 | mru | 2006-01-19 01:05:42 +0100 (jeu, 19 jan 2006) | 2 lines
+
+I've moved
+
+------------------------------------------------------------------------
+r407 | mru | 2006-01-19 01:05:05 +0100 (jeu, 19 jan 2006) | 2 lines
+
+write correct VUI timing info
+
+------------------------------------------------------------------------
+r406 | pengvado | 2006-01-18 08:42:29 +0100 (mer, 18 jan 2006) | 3 lines
+
+early termination in UMH search
+
+
+------------------------------------------------------------------------
+r405 | pengvado | 2006-01-18 08:08:01 +0100 (mer, 18 jan 2006) | 3 lines
+
+split mv_range enforcement from edge-of-frame clipping. fixes an occasional artifact with long mvs.
+
+
+------------------------------------------------------------------------
+r404 | pengvado | 2006-01-18 05:29:18 +0100 (mer, 18 jan 2006) | 3 lines
+
+cosmetics: suppress warning on unused variables
+
+
+------------------------------------------------------------------------
+r403 | pengvado | 2006-01-17 22:16:28 +0100 (mar, 17 jan 2006) | 3 lines
+
+cosmetics: simplify #includes
+
+
+------------------------------------------------------------------------
+r402 | sam | 2006-01-16 13:23:35 +0100 (lun, 16 jan 2006) | 2 lines
+
+  * configure: NSLU2 platform support (why oh why)
+
+------------------------------------------------------------------------
+r401 | titer | 2006-01-15 23:29:15 +0100 (dim, 15 jan 2006) | 3 lines
+
+ Re-enabled x86 optims on MacIntel, assume Nasm CVS is installed and
+  -f macho -DPREFIX just seems to do the job
+
+------------------------------------------------------------------------
+r400 | titer | 2006-01-14 17:11:48 +0100 (sam, 14 jan 2006) | 6 lines
+
+ Quick compile fix for OS X / Intel
+ Optimizations are disabled at the moment. In order to get them to
+ work, we'd need either nasm to be able to output Mach-O object files,
+ or we should convert the assembly code to something OS X can handle,
+ like gas.
+
+------------------------------------------------------------------------
+r399 | pengvado | 2006-01-13 07:54:10 +0100 (ven, 13 jan 2006) | 3 lines
+
+cli: large file support
+
+
+------------------------------------------------------------------------
+r398 | pengvado | 2006-01-10 08:31:29 +0100 (mar, 10 jan 2006) | 3 lines
+
+dct-domain noise reduction (ported from lavc)
+
+
+------------------------------------------------------------------------
+r397 | pengvado | 2006-01-09 07:18:39 +0100 (lun, 09 jan 2006) | 3 lines
+
+early termination within large SADs. ~1% faster UMH, ~4% faster ESA.
+
+
+------------------------------------------------------------------------
+r396 | pengvado | 2006-01-05 20:11:38 +0100 (jeu, 05 jan 2006) | 4 lines
+
+mkv: increase nalu size size to 4 bytes.
+patch by Haali.
+
+
+------------------------------------------------------------------------
+r395 | pengvado | 2006-01-04 04:43:15 +0100 (mer, 04 jan 2006) | 3 lines
+
+less 64bit math: 12% faster trellis
+
+
+------------------------------------------------------------------------
+r394 | pengvado | 2006-01-01 11:14:17 +0100 (dim, 01 jan 2006) | 3 lines
+
+more error checking of input parameters
+
+
+------------------------------------------------------------------------
+r393 | pengvado | 2006-01-01 10:39:29 +0100 (dim, 01 jan 2006) | 3 lines
+
+always write sps.vui
+
+
+------------------------------------------------------------------------
+r392 | pengvado | 2005-12-31 15:16:02 +0100 (sam, 31 déc 2005) | 4 lines
+
+use some extra packing modes for CQM headers.
+fix typo in --cqm4p[yc].
+
+
+------------------------------------------------------------------------
+r391 | pengvado | 2005-12-30 09:26:42 +0100 (ven, 30 déc 2005) | 3 lines
+
+MSVC compatibility fixes
+
+
+------------------------------------------------------------------------
+r390 | pengvado | 2005-12-30 05:56:49 +0100 (ven, 30 déc 2005) | 3 lines
+
+joint bidirectional motion refinement (--bime)
+
+
+------------------------------------------------------------------------
+r389 | pengvado | 2005-12-24 21:59:13 +0100 (sam, 24 déc 2005) | 4 lines
+
+fix some overflows in mp4 timestamps.
+patch by Francesco Corriga.
+
+
+------------------------------------------------------------------------
+r388 | pengvado | 2005-12-20 03:57:52 +0100 (mar, 20 déc 2005) | 3 lines
+
+Successive elimination motion search: same as exhaustive search, but 2-3x faster.
+
+
+------------------------------------------------------------------------
+r387 | titer | 2005-12-13 17:32:39 +0100 (mar, 13 déc 2005) | 2 lines
+
+ Fixed cc_check on OS X (gcc -o /dev/null always fails)
+
+------------------------------------------------------------------------
+r386 | pengvado | 2005-12-13 12:24:02 +0100 (mar, 13 déc 2005) | 4 lines
+
+postpone pskip decision until after p16x16ref0 motion search.
+reduces the number of erroneous pskips in low-detail regions.
+
+
+------------------------------------------------------------------------
+r385 | pengvado | 2005-12-07 18:29:20 +0100 (mer, 07 déc 2005) | 3 lines
+
+configure: autodetect gpac, avis, pthread, vfw
+
+
+------------------------------------------------------------------------
+r384 | pengvado | 2005-12-05 13:46:46 +0100 (lun, 05 déc 2005) | 4 lines
+
+--no-fast-pskip
+patch by Alex Wright.
+
+
+------------------------------------------------------------------------
+r383 | pengvado | 2005-12-05 13:38:46 +0100 (lun, 05 déc 2005) | 3 lines
+
+cosmetics: config.h is now modified only by configure. make now calls configure if you haven't.
+
+
+------------------------------------------------------------------------
+r382 | pengvado | 2005-12-04 22:19:17 +0100 (dim, 04 déc 2005) | 4 lines
+
+MP4: set "track enabled" flag.
+patch by Robert Swain.
+
+
+------------------------------------------------------------------------
+r381 | pengvado | 2005-12-03 02:50:52 +0100 (sam, 03 déc 2005) | 4 lines
+
+faster subpel motion search.
+patch by Alex Wright.
+
+
+------------------------------------------------------------------------
+r380 | pengvado | 2005-11-28 08:43:22 +0100 (lun, 28 nov 2005) | 3 lines
+
+don't use gnu extensions to grep and sed.
+
+
+------------------------------------------------------------------------
+r379 | pengvado | 2005-11-28 03:03:12 +0100 (lun, 28 nov 2005) | 2 lines
+
+pkg-config: major.minor.patch version
+
+------------------------------------------------------------------------
+r378 | pengvado | 2005-11-28 01:29:10 +0100 (lun, 28 nov 2005) | 3 lines
+
+`make fprofiled` to automate gcc -fprofile-generate/use
+
+
+------------------------------------------------------------------------
+r377 | pengvado | 2005-11-28 00:24:43 +0100 (lun, 28 nov 2005) | 3 lines
+
+10l
+
+
+------------------------------------------------------------------------
+r376 | pengvado | 2005-11-28 00:23:49 +0100 (lun, 28 nov 2005) | 3 lines
+
+param.b_repeat_headers (not yet used)
+
+
+------------------------------------------------------------------------
+r375 | pengvado | 2005-11-22 20:27:54 +0100 (mar, 22 nov 2005) | 4 lines
+
+support pkg-config.
+patch by Caro.
+
+
+------------------------------------------------------------------------
+r374 | pengvado | 2005-11-22 07:59:48 +0100 (mar, 22 nov 2005) | 4 lines
+
+write encoding options to the userdata SEI and to the 2pass statsfile.
+check for incompatible options in the 2nd pass.
+
+
+------------------------------------------------------------------------
+r373 | pengvado | 2005-11-22 06:02:33 +0100 (mar, 22 nov 2005) | 3 lines
+
+change default level to "5.1"
+
+
+------------------------------------------------------------------------
+r372 | pengvado | 2005-11-22 03:53:53 +0100 (mar, 22 nov 2005) | 3 lines
+
+skip dequant+idct of decimated blocks.
+
+
+------------------------------------------------------------------------
+r371 | pengvado | 2005-11-22 03:48:39 +0100 (mar, 22 nov 2005) | 3 lines
+
+after a 1pass ABR, print the value of --crf which would result in the same bitrate.
+
+
+------------------------------------------------------------------------
+r370 | pengvado | 2005-11-22 03:43:11 +0100 (mar, 22 nov 2005) | 3 lines
+
+subpel search: always check mvp.
+
+
+------------------------------------------------------------------------
+r369 | pengvado | 2005-11-22 03:36:29 +0100 (mar, 22 nov 2005) | 4 lines
+
+faster b-rdo (skip RD of modes with bad SATD).
+patch by Alex Wright.
+
+
+------------------------------------------------------------------------
+r368 | pengvado | 2005-11-18 12:20:07 +0100 (ven, 18 nov 2005) | 4 lines
+
+RD mode decision for B-frames (--b-rdo)
+patch by Alex Wright.
+
+
+------------------------------------------------------------------------
+r367 | sam | 2005-11-12 00:57:18 +0100 (sam, 12 nov 2005) | 3 lines
+
+  * common/amd64/quant-a.asm: added missing GLOBAL flags that prevented PIC
+    builds, thanks to Anssi Hannula.
+
+------------------------------------------------------------------------
+r366 | sam | 2005-11-11 18:46:24 +0100 (ven, 11 nov 2005) | 2 lines
+
+  * configure: added the Alpha platform.
+
+------------------------------------------------------------------------
+r365 | pengvado | 2005-11-07 08:53:42 +0100 (lun, 07 nov 2005) | 3 lines
+
+use array_non_zero() when we don't need a full array_non_zero_count()
+
+
+------------------------------------------------------------------------
+r364 | pengvado | 2005-11-06 08:07:30 +0100 (dim, 06 nov 2005) | 3 lines
+
+mmx dequant. up to 3% speedup w/ RD.
+
+
+------------------------------------------------------------------------
+r363 | pengvado | 2005-11-06 01:26:43 +0100 (dim, 06 nov 2005) | 3 lines
+
+allow --level to understand names in addition to idc
+
+
+------------------------------------------------------------------------
+r362 | pengvado | 2005-11-04 12:39:58 +0100 (ven, 04 nov 2005) | 4 lines
+
+check (most of) the levels constaints.
+set default max_mv_range based on level_idc.
+
+
+------------------------------------------------------------------------
+r361 | pengvado | 2005-11-03 23:57:52 +0100 (jeu, 03 nov 2005) | 3 lines
+
+if p16x16 RD decides to code a MB as p_skip, then don't check smaller partitions.
+
+
+------------------------------------------------------------------------
+r360 | pengvado | 2005-11-03 23:20:47 +0100 (jeu, 03 nov 2005) | 4 lines
+
+Trellis RD quantization.
+around +.2 dB
+
+
+------------------------------------------------------------------------
+r359 | pengvado | 2005-11-03 21:16:56 +0100 (jeu, 03 nov 2005) | 3 lines
+
+cosmetics: XCHG macro
+
+
+------------------------------------------------------------------------
+r358 | pengvado | 2005-11-03 12:27:24 +0100 (jeu, 03 nov 2005) | 3 lines
+
+skip a few duplicate candidates in qpel search.
+
+
+------------------------------------------------------------------------
+r357 | pengvado | 2005-11-03 12:26:17 +0100 (jeu, 03 nov 2005) | 3 lines
+
+skip a few duplicate candidates in fullpel hex&umh search.
+
+
+------------------------------------------------------------------------
+r356 | pengvado | 2005-11-03 07:53:59 +0100 (jeu, 03 nov 2005) | 3 lines
+
+cli: arithmetic overflow in bitrate printing
+
+
+------------------------------------------------------------------------
+r355 | pengvado | 2005-11-03 07:47:19 +0100 (jeu, 03 nov 2005) | 3 lines
+
+cosmetics in x264_cabac_mb_type
+
+
+------------------------------------------------------------------------
+r354 | pengvado | 2005-11-03 07:40:46 +0100 (jeu, 03 nov 2005) | 3 lines
+
+X264_ABS => abs
+
+
+------------------------------------------------------------------------
+r353 | pengvado | 2005-11-03 03:42:48 +0100 (jeu, 03 nov 2005) | 3 lines
+
+amd64 sse2 8x8dct. 1.45x faster than mmx.
+
+
+------------------------------------------------------------------------
+r352 | pengvado | 2005-11-01 04:34:48 +0100 (mar, 01 nov 2005) | 3 lines
+
+allow 1pass ratecontrol with keyint=1
+
+
+------------------------------------------------------------------------
+r351 | pengvado | 2005-10-31 05:02:15 +0100 (lun, 31 oct 2005) | 3 lines
+
+cli: print estimated time left in --progress
+
+
+------------------------------------------------------------------------
+r350 | pengvado | 2005-10-31 03:52:33 +0100 (lun, 31 oct 2005) | 3 lines
+
+doc/ratecontrol.txt
+
+
+------------------------------------------------------------------------
+r349 | pengvado | 2005-10-31 03:50:36 +0100 (lun, 31 oct 2005) | 3 lines
+
+rm doc/dct.txt
+
+
+------------------------------------------------------------------------
+r348 | pengvado | 2005-10-31 00:42:24 +0100 (lun, 31 oct 2005) | 3 lines
+
+in constant QP mode, write that QP in the PPS to save a few bits in each slice header.
+
+
+------------------------------------------------------------------------
+r347 | pengvado | 2005-10-30 07:22:29 +0100 (dim, 30 oct 2005) | 3 lines
+
+faster decimation
+
+
+------------------------------------------------------------------------
+r346 | pengvado | 2005-10-29 06:05:57 +0200 (sam, 29 oct 2005) | 3 lines
+
+cosmetics: fix an erroneous warning from r340.
+
+
+------------------------------------------------------------------------
+r345 | pengvado | 2005-10-29 05:00:50 +0200 (sam, 29 oct 2005) | 3 lines
+
+cosmetics: change literal cabac_block_cat to an enum.
+
+
+------------------------------------------------------------------------
+r344 | pengvado | 2005-10-29 04:21:39 +0200 (sam, 29 oct 2005) | 3 lines
+
+cabac: merge i_state with i_mps. bs_write multiple bits at once.
+
+
+------------------------------------------------------------------------
+r343 | pengvado | 2005-10-29 03:43:29 +0200 (sam, 29 oct 2005) | 3 lines
+
+remove unused adaptive cabac_idc code
+
+
+------------------------------------------------------------------------
+r342 | titer | 2005-10-27 12:27:04 +0200 (jeu, 27 oct 2005) | 2 lines
+
+ Fixed compilation on PPC (spotted by David Wolstencroft)
+
+------------------------------------------------------------------------
+r341 | pengvado | 2005-10-26 10:38:11 +0200 (mer, 26 oct 2005) | 4 lines
+
+mmx deblocking.
+2.5x faster deblocking functions, 1-4% overall.
+
+
+------------------------------------------------------------------------
+r340 | pengvado | 2005-10-26 09:04:59 +0200 (mer, 26 oct 2005) | 6 lines
+
+If frame count is known at init time (cli & vfw), then abort if the 2nd pass
+exceeds the length of the 1st pass.
+If it's not known (mencoder), then report a non-fatal error when we run off the
+end of the 1st pass stats, and switch to constant QP.
+
+
+------------------------------------------------------------------------
+r339 | pengvado | 2005-10-26 08:40:51 +0200 (mer, 26 oct 2005) | 5 lines
+
+move checkasm to tools/
+delete unused stuff in testing/
+`make clean` deletes checkasm and avc2avi
+
+
+------------------------------------------------------------------------
+r338 | pengvado | 2005-10-26 08:31:35 +0200 (mer, 26 oct 2005) | 3 lines
+
+checkasm: check 8x8dct, mc average, quant, and SSE2.
+
+
+------------------------------------------------------------------------
+r337 | pengvado | 2005-10-26 08:30:19 +0200 (mer, 26 oct 2005) | 2 lines
+
+r336 broke amd64 x264_pixel_sad_16x16_sse2 (though it's not being used)
+
+------------------------------------------------------------------------
+r336 | pengvado | 2005-10-25 12:57:29 +0200 (mar, 25 oct 2005) | 4 lines
+
+Windows 64bit asm.
+patch by squid_80.
+
+
+------------------------------------------------------------------------
+r335 | pengvado | 2005-10-24 18:15:11 +0200 (lun, 24 oct 2005) | 2 lines
+
+delete build/cygwin because it's handled in the main configure/makefile.
+
+------------------------------------------------------------------------
+r334 | pengvado | 2005-10-23 11:52:34 +0200 (dim, 23 oct 2005) | 3 lines
+
+--crf: 1pass quality-based VBR.
+
+
+------------------------------------------------------------------------
+r333 | titer | 2005-10-16 11:53:05 +0200 (dim, 16 oct 2005) | 2 lines
+
+ Added --enable-gprof (patch by Johannes Reinhardt)
+
+------------------------------------------------------------------------
+r332 | pengvado | 2005-10-16 07:44:50 +0200 (dim, 16 oct 2005) | 4 lines
+
+cosmetics: remove #if0'ed code
+patch by Robert Swain.
+
+
+------------------------------------------------------------------------
+r331 | pengvado | 2005-10-16 03:47:30 +0200 (dim, 16 oct 2005) | 3 lines
+
+faster bs_write
+
+
+------------------------------------------------------------------------
+r330 | pengvado | 2005-10-15 06:11:06 +0200 (sam, 15 oct 2005) | 4 lines
+
+during RDO, skip the bitstream writing and just calculate the number of bits 
+that would be used. speedup: cabac +4-8%, cavlc +2-4%.
+
+
+------------------------------------------------------------------------
+r329 | pengvado | 2005-10-15 02:27:17 +0200 (sam, 15 oct 2005) | 6 lines
+
+Use SAD instead of SATD for halfpel motion search.
+Move multiref termination after halfpel search.
+Total: 3-7% speedup and +/-.02 dB.
+patch by Alex Wright.
+
+
+------------------------------------------------------------------------
+r328 | pengvado | 2005-10-13 20:19:38 +0200 (jeu, 13 oct 2005) | 4 lines
+
+VfW: mixed refs.
+patch by celtic_druid.
+
+
+------------------------------------------------------------------------
+r327 | pengvado | 2005-10-11 00:51:26 +0200 (mar, 11 oct 2005) | 3 lines
+
+allow non-mod16 resolutions
+
+
+------------------------------------------------------------------------
+r326 | pengvado | 2005-10-10 03:29:17 +0200 (lun, 10 oct 2005) | 3 lines
+
+VfW: prevent duplicate free() in compress_end()
+
+
+------------------------------------------------------------------------
+r325 | pengvado | 2005-10-10 02:32:45 +0200 (lun, 10 oct 2005) | 3 lines
+
+cosmetics: remove declarations of nonexistent asm functions
+
+
+------------------------------------------------------------------------
+r324 | pengvado | 2005-10-09 23:55:53 +0200 (dim, 09 oct 2005) | 3 lines
+
+cosmetics (whitespace) in VfW
+
+
+------------------------------------------------------------------------
+r323 | pengvado | 2005-10-09 23:37:56 +0200 (dim, 09 oct 2005) | 4 lines
+
+VfW: some reorganization
+patch by Francesco Corriga.
+
+
+------------------------------------------------------------------------
+r322 | pengvado | 2005-10-09 08:10:03 +0200 (dim, 09 oct 2005) | 3 lines
+
+cosmetics: merge some duplicate tables
+
+
+------------------------------------------------------------------------
+r321 | pengvado | 2005-10-09 05:32:56 +0200 (dim, 09 oct 2005) | 3 lines
+
+remove cabac byte-stuffing code, because it just wastes bits in lossless, and does nothing at all at sane bitrates.
+
+
+------------------------------------------------------------------------
+r320 | pengvado | 2005-10-09 02:14:30 +0200 (dim, 09 oct 2005) | 3 lines
+
+don't allocate lowres planes if they won't be used (i.e. in the 2nd pass).
+
+
+------------------------------------------------------------------------
+r319 | pengvado | 2005-10-08 23:17:44 +0200 (sam, 08 oct 2005) | 3 lines
+
+cosmetics: move some stuff from macroblock_encode to cache_save
+
+
+------------------------------------------------------------------------
+r318 | pengvado | 2005-10-08 08:49:29 +0200 (sam, 08 oct 2005) | 5 lines
+
+new option: --mixed-refs
+Allows each 8x8 or 16x8 partition to independently select a reference frame, as opposed to only one ref per macroblock.
+patch mostly by Alex Wright (alexw0885 at hotmail dot com).
+
+
+------------------------------------------------------------------------
+r317 | pengvado | 2005-10-08 06:45:51 +0200 (sam, 08 oct 2005) | 3 lines
+
+cosmetics in option parsing
+
+
+------------------------------------------------------------------------
+r316 | pengvado | 2005-10-08 05:52:10 +0200 (sam, 08 oct 2005) | 4 lines
+
+expose the rest of the VUI flags.
+patch by Christian Heine.
+
+
+------------------------------------------------------------------------
+r315 | sam | 2005-10-04 14:08:33 +0200 (mar, 04 oct 2005) | 2 lines
+
+  * common/amd64/mc-a.asm: use RIP-relative addressing in PIC mode.
+
+------------------------------------------------------------------------
+r314 | pengvado | 2005-10-04 09:12:21 +0200 (mar, 04 oct 2005) | 3 lines
+
+temporal predictors for 16x16 motion search.
+
+
+------------------------------------------------------------------------
+r313 | pengvado | 2005-10-03 00:07:12 +0200 (lun, 03 oct 2005) | 3 lines
+
+slightly faster/cleaner block_residual_write_cabac
+
+
+------------------------------------------------------------------------
+r312 | pengvado | 2005-10-02 22:12:46 +0200 (dim, 02 oct 2005) | 3 lines
+
+cosmetics
+
+
+------------------------------------------------------------------------
+r311 | pengvado | 2005-10-02 07:50:35 +0200 (dim, 02 oct 2005) | 2 lines
+
+cli: fix a crash on piped input.
+
+------------------------------------------------------------------------
+r310 | pengvado | 2005-10-02 07:01:39 +0200 (dim, 02 oct 2005) | 3 lines
+
+stats summary: separately report all 5 partition sizes, and add ref usages
+
+
+------------------------------------------------------------------------
+r309 | pengvado | 2005-10-02 06:03:06 +0200 (dim, 02 oct 2005) | 3 lines
+
+disposable frames shouldn't get their own coded_frame_num.
+
+
+------------------------------------------------------------------------
+r308 | pengvado | 2005-10-01 21:33:26 +0200 (sam, 01 oct 2005) | 3 lines
+
+typo in ia32 x264_pixel_avg_weight_w8_mmxext
+
+
+------------------------------------------------------------------------
+r307 | pengvado | 2005-10-01 08:48:13 +0200 (sam, 01 oct 2005) | 4 lines
+
+mmx avg (already existed by not used for bipred)
+mmx biweighted avg (3x faster than C)
+
+
+------------------------------------------------------------------------
+r306 | pengvado | 2005-10-01 06:43:31 +0200 (sam, 01 oct 2005) | 3 lines
+
+cosmetics: move avg function ptrs from pixf to mc.
+
+
+------------------------------------------------------------------------
+r305 | pengvado | 2005-09-27 21:59:09 +0200 (mar, 27 sep 2005) | 4 lines
+
+with B-pyramid, forget old refs in POC order instead of coded order.
+(before, b_skip was unavailable with pyramid and ref=1)
+
+
+------------------------------------------------------------------------
+r304 | pengvado | 2005-09-26 05:00:10 +0200 (lun, 26 sep 2005) | 3 lines
+
+typo in r296.
+patch by lurui.
+
+------------------------------------------------------------------------
+r303 | sam | 2005-09-26 00:12:56 +0200 (lun, 26 sep 2005) | 2 lines
+
+  * common/amd64/*.asm: use RIP-related addressing in PIC mode.
+
+------------------------------------------------------------------------
+r302 | sam | 2005-09-25 21:52:57 +0200 (dim, 25 sep 2005) | 2 lines
+
+  * common/amd64/mc-a.asm: removed useless global variables
+
+------------------------------------------------------------------------
+r301 | sam | 2005-09-25 15:52:58 +0200 (dim, 25 sep 2005) | 2 lines
+
+  * configure: support extra $(ASFLAGS) through --extra-asflags.
+
+------------------------------------------------------------------------
+r300 | pengvado | 2005-09-24 21:41:50 +0200 (sam, 24 sep 2005) | 3 lines
+
+reorganized VfW UI.
+patch by Antony Boucher, graphic by Jarod.
+
+------------------------------------------------------------------------
+r299 | pengvado | 2005-09-24 20:54:49 +0200 (sam, 24 sep 2005) | 3 lines
+
+MP4 output: update to GPAC 0.4 API.
+patch mostly by Robert Swain.
+
+------------------------------------------------------------------------
+r298 | pengvado | 2005-09-24 20:22:02 +0200 (sam, 24 sep 2005) | 3 lines
+
+faster mmx quant 15bit, and add 16bit version. total speedup: ~0.3%
+patch by Christian Heine.
+
+------------------------------------------------------------------------
+r297 | pengvado | 2005-09-24 19:04:21 +0200 (sam, 24 sep 2005) | 3 lines
+
+faster mmx satd. *x16: 20%, *x8: 10%, total: 2-4%.
+ia32 patch by Christian Heine, amd64 port by me.
+
+------------------------------------------------------------------------
+r296 | pengvado | 2005-09-24 18:58:36 +0200 (sam, 24 sep 2005) | 3 lines
+
+allow i4x4 and i8x8 down-left prediction with emulated top-right samples.
+based on a patch by Johannes Reinhardt (Johannes dot Reinhardt at uni-konstanz dot de)
+
+------------------------------------------------------------------------
+r295 | robux4 | 2005-09-20 18:18:23 +0200 (mar, 20 sep 2005) | 1 line
+
+fps patch by Haali
+------------------------------------------------------------------------
+r294 | sam | 2005-09-20 17:50:41 +0200 (mar, 20 sep 2005) | 3 lines
+
+  * configure: added support for ia64, mips/mipsel, m68k, arm, s390 and hppa
+    platforms, as well as linux sparc.
+
+------------------------------------------------------------------------
+r293 | pengvado | 2005-09-14 19:20:17 +0200 (mer, 14 sep 2005) | 5 lines
+
+MMX quantization functions, and optimization of the C versions.
+about 3x faster quant_8x8, quant_4x4, quant_4x4_dc, and quant_2x2_dc. total speedup: 4-10%.
+patch by Alexander Izvorski and Christian Heine.
+
+
+------------------------------------------------------------------------
+r292 | pengvado | 2005-09-10 13:23:09 +0200 (sam, 10 sep 2005) | 5 lines
+
+SSE2 pixel comparison functions
+P4: SAD 16x*, SSD 16x*, SATD 16x*: 30% faster, SATD 8x8: 15% faster, total: 2-4% faster
+K8: SSD 16x*: 6% faster, total: not much
+patch by Alexander Izvorski.
+
+------------------------------------------------------------------------
+r291 | pengvado | 2005-08-30 19:11:35 +0200 (mar, 30 aoû 2005) | 2 lines
+
+10l in rev290: duplicate declaration of x264_pixel_sub_8x8_mmx.
+
+------------------------------------------------------------------------
+r290 | pengvado | 2005-08-29 22:37:31 +0200 (lun, 29 aoû 2005) | 4 lines
+
+mmx 8x8 dct.
+On a K8: sub16x16_dct8 3806->1461, add16x16_idct8 4852->1297 cycles. total speedup: 1-3%.
+patch by Christian Heine (sennindemokrit at gmx dot net)
+
+------------------------------------------------------------------------
+r289 | titer | 2005-08-29 15:20:45 +0200 (lun, 29 aoû 2005) | 2 lines
+
+ VC++ fix (thx fenrir)
+
+------------------------------------------------------------------------
+r288 | titer | 2005-08-29 13:20:23 +0200 (lun, 29 aoû 2005) | 3 lines
+
+ x264.h: issue an explicit warning when neither stdint.h nor inttypes.h
+ has be included before x264.h
+
+------------------------------------------------------------------------
+r287 | pengvado | 2005-08-17 17:18:42 +0200 (mer, 17 aoû 2005) | 2 lines
+
+VfW: SAR wording. patch by Sharktooth.
+
+------------------------------------------------------------------------
+r286 | pengvado | 2005-08-16 17:09:41 +0200 (mar, 16 aoû 2005) | 2 lines
+
+cli: workaround to allow "--ratetol inf" on win32.
+
+------------------------------------------------------------------------
+r285 | pengvado | 2005-08-09 20:48:57 +0200 (mar, 09 aoû 2005) | 1 line
+
+fix spatial direct mv prediction with B-pyramid. copied from libavcodec.
+------------------------------------------------------------------------
+r284 | fenrir | 2005-08-09 09:20:26 +0200 (mar, 09 aoû 2005) | 8 lines
+
+ * all: Patch by Mike Matsnev :
+
+"The following things were fixed:
+ * AR calculation was broken on previous import
+ * Wrong conditional in write_nalu_mkv() was fixed
+ * Error checking was added in all places"
+
+
+------------------------------------------------------------------------
+r283 | fenrir | 2005-08-09 09:17:26 +0200 (mar, 09 aoû 2005) | 2 lines
+
+ xyuv: bug fixes + autodetect of video size.
+
+------------------------------------------------------------------------
+r282 | titer | 2005-08-07 19:17:05 +0200 (dim, 07 aoû 2005) | 2 lines
+
+ Run ranlib after make install (OS X needs that)
+
+------------------------------------------------------------------------
+r281 | pengvado | 2005-07-26 18:07:17 +0200 (mar, 26 jui 2005) | 2 lines
+
+update i_mb_b16x8_cost_table[] for I8x8 mb type (r278 only fixed a symptom).
+
+------------------------------------------------------------------------
+r280 | fenrir | 2005-07-22 17:51:10 +0200 (ven, 22 jui 2005) | 2 lines
+
+ * all: Added matroska writing. Patch by Mike Matsnev.
+
+------------------------------------------------------------------------
+r279 | fenrir | 2005-07-22 17:48:18 +0200 (ven, 22 jui 2005) | 14 lines
+
+ * pixel.*:
+
+"I have completed additonal SAD implementations (8x16, 16x8 and 16x16)
+ using Sparc VIS.  Overall speedup is roughly 90% from straight C.  I'm
+ doing development and testing on a Sun Fire V220, with 2 * 1.5ghz
+ UltraSPARC-III CPUs.
+
+ I've hand-unrolled each of the loops.  Sun's assembler does not appear
+ to have macro functionality built-in and I didn't want to establish an
+ external dependancy on m4.  Please let me know if you run into any
+ trouble with the patch."
+
+ Patch by Phil Jensen.
+
+------------------------------------------------------------------------
+r278 | fenrir | 2005-07-22 17:43:16 +0200 (ven, 22 jui 2005) | 5 lines
+
+ analyse: "It correct the size of array i_mb_b16x8_cost_table
+   from 16 to 17,otherwise,it can result a mismatch of b16x8
+   mb type cost and can result memory read overflow on it." Patch by lurui.
+ 
+
+------------------------------------------------------------------------
+r277 | fenrir | 2005-07-20 17:39:44 +0200 (mer, 20 jui 2005) | 2 lines
+
+ * x264 compilation on NetBSD. Patch by Mike Matsnev.
+
+------------------------------------------------------------------------
+r276 | fenrir | 2005-07-20 17:27:18 +0200 (mer, 20 jui 2005) | 3 lines
+
+ * all: "8x8 SAD written in Sparc Assembly using VIS." Patch by Phil Jensen.
+
+
+------------------------------------------------------------------------
+r275 | pengvado | 2005-07-15 18:21:58 +0200 (ven, 15 jui 2005) | 2 lines
+
+10l: rd score for sub-8x8 partitions used wrong mvs.
+
+------------------------------------------------------------------------
+r274 | pengvado | 2005-07-13 17:52:59 +0200 (mer, 13 jui 2005) | 3 lines
+
+faster SAD_INC_2x16P for amd64.
+patch by Josef Zlomek.
+
+------------------------------------------------------------------------
+r273 | titer | 2005-07-10 14:51:21 +0200 (dim, 10 jui 2005) | 3 lines
+
+ Fixed win32 handle leakage (thanks Trax)
+ Default enabled support of threads on BeOS
+
+------------------------------------------------------------------------
+r272 | fenrir | 2005-07-07 09:48:36 +0200 (jeu, 07 jui 2005) | 3 lines
+
+ * Add support for UltraSparc (uname -m: sun4u) with Solaris.
+ Patch by Tuukka Toivonen.
+
+------------------------------------------------------------------------
+r271 | fenrir | 2005-07-07 09:37:54 +0200 (jeu, 07 jui 2005) | 2 lines
+
+ * Faster SAD_INC_2x16P. Patch by Alexander Izvorski.
+
+------------------------------------------------------------------------
+r270 | pengvado | 2005-06-21 16:49:27 +0200 (mar, 21 jun 2005) | 2 lines
+
+example quant matrix file
+
+------------------------------------------------------------------------
+r269 | pengvado | 2005-06-21 10:16:01 +0200 (mar, 21 jun 2005) | 2 lines
+
+--cqmfile reads quant matrices in a JM-compatible format.
+
+------------------------------------------------------------------------
+r268 | pengvado | 2005-06-21 06:45:49 +0200 (mar, 21 jun 2005) | 2 lines
+
+adjust coded buffer size based on input resolution and QP (old default wasn't enough for HD lossless)
+
+------------------------------------------------------------------------
+r267 | pengvado | 2005-06-20 02:36:05 +0200 (lun, 20 jun 2005) | 2 lines
+
+update avc2avi for high profile
+
+------------------------------------------------------------------------
+r266 | pengvado | 2005-06-20 02:08:28 +0200 (lun, 20 jun 2005) | 2 lines
+
+custom quant matrices
+
+------------------------------------------------------------------------
+r265 | pengvado | 2005-06-17 10:32:56 +0200 (ven, 17 jun 2005) | 3 lines
+
+VfW: workaround a windows unicode bug.
+patch by Leowai.
+
+------------------------------------------------------------------------
+r264 | pengvado | 2005-06-17 10:21:48 +0200 (ven, 17 jun 2005) | 2 lines
+
+lossless mode enabled at qp=0
+
+------------------------------------------------------------------------
+r263 | pengvado | 2005-06-14 21:49:16 +0200 (mar, 14 jun 2005) | 3 lines
+
+VfW: enable RDO. some option dependencies.
+patch by Francesco Corriga.
+
+------------------------------------------------------------------------
+r262 | pengvado | 2005-06-14 21:19:52 +0200 (mar, 14 jun 2005) | 2 lines
+
+rate-distortion optimized MB types in I- and P-frames (--subme 6)
+
+------------------------------------------------------------------------
+r261 | pengvado | 2005-06-13 01:17:12 +0200 (lun, 13 jun 2005) | 3 lines
+
+more VfW options.
+patch mostly by celtic_druid.
+
+------------------------------------------------------------------------
+r260 | pengvado | 2005-06-11 23:17:30 +0200 (sam, 11 jun 2005) | 3 lines
+
+VFW: 8x8 transform, SAR.
+patch by celtic_druid.
+
+------------------------------------------------------------------------
+r259 | pengvado | 2005-06-11 22:32:22 +0200 (sam, 11 jun 2005) | 3 lines
+
+threads option in vfw.
+patch by celtic_druid.
+
+------------------------------------------------------------------------
+r258 | pengvado | 2005-06-11 21:27:02 +0200 (sam, 11 jun 2005) | 2 lines
+
+win32 threads enabled by default
+
+------------------------------------------------------------------------
+r257 | pengvado | 2005-06-11 21:15:35 +0200 (sam, 11 jun 2005) | 3 lines
+
+vfw installer nsis script.
+patch by Francesco Corriga.
+
+------------------------------------------------------------------------
+r256 | pengvado | 2005-06-11 07:52:38 +0200 (sam, 11 jun 2005) | 2 lines
+
+print 8x8 transform usage % in stats summary.
+
+------------------------------------------------------------------------
+r255 | pengvado | 2005-06-08 19:16:20 +0200 (mer, 08 jun 2005) | 3 lines
+
+revert 216, another try at max_dec_frame_buffering.
+disable adaptive cabac_idc by default; 0 is always best anyway.
+
+------------------------------------------------------------------------
+r254 | pengvado | 2005-06-08 02:38:03 +0200 (mer, 08 jun 2005) | 2 lines
+
+typo in cabac tables
+
+------------------------------------------------------------------------
+r253 | pengvado | 2005-06-05 22:39:58 +0200 (dim, 05 jun 2005) | 2 lines
+
+cosmetics
+
+------------------------------------------------------------------------
+r252 | pengvado | 2005-06-05 20:39:21 +0200 (dim, 05 jun 2005) | 2 lines
+
+fix i8x8 decision with chroma_me
+
+------------------------------------------------------------------------
+r251 | pengvado | 2005-06-05 13:07:28 +0200 (dim, 05 jun 2005) | 4 lines
+
+SATD-based decision for 8x8 transform in inter-MBs.
+Enable 8x8 intra.
+CLI options: --8x8dct, --analyse i8x8.
+
+------------------------------------------------------------------------
+r250 | titer | 2005-06-05 12:17:10 +0200 (dim, 05 jun 2005) | 3 lines
+
+ Use win32 native threads (you still have to --enable-pthread to use
+ them, though)
+
+------------------------------------------------------------------------
+r249 | pengvado | 2005-06-05 03:09:38 +0200 (dim, 05 jun 2005) | 2 lines
+
+slightly faster 8x8 dct
+
+------------------------------------------------------------------------
+r248 | pengvado | 2005-06-04 08:23:56 +0200 (sam, 04 jun 2005) | 2 lines
+
+remove unused tables from SPS/PPS. reduces overhead when syncing threads.
+
+------------------------------------------------------------------------
+r247 | pengvado | 2005-06-03 11:58:25 +0200 (ven, 03 jun 2005) | 2 lines
+
+10l (debug stuff in 246)
+
+------------------------------------------------------------------------
+r246 | pengvado | 2005-06-03 07:33:15 +0200 (ven, 03 jun 2005) | 3 lines
+
+8x8 transform and 8x8 intra prediction.
+(backend only, not yet used by mb analysis)
+
+------------------------------------------------------------------------
+r245 | pengvado | 2005-06-01 08:49:00 +0200 (mer, 01 jun 2005) | 2 lines
+
+cosmetics
+
+------------------------------------------------------------------------
+r244 | pengvado | 2005-06-01 07:31:39 +0200 (mer, 01 jun 2005) | 3 lines
+
+fix a bug with cabac + B-frames + mref + slices.
+call visualization per frame instead of per slice.
+
+------------------------------------------------------------------------
+r243 | mru | 2005-05-30 21:47:02 +0200 (lun, 30 mai 2005) | 2 lines
+
+accept the standard --prefix etc. options
+
+------------------------------------------------------------------------
+r242 | pengvado | 2005-05-30 03:52:00 +0200 (lun, 30 mai 2005) | 2 lines
+
+tweak cflags
+
+------------------------------------------------------------------------
+r241 | titer | 2005-05-29 22:27:09 +0200 (dim, 29 mai 2005) | 2 lines
+
+ Fixed multithreading on BeOS (pthread emulation required)
+
+------------------------------------------------------------------------
+r240 | pengvado | 2005-05-29 20:28:49 +0200 (dim, 29 mai 2005) | 2 lines
+
+multithreading (via slices)
+
+------------------------------------------------------------------------
+r239 | pengvado | 2005-05-24 07:10:38 +0200 (mar, 24 mai 2005) | 2 lines
+
+move zones parsing to ratecontrol.c; allows passing in zones as a string.
+
+------------------------------------------------------------------------
+r238 | pengvado | 2005-05-24 06:16:54 +0200 (mar, 24 mai 2005) | 2 lines
+
+UMHex motion seach (but no early termination yet)
+
+------------------------------------------------------------------------
+r237 | pengvado | 2005-05-24 03:34:57 +0200 (mar, 24 mai 2005) | 2 lines
+
+Zoned ratecontrol.
+
+------------------------------------------------------------------------
+r236 | pengvado | 2005-05-23 10:57:02 +0200 (lun, 23 mai 2005) | 2 lines
+
+fix rounding of intra dequant when qp<=3
+
+------------------------------------------------------------------------
+r235 | pengvado | 2005-05-21 22:49:06 +0200 (sam, 21 mai 2005) | 2 lines
+
+API: x264_encoder_reconfig(). (not yet used by any frontend)
+
+------------------------------------------------------------------------
+r234 | titer | 2005-05-19 17:42:48 +0200 (jeu, 19 mai 2005) | 3 lines
+
+ Makefile: in target "install", first create the directories if they
+ don't already exist
+
+------------------------------------------------------------------------
+r233 | titer | 2005-05-15 22:19:22 +0200 (dim, 15 mai 2005) | 2 lines
+
+ Optimized subXxX_dct
+
+------------------------------------------------------------------------
+r232 | titer | 2005-05-14 17:49:36 +0200 (sam, 14 mai 2005) | 2 lines
+
+ s/==/=/
+
+------------------------------------------------------------------------
+r231 | titer | 2005-05-14 09:08:08 +0200 (sam, 14 mai 2005) | 3 lines
+
+ ppc/: compile fixes for Linux/PPC (courtesy of Rasmus Rohde) and
+       for gcc < 4
+
+------------------------------------------------------------------------
+r230 | pengvado | 2005-05-13 18:54:03 +0200 (ven, 13 mai 2005) | 4 lines
+
+visualize reference pic numbers. misc cleanups in visualization.
+patch by Tuukka Toivonen.
+
+
+------------------------------------------------------------------------
+r229 | titer | 2005-05-13 17:30:18 +0200 (ven, 13 mai 2005) | 2 lines
+
+ ppc/*: more tuning on satd (+5%)
+
+------------------------------------------------------------------------
+r228 | pengvado | 2005-05-13 10:03:42 +0200 (ven, 13 mai 2005) | 2 lines
+
+CLI option: --seek
+
+------------------------------------------------------------------------
+r227 | pengvado | 2005-05-13 01:03:49 +0200 (ven, 13 mai 2005) | 4 lines
+
+CLI option: --visualize
+Displays the encoded video along with MB types and motion vectors.
+patch by Tuukka Toivonen.
+
+------------------------------------------------------------------------
+r226 | pengvado | 2005-05-12 21:48:10 +0200 (jeu, 12 mai 2005) | 2 lines
+
+fix an uninitialized value in slicetype_analyse
+
+------------------------------------------------------------------------
+r225 | pengvado | 2005-05-11 19:58:00 +0200 (mer, 11 mai 2005) | 3 lines
+
+port recent MC asm changes to amd64.
+patch by Josef Zlomek.
+
+------------------------------------------------------------------------
+r224 | titer | 2005-05-11 18:22:18 +0200 (mer, 11 mai 2005) | 7 lines
+
+ ppc/*:
+  + Removed unused code
+  + Optimized mc chroma 4xH and satd 8x4 and 4x8
+  + Won a bunch of cycles by not trusting gcc about inlining and
+    unrolling properly
+ (about 17% faster globally)
+
+------------------------------------------------------------------------
+r223 | pengvado | 2005-05-11 17:57:43 +0200 (mer, 11 mai 2005) | 5 lines
+
+New ratecontrol options:
+1pass ABR. VBV constraint for ABR and 2pass.
+There is no longer a dedicated CBR mode: use ABR+VBV.
+VfW now uses ABR instead of CQP for 1st of multipass.
+
+------------------------------------------------------------------------
+r222 | pengvado | 2005-05-11 02:15:34 +0200 (mer, 11 mai 2005) | 2 lines
+
+use a predicted mv as starting point for subpel refinement.
+
+------------------------------------------------------------------------
+r221 | pengvado | 2005-05-10 10:21:36 +0200 (mar, 10 mai 2005) | 3 lines
+
+slight speedup in halfpel interpolation.
+patch by Mathieu Monnier.
+
+------------------------------------------------------------------------
+r220 | pengvado | 2005-05-06 21:38:40 +0200 (ven, 06 mai 2005) | 3 lines
+
+Cleaner allocation of tmp space in halfpel interpolation; fixes some valgrind/nasm warnings.
+patch by Mathieu Monnier.
+
+------------------------------------------------------------------------
+r219 | pengvado | 2005-05-03 10:25:31 +0200 (mar, 03 mai 2005) | 2 lines
+
+"2pass failed to converge" is no longer considered fatal.
+
+------------------------------------------------------------------------
+r218 | pengvado | 2005-04-30 03:20:50 +0200 (sam, 30 avr 2005) | 3 lines
+
+Updated MSVC project files.
+thanks to Bonzi.
+
+------------------------------------------------------------------------
+r217 | pengvado | 2005-04-25 20:39:32 +0200 (lun, 25 avr 2005) | 4 lines
+
+cosmetics.
+silence some gcc warnings.
+amd64 doesn't need a separate copy of the c/h files, only the asm.
+
+------------------------------------------------------------------------
+r216 | pengvado | 2005-04-22 06:05:35 +0200 (ven, 22 avr 2005) | 2 lines
+
+10l (214 wrote wrong DPB size in SPS -> B-pyramid broke)
+
+------------------------------------------------------------------------
+r215 | pengvado | 2005-04-21 11:20:43 +0200 (jeu, 21 avr 2005) | 4 lines
+
+CLI (mp4): return to 'capture' output mode, remove useless SetCtsPackMode() (fixed in gpac).
+Note: requires gpac cvs-20050419 or later.
+patch by bobo.
+
+------------------------------------------------------------------------
+r214 | pengvado | 2005-04-20 01:09:29 +0200 (mer, 20 avr 2005) | 2 lines
+
+combined L0 & L1 reference lists are limited to a total of 16 pics.
+
+------------------------------------------------------------------------
+r213 | pengvado | 2005-04-19 20:44:42 +0200 (mar, 19 avr 2005) | 3 lines
+
+amd64 asm patch, part2.
+by Josef Zlomek ( josef dot zlomek at xeris dot cz )
+
+------------------------------------------------------------------------
+r212 | pengvado | 2005-04-19 20:35:45 +0200 (mar, 19 avr 2005) | 2 lines
+
+amd64 asm patch, part1.
+
+------------------------------------------------------------------------
+r211 | pengvado | 2005-04-19 10:45:36 +0200 (mar, 19 avr 2005) | 3 lines
+
+Allow manual selection of fullpel ME method. New method: Exhaustive search.
+based on a patch by Tuukka Toivonen.
+
+------------------------------------------------------------------------
+r210 | pengvado | 2005-04-19 03:42:12 +0200 (mar, 19 avr 2005) | 6 lines
+
+misc makefile changes.
+propogate --extra-cflags to vfw.
+'make clean' removes x264.exe and vfw.
+tweak dependencies.
+
+
+------------------------------------------------------------------------
+r209 | pengvado | 2005-04-18 04:00:58 +0200 (lun, 18 avr 2005) | 2 lines
+
+10l (CLI: fflush after progress update)
+
+------------------------------------------------------------------------
+r208 | pengvado | 2005-04-17 20:43:17 +0200 (dim, 17 avr 2005) | 2 lines
+
+CLI: progress indicator
+
+------------------------------------------------------------------------
+r207 | pengvado | 2005-04-16 22:21:06 +0200 (sam, 16 avr 2005) | 2 lines
+
+VfW: build from main makefile
+
+------------------------------------------------------------------------
+r206 | titer | 2005-04-15 19:26:09 +0200 (ven, 15 avr 2005) | 5 lines
+
+ [mp4] ftyp & moov boxes at the begining of the file, (thanks to jeanlf
+ for comments)
+
+ patch by bobololo
+
+------------------------------------------------------------------------
+r205 | pengvado | 2005-04-15 01:04:48 +0200 (ven, 15 avr 2005) | 2 lines
+
+CLI: --fps had side-effects. fixed.
+
+------------------------------------------------------------------------
+r204 | pengvado | 2005-04-14 23:59:00 +0200 (jeu, 14 avr 2005) | 2 lines
+
+CLI: cosmetics
+
+------------------------------------------------------------------------
+r203 | pengvado | 2005-04-14 21:45:08 +0200 (jeu, 14 avr 2005) | 3 lines
+
+Makefile: strip x264cli.
+tweak stats summary.
+
+------------------------------------------------------------------------
+r202 | fenrir | 2005-04-13 16:25:32 +0200 (mer, 13 avr 2005) | 3 lines
+
+ * x264.c: Fix ctts box creation. Patch by bobololo from Ateme.
+
+
+------------------------------------------------------------------------
+r201 | titer | 2005-04-13 05:43:07 +0200 (mer, 13 avr 2005) | 2 lines
+
+ common/ppc: more cleaning, optimized a bit
+
+------------------------------------------------------------------------
+r200 | pengvado | 2005-04-12 22:38:40 +0200 (mar, 12 avr 2005) | 2 lines
+
+CLI: require output file (don't default to stdout). warn if trying to use mp4 or avis when not supported. misc cleanup.
+
+------------------------------------------------------------------------
+r199 | titer | 2005-04-12 20:45:24 +0200 (mar, 12 avr 2005) | 4 lines
+
+ configure:   use -falign-loops=16 on OS X
+ common/ppc/: added AltiVecized mc_chroma + cleaning
+ checkasm.c:  really fixed MC tests
+
+------------------------------------------------------------------------
+r198 | pengvado | 2005-04-12 19:33:10 +0200 (mar, 12 avr 2005) | 2 lines
+
+Configure tweaks. Allow avis-input in mingw. Turn off debug by default.
+
+------------------------------------------------------------------------
+r197 | titer | 2005-04-12 18:34:48 +0200 (mar, 12 avr 2005) | 2 lines
+
+ checkasm.c: fixed MC tests
+
+------------------------------------------------------------------------
+r196 | pengvado | 2005-04-12 05:34:25 +0200 (mar, 12 avr 2005) | 3 lines
+
+CLI: MP4 muxing.
+patch by bobo from Ateme.
+
+------------------------------------------------------------------------
+r195 | titer | 2005-04-11 23:21:05 +0200 (lun, 11 avr 2005) | 2 lines
+
+ Cygwin fixes
+
+------------------------------------------------------------------------
+r194 | titer | 2005-04-11 22:52:31 +0200 (lun, 11 avr 2005) | 4 lines
+
+ configure: ooops, restored -g
+ ratecontrol.c: OS X has exp2f in -lmx
+ checkasm: quick compile fix
+
+------------------------------------------------------------------------
+r193 | mru | 2005-04-11 22:00:49 +0200 (lun, 11 avr 2005) | 2 lines
+
+add x86_64 to configure
+
+------------------------------------------------------------------------
+r192 | titer | 2005-04-11 21:41:28 +0200 (lun, 11 avr 2005) | 2 lines
+
+ set svn:ignore
+
+------------------------------------------------------------------------
+r191 | titer | 2005-04-11 21:28:03 +0200 (lun, 11 avr 2005) | 5 lines
+
+  Added a configure to detect the platform/system/etc so people don't
+ have to edit the Makefile (will work for Linux/OS X/BeOS/FreeBSD, feel
+ free to modify for others), and we can now remove the Jamfile which
+ was broken most of the time anyway.
+
+------------------------------------------------------------------------
+r190 | pengvado | 2005-04-11 01:35:01 +0200 (lun, 11 avr 2005) | 2 lines
+
+Makefiles: better dependencies for SEI version number
+
+------------------------------------------------------------------------
+r189 | mru | 2005-04-08 01:26:51 +0200 (ven, 08 avr 2005) | 2 lines
+
+Forgot rbsp_trailing_bits in AUD NAL
+
+------------------------------------------------------------------------
+r188 | mru | 2005-04-08 01:11:06 +0200 (ven, 08 avr 2005) | 2 lines
+
+Optionally use access unit delimiter NAL units.
+
+------------------------------------------------------------------------
+r187 | pengvado | 2005-04-05 23:32:52 +0200 (mar, 05 avr 2005) | 3 lines
+
+VfW: cleaner install on win98.
+patch by Riccardo Stievano.
+
+------------------------------------------------------------------------
+r186 | pengvado | 2005-04-05 22:50:13 +0200 (mar, 05 avr 2005) | 2 lines
+
+new util: countquant for 2pass statsfiles
+
+------------------------------------------------------------------------
+r185 | pengvado | 2005-04-05 22:39:47 +0200 (mar, 05 avr 2005) | 2 lines
+
+print svn version number in SEI info and in CLI/VfW.
+
+------------------------------------------------------------------------
+r184 | mru | 2005-03-31 23:20:41 +0200 (jeu, 31 mar 2005) | 2 lines
+
+Make reconstructed frame available to caller.
+
+------------------------------------------------------------------------
+r183 | pengvado | 2005-03-31 08:03:22 +0200 (jeu, 31 mar 2005) | 2 lines
+
+make install
+
+------------------------------------------------------------------------
+r182 | pengvado | 2005-03-31 07:59:11 +0200 (jeu, 31 mar 2005) | 2 lines
+
+free() -> x264_free()
+
+------------------------------------------------------------------------
+r181 | pengvado | 2005-03-28 07:08:43 +0200 (lun, 28 mar 2005) | 2 lines
+
+CLI: flush B-frames at the end of the encode
+
+------------------------------------------------------------------------
+r180 | pengvado | 2005-03-27 22:49:59 +0200 (dim, 27 mar 2005) | 3 lines
+
+convert mc's inline asm to nasm (slight speedup and msvc compatibility).
+patch by Mathieu Monnier.
+
+------------------------------------------------------------------------
+r179 | pengvado | 2005-03-27 08:58:35 +0200 (dim, 27 mar 2005) | 3 lines
+
+buffer overruns in slicetype_decision.
+patch by Mathieu Monnier.
+
+------------------------------------------------------------------------
+r178 | pengvado | 2005-03-17 18:35:11 +0100 (jeu, 17 mar 2005) | 2 lines
+
+tweak usage message
+
+------------------------------------------------------------------------
+r177 | pengvado | 2005-03-16 23:02:02 +0100 (mer, 16 mar 2005) | 3 lines
+
+Simplify inter analysis option names. (psub16x16 -> p8x8)
+patch by Robert Swain.
+
+------------------------------------------------------------------------
+r176 | pengvado | 2005-03-16 22:52:59 +0100 (mer, 16 mar 2005) | 2 lines
+
+173 broke .depend when debugging was enabled
+
+------------------------------------------------------------------------
+r175 | pengvado | 2005-03-16 21:50:19 +0100 (mer, 16 mar 2005) | 2 lines
+
+early termination for intra4x4 analysis
+
+------------------------------------------------------------------------
+r174 | mru | 2005-03-15 13:09:00 +0100 (mar, 15 mar 2005) | 2 lines
+
+Check/fix range of x264_param_t.rc.i_qp_constant.
+
+------------------------------------------------------------------------
+r173 | titer | 2005-03-15 08:21:18 +0100 (mar, 15 mar 2005) | 4 lines
+
+ Cleaned up and fixed Makefile for OS X and BeOS (hopefully FreeBSD too)
+ It defaults for x86/linux, others: uncomment the lines for your
+ platform & OS at the beginning of the Makefile
+
+------------------------------------------------------------------------
+r172 | pengvado | 2005-03-15 03:30:16 +0100 (mar, 15 mar 2005) | 3 lines
+
+macroblock_analyse: simplify cost comparisons. (cosmetic)
+CLI: enable cabac by default.
+
+------------------------------------------------------------------------
+r171 | pengvado | 2005-03-14 23:47:19 +0100 (lun, 14 mar 2005) | 2 lines
+
+Chroma ME (P-frames only).
+
+------------------------------------------------------------------------
+r170 | pengvado | 2005-03-14 14:05:57 +0100 (lun, 14 mar 2005) | 3 lines
+
+SSE optimized chroma MC.
+patch by Radek Czyz.
+
+------------------------------------------------------------------------
+r169 | pengvado | 2005-03-14 00:36:42 +0100 (lun, 14 mar 2005) | 2 lines
+
+167 broke psnr calculation for non-mod-32 inputs
+
+------------------------------------------------------------------------
+r168 | titer | 2005-03-13 19:49:51 +0100 (dim, 13 mar 2005) | 2 lines
+
+ sqrtf requires -lmx on Mac OS X
+
+------------------------------------------------------------------------
+r167 | pengvado | 2005-03-13 11:25:11 +0100 (dim, 13 mar 2005) | 2 lines
+
+use mmx ssd for psnr calculation.
+
+------------------------------------------------------------------------
+r166 | pengvado | 2005-03-13 09:26:52 +0100 (dim, 13 mar 2005) | 2 lines
+
+revert 164. blame Spyder.
+
+------------------------------------------------------------------------
+r165 | pengvado | 2005-03-13 08:04:16 +0100 (dim, 13 mar 2005) | 3 lines
+
+SSD comparison function (not yet used).
+Cosmetics in mmx SAD.
+
+------------------------------------------------------------------------
+r164 | pengvado | 2005-03-12 01:23:50 +0100 (sam, 12 mar 2005) | 2 lines
+
+VfW: reject YUY2 and RGB input formats
+
+------------------------------------------------------------------------
+r163 | mru | 2005-03-11 19:10:35 +0100 (ven, 11 mar 2005) | 2 lines
+
+Really fix QP override.
+
+------------------------------------------------------------------------
+r162 | pengvado | 2005-03-11 03:15:25 +0100 (ven, 11 mar 2005) | 2 lines
+
+write VUI bitstream restrictions
+
+------------------------------------------------------------------------
+r161 | pengvado | 2005-03-11 00:03:55 +0100 (ven, 11 mar 2005) | 3 lines
+
+AVI & Avisynth input (win32 only).
+patch by bobo from Ateme.
+
+------------------------------------------------------------------------
+r160 | pengvado | 2005-03-10 22:42:24 +0100 (jeu, 10 mar 2005) | 2 lines
+
+expose option "chroma qp offset"
+
+------------------------------------------------------------------------
+r159 | mru | 2005-03-10 20:42:05 +0100 (jeu, 10 mar 2005) | 2 lines
+
+Fix per-frame QP override broken in rev 137.
+
+------------------------------------------------------------------------
+r158 | mru | 2005-03-08 02:08:40 +0100 (mar, 08 mar 2005) | 2 lines
+
+Don't include x264.o in the library.
+
+------------------------------------------------------------------------
+r157 | pengvado | 2005-03-06 22:07:10 +0100 (dim, 06 mar 2005) | 3 lines
+
+VfW: expose B pyramid and weighted B prediction.
+patch by Riccardo Stievano.
+
+------------------------------------------------------------------------
+r156 | pengvado | 2005-03-06 12:39:08 +0100 (dim, 06 mar 2005) | 2 lines
+
+10l
+
+------------------------------------------------------------------------
+r155 | pengvado | 2005-03-06 10:50:17 +0100 (dim, 06 mar 2005) | 2 lines
+
+buffer overrun when bframes == X264_BFRAME_MAX
+
+------------------------------------------------------------------------
+r154 | pengvado | 2005-03-06 06:12:25 +0100 (dim, 06 mar 2005) | 2 lines
+
+Adaptive B skipped some POC numbers (slightly reducing b_direct efficiency).
+
+------------------------------------------------------------------------
+r153 | pengvado | 2005-03-05 10:34:53 +0100 (sam, 05 mar 2005) | 4 lines
+
+avc2avi:
+Use POC to determine frame boundaries (frame_num couldn't distinguish consecutive B-frames).
+Fix keyframe flag to mark IDR only, not all I slices.
+
+------------------------------------------------------------------------
+r152 | pengvado | 2005-03-05 05:16:05 +0100 (sam, 05 mar 2005) | 2 lines
+
+allow 16 refs (instead of 15)
+
+------------------------------------------------------------------------
+r151 | pengvado | 2005-03-05 01:37:25 +0100 (sam, 05 mar 2005) | 2 lines
+
+report version number in decimal instead of hex
+
+------------------------------------------------------------------------
+r150 | pengvado | 2005-03-04 13:52:35 +0100 (ven, 04 mar 2005) | 2 lines
+
+New option: "B-frame pyramid" keeps the middle of 2+ consecutive B-frames as a reference, and reorders frame appropriately.
+
+------------------------------------------------------------------------
+r149 | pengvado | 2005-03-03 05:36:46 +0100 (jeu, 03 mar 2005) | 2 lines
+
+smarter parsing of resolution from commandline
+
+------------------------------------------------------------------------
+r148 | titer | 2005-03-03 04:02:27 +0100 (jeu, 03 mar 2005) | 2 lines
+
+ ratecontrol.c: fixed exp2f on BeOS so rate control works properly
+
+------------------------------------------------------------------------
+r147 | pengvado | 2005-03-02 23:44:31 +0100 (mer, 02 mar 2005) | 2 lines
+
+Fix a buffer overrun with very long MVs.
+
+------------------------------------------------------------------------
+r146 | pengvado | 2005-02-28 20:01:58 +0100 (lun, 28 fév 2005) | 2 lines
+
+wrong stride in lowres image
+
+------------------------------------------------------------------------
+r145 | pengvado | 2005-02-28 19:50:55 +0100 (lun, 28 fév 2005) | 2 lines
+
+10l (fast1stpass was slower than non-fast)
+
+------------------------------------------------------------------------
+r144 | pengvado | 2005-02-25 04:10:04 +0100 (ven, 25 fév 2005) | 2 lines
+
+Disable deblocking filter in frames of sufficiently low QP that it would have no effect. (Saves a little CPU time in the decoder.)
+
+------------------------------------------------------------------------
+r143 | pengvado | 2005-02-25 01:46:56 +0100 (ven, 25 fév 2005) | 2 lines
+
+Simplify x264_frame_expand_border.
+
+------------------------------------------------------------------------
+r142 | pengvado | 2005-02-24 14:09:55 +0100 (jeu, 24 fév 2005) | 3 lines
+
+Altivec functions for MC using the cached halfpel planes.
+Patch by Fredrik Pettersson <fredrik_pettersson at yahoo dot se>.
+
+------------------------------------------------------------------------
+r141 | pengvado | 2005-02-24 14:01:21 +0100 (jeu, 24 fév 2005) | 2 lines
+
+Don't use uninitialize MVs in x264_mb_predict_mv_ref16x16.
+
+------------------------------------------------------------------------
+r140 | pengvado | 2005-02-24 14:00:34 +0100 (jeu, 24 fév 2005) | 3 lines
+
+Implicit weights in B16x16 analysis were swapped.
+patch by Radek Czyz.
+
+------------------------------------------------------------------------
+r139 | pengvado | 2005-02-24 09:31:12 +0100 (jeu, 24 fév 2005) | 2 lines
+
+Cosmetics: Some renaming. Move the rest of slice type decision from encoder.c to slicetype_decision.c
+
+------------------------------------------------------------------------
+r138 | pengvado | 2005-02-24 09:17:31 +0100 (jeu, 24 fév 2005) | 2 lines
+
+Take into account keyint_max in B-frame decision.
+
+------------------------------------------------------------------------
+r137 | pengvado | 2005-02-23 20:58:02 +0100 (mer, 23 fév 2005) | 3 lines
+
+Preliminary adaptive B-frame decision (not yet tuned).
+Fix flushing of delayed frames when the encode finishes.
+
+------------------------------------------------------------------------
+r136 | pengvado | 2005-02-22 23:08:07 +0100 (mar, 22 fév 2005) | 2 lines
+
+Write x264's version in a SEI message.
+
+------------------------------------------------------------------------
+r135 | pengvado | 2005-02-22 11:46:28 +0100 (mar, 22 fév 2005) | 3 lines
+
+VfW: Enable weighted B prediction when max B-frames > 1. Enforce max reference frames <= 15.
+patch by Riccardo Stievano.
+
+------------------------------------------------------------------------
+r134 | pengvado | 2005-02-22 06:19:02 +0100 (mar, 22 fév 2005) | 4 lines
+
+Add: implicit weighted prediction for B-frames.
+Slightly optimize x264_mb_mc_01xywh.
+Fix an error in B16x8 cost.
+
+------------------------------------------------------------------------
+r133 | pengvado | 2005-02-20 02:52:12 +0100 (dim, 20 fév 2005) | 2 lines
+
+Oops, increment API number.
+
+------------------------------------------------------------------------
+r132 | pengvado | 2005-02-20 02:26:03 +0100 (dim, 20 fév 2005) | 3 lines
+
+Configurable level. Levels are still not enforced; it's up to the user to select a level compatible with the rest of the encoding options.
+Patch by Jeff Clagg <snacky at ikaruga dot co dot uk>.
+
+------------------------------------------------------------------------
+r131 | pengvado | 2005-02-19 07:18:22 +0100 (sam, 19 fév 2005) | 2 lines
+
+Always use the tempfile and rename method for multipass stats, so that VfW knows whether the previous pass completed.
+
+------------------------------------------------------------------------
+r130 | pengvado | 2005-02-18 08:47:35 +0100 (ven, 18 fév 2005) | 3 lines
+
+More tweaks to bitrate prediction.
+Change error messages when 2pass fails to converge.
+
+------------------------------------------------------------------------
+r129 | pengvado | 2005-02-17 20:31:15 +0100 (jeu, 17 fév 2005) | 3 lines
+
+Improved 2pass bitrate predictor. No real change most of the time, but allows correct ratecontrol on some pathological videos that used to diverge completely. Also improves prediction when 2nd pass bitrate is very different from 1st pass.
+The new qscale2bits() has no simple inverse, so I also had to change rc_eq to output qscale instead of bits.
+
+------------------------------------------------------------------------
+r128 | pengvado | 2005-02-16 05:59:21 +0100 (mer, 16 fév 2005) | 3 lines
+
+Some defines needed by MSVC, and convert the DSP files to DOS-style newlines.
+Patch by Radek Czyz.
+
+------------------------------------------------------------------------
+r127 | pengvado | 2005-02-15 00:32:38 +0100 (mar, 15 fév 2005) | 2 lines
+
+Precalculate lambda*bits for all allowed mvs. 1-2% speedup.
+
+------------------------------------------------------------------------
+r126 | pengvado | 2005-02-14 12:08:00 +0100 (lun, 14 fév 2005) | 2 lines
+
+Deblock B-frames. (Not yet used, since B-frames aren't kept as references.)
+
+------------------------------------------------------------------------
+r125 | pengvado | 2005-02-14 06:58:50 +0100 (lun, 14 fév 2005) | 2 lines
+
+Simplify x264_mb_mc_01xywh()
+
+------------------------------------------------------------------------
+r124 | pengvado | 2005-02-14 05:10:15 +0100 (lun, 14 fév 2005) | 3 lines
+
+Save some memcopies in halfpel ME.
+Patch by Radek Czyz.
+
+------------------------------------------------------------------------
+r123 | pengvado | 2005-02-13 10:49:42 +0100 (dim, 13 fév 2005) | 4 lines
+
+Cache half-pixel interpolated reference frames, to avoid duplicate motion compensation.
+30-50% speedup at subq=5.
+Patch by Radek Czyz.
+
+------------------------------------------------------------------------
+r122 | pengvado | 2005-02-12 13:26:52 +0100 (sam, 12 fév 2005) | 2 lines
+
+In N-pass mode if stat_in and stat_out are the same file, instead save to a temp file and overwrite stat_in only when the encode finishes.
+
+------------------------------------------------------------------------
+r121 | pengvado | 2005-02-11 20:04:44 +0100 (ven, 11 fév 2005) | 2 lines
+
+VfW: x264_log now creates a window for error messages
+
+------------------------------------------------------------------------
+r120 | pengvado | 2005-02-10 23:11:39 +0100 (jeu, 10 fév 2005) | 2 lines
+
+cosmetics
+
+------------------------------------------------------------------------
+r119 | pengvado | 2005-02-10 22:54:40 +0100 (jeu, 10 fév 2005) | 3 lines
+
+bs_align_1() didn't actually write all ones. (so encoded streams with cabac were technically invalid, though no decoder cares.)
+Patch by Tuukka Toivonen.
+
+------------------------------------------------------------------------
+r118 | pengvado | 2005-02-09 00:30:33 +0100 (mer, 09 fév 2005) | 2 lines
+
+VfW: tweak option names
+
+------------------------------------------------------------------------
+r117 | pengvado | 2005-02-06 07:47:42 +0100 (dim, 06 fév 2005) | 2 lines
+
+VfW: use separate stats files for each pass of an N-pass encode.
+
+------------------------------------------------------------------------
+r116 | pengvado | 2005-02-05 23:55:48 +0100 (sam, 05 fév 2005) | 3 lines
+
+VfW: Enable multipass by default, increase the configurable range of I and B quant ratios.
+core: Tweak error messages.
+
+------------------------------------------------------------------------
+r115 | pengvado | 2005-02-04 02:20:55 +0100 (ven, 04 fév 2005) | 2 lines
+
+r114 didn't completely fix the problem, trying again.
+
+------------------------------------------------------------------------
+r114 | pengvado | 2005-02-03 12:03:17 +0100 (jeu, 03 fév 2005) | 2 lines
+
+Another MV clipping fix.
+
+------------------------------------------------------------------------
+r113 | pengvado | 2005-02-01 11:13:51 +0100 (mar, 01 fév 2005) | 2 lines
+
+Simplify x264_cabac_mb_type.
+
+------------------------------------------------------------------------
+r112 | pengvado | 2005-01-31 13:20:23 +0100 (lun, 31 jan 2005) | 2 lines
+
+More accurate clipping rectangle for motion search. (slight compression improvement for high-motion scenes)
+
+------------------------------------------------------------------------
+r111 | titer | 2005-01-28 16:17:51 +0100 (ven, 28 jan 2005) | 2 lines
+
+ encoder/encoder.c: gcc < 3 compile fix
+
+------------------------------------------------------------------------
+r110 | pengvado | 2005-01-28 14:47:14 +0100 (ven, 28 jan 2005) | 2 lines
+
+Change default level from 2.1 to 4.0 until I get around to calculating actual levels.
+
+------------------------------------------------------------------------
+r109 | pengvado | 2005-01-28 03:51:21 +0100 (ven, 28 jan 2005) | 2 lines
+
+Clipping mvs to within picture + emulated border when running motion compensation.
+
+------------------------------------------------------------------------
+r108 | pengvado | 2005-01-27 12:33:14 +0100 (jeu, 27 jan 2005) | 2 lines
+
+Fix clipping of mvs in probe_pskip. (Previously it mixed up fullpel with qpel.) This should eliminate the black blocks that sometimes appeared in high motion, low detail scenes.
+
+------------------------------------------------------------------------
+r107 | pengvado | 2005-01-25 23:25:05 +0100 (mar, 25 jan 2005) | 3 lines
+
+Fix length of strings stored in the registry.
+Patch by Riccardo Stievano.
+
+------------------------------------------------------------------------
+r106 | pengvado | 2005-01-24 23:55:48 +0100 (lun, 24 jan 2005) | 2 lines
+
+registry values for min/max keyint were mixed up
+
+------------------------------------------------------------------------
+r105 | pengvado | 2005-01-23 10:38:42 +0100 (dim, 23 jan 2005) | 4 lines
+
+VfW: expose option "Nth pass" (i.e. simultaneously read and update the multipass stats file).
+Patch by Riccardo Stievano.
+
+
+------------------------------------------------------------------------
+r104 | pengvado | 2005-01-21 09:22:47 +0100 (ven, 21 jan 2005) | 2 lines
+
+add "make NDEBUG=1" to strip library
+
+------------------------------------------------------------------------
+r103 | pengvado | 2005-01-18 22:32:20 +0100 (mar, 18 jan 2005) | 2 lines
+
+finish subpixel motion refinement for B-frames (up to 6% reduced size of B-frames at subq <= 3)
+
+------------------------------------------------------------------------
+r102 | pengvado | 2005-01-18 13:19:39 +0100 (mar, 18 jan 2005) | 4 lines
+
+VfW: expose the 2pass ratecontrol option: qcomp ("bitrate variability").
+Some rearranging of the advanced configuration dialogue.
+Patch by Riccardo Stievano <walkunafraid at tin dot it>.
+
+------------------------------------------------------------------------
+r101 | pengvado | 2005-01-17 05:29:24 +0100 (lun, 17 jan 2005) | 3 lines
+
+VfW: Support ip_factor and pb_factor, some cleanups.
+patch by Riccardo Stievano <walkunafraid at tin dot it>
+
+------------------------------------------------------------------------
+r100 | pengvado | 2005-01-15 12:28:44 +0100 (sam, 15 jan 2005) | 3 lines
+
+Use floats instead of int64 in log messages, since win32 (incl. mingw) doesn't understand %lld.
+Also display MB statistics in percent instead of number.
+
+------------------------------------------------------------------------
+r99 | pengvado | 2005-01-15 11:28:51 +0100 (sam, 15 jan 2005) | 2 lines
+
+finished printf -> x264_log conversion.
+
+------------------------------------------------------------------------
+r98 | pengvado | 2005-01-14 22:38:13 +0100 (ven, 14 jan 2005) | 2 lines
+
+Don't apply keyframe boost to I-frames that are followed by another I.
+
+------------------------------------------------------------------------
+r97 | pengvado | 2005-01-14 02:04:28 +0100 (ven, 14 jan 2005) | 4 lines
+
+New VfW option: "fast 1st pass" automatically disables some partitions and reduces ME quality and number of reference frames.
+Removed option direct_pred=none, since it provides no benefits.
+Patch by Riccardo Stievano <walkunafraid at tin dot it>.
+
+------------------------------------------------------------------------
+r96 | pengvado | 2005-01-13 20:47:51 +0100 (jeu, 13 jan 2005) | 2 lines
+
+vfw: tweak wording and defaults
+
+------------------------------------------------------------------------
+r95 | mru | 2005-01-13 19:18:05 +0100 (jeu, 13 jan 2005) | 6 lines
+
+From Riccardo Stievano <walkunafraid at tin dot it>:
+
+here's a patch that fixes the VfW frontend after the changes made in 
+revision 93 (GOP size management). Default values for i_keyint_max 
+and i_keyint_min have been set to 250 and 10, respectively.
+
+------------------------------------------------------------------------
+r94 | pengvado | 2005-01-13 07:11:22 +0100 (jeu, 13 jan 2005) | 3 lines
+
+My last change of IDR decision broke in 2pass mode. fixed by remembering which frames are IDR.
+Disable benchmarking, as it was very slow for some people, and we already know that all the time is spent in macroblock analysis.
+
+------------------------------------------------------------------------
+r93 | pengvado | 2005-01-12 10:50:38 +0100 (mer, 12 jan 2005) | 4 lines
+
+Changes the mechanics of max keyframe interval:
+Now enforces min and max GOP sizes, and allows variable numbers of
+non-IDR I-frames within a GOP.
+
+------------------------------------------------------------------------
+r92 | pengvado | 2005-01-12 06:23:16 +0100 (mer, 12 jan 2005) | 2 lines
+
+MinGW compatible resource.rc by Radek Czyz
+
+------------------------------------------------------------------------
+r91 | pengvado | 2005-01-12 05:45:10 +0100 (mer, 12 jan 2005) | 3 lines
+
+strict QP offset for B-frame vs following P-frame
+strict QP offset for I-frame vs GOP average
+
+------------------------------------------------------------------------
+r90 | pengvado | 2005-01-11 07:20:37 +0100 (mar, 11 jan 2005) | 2 lines
+
+r72 broke B-frames without intra4x4. fixed.
+
+------------------------------------------------------------------------
+r89 | pengvado | 2005-01-10 10:29:31 +0100 (lun, 10 jan 2005) | 2 lines
+
+updated VfW interface by Radek Czyz
+
+------------------------------------------------------------------------
+r88 | pengvado | 2005-01-08 03:51:24 +0100 (sam, 08 jan 2005) | 3 lines
+
+improved mv prediction: 1-3% better compression of B-frames
+early termination for B-frame ref search: up to 20% faster with lots of refs.
+
+------------------------------------------------------------------------
+r87 | pengvado | 2005-01-07 19:45:11 +0100 (ven, 07 jan 2005) | 2 lines
+
+allow constant qp on Nth pass (e.g. for forcing frame types)
+
+------------------------------------------------------------------------
+r86 | pengvado | 2005-01-07 12:08:55 +0100 (ven, 07 jan 2005) | 3 lines
+
+disable subme=0 (the huge bitrate penalty wasn't worth the speed)
+renumber direct_pred
+
+------------------------------------------------------------------------
+r85 | pengvado | 2005-01-05 10:15:35 +0100 (mer, 05 jan 2005) | 2 lines
+
+oops, last patch had some debug statements
+
+------------------------------------------------------------------------
+r84 | pengvado | 2005-01-05 08:08:40 +0100 (mer, 05 jan 2005) | 4 lines
+
+fix: "x264 -A all" didn't include b8x8 types.
+add: "make NDEBUG=1" to strip library
+update TODO with B-frame status
+
+------------------------------------------------------------------------
+r83 | pengvado | 2005-01-05 07:59:29 +0100 (mer, 05 jan 2005) | 4 lines
+
+Reorganize frame type selection: No longer produces consecutive I-frames when B-frames are enabled. Not thoroughly tested, but works for me.
+Fix scenecut detection when B-frames are present: Can now produce IDR, but is slower since it re-encodes more frames. This might reduce compression ratio in the presence of quick fade-ins.
+2pass ratecontrol deals more gracefully with completely skipped frames.
+
+------------------------------------------------------------------------
+r82 | pengvado | 2005-01-03 04:47:49 +0100 (lun, 03 jan 2005) | 3 lines
+
+remove Makefile.cygwin because build/cygwin/Makefile is more up to date.
+put correct object file names in .depend
+
+------------------------------------------------------------------------
+r81 | pengvado | 2005-01-03 03:32:44 +0100 (lun, 03 jan 2005) | 2 lines
+
+reduce default verbosity, add option -v
+
+------------------------------------------------------------------------
+r80 | pengvado | 2004-12-31 03:33:21 +0100 (ven, 31 déc 2004) | 2 lines
+
+remove relative include paths, to avoid conflicts with libtool
+
+------------------------------------------------------------------------
+r79 | pengvado | 2004-12-31 02:56:26 +0100 (ven, 31 déc 2004) | 2 lines
+
+rename *.asm to avoid conflicts with libtool
+
+------------------------------------------------------------------------
+r78 | pengvado | 2004-12-31 00:58:06 +0100 (ven, 31 déc 2004) | 2 lines
+
+list default settings in --help
+
+------------------------------------------------------------------------
+r77 | pengvado | 2004-12-30 05:01:58 +0100 (jeu, 30 déc 2004) | 3 lines
+
+replace EPZS diamond with a hexagon search pattern.
+early termination for multiple reference frame search (up to 1.5x faster).
+
+------------------------------------------------------------------------
+r76 | pengvado | 2004-12-29 22:18:14 +0100 (mer, 29 déc 2004) | 2 lines
+
+sps->i_num_ref_frames was set higher than necessary
+
+------------------------------------------------------------------------
+r75 | pengvado | 2004-12-29 13:08:50 +0100 (mer, 29 déc 2004) | 2 lines
+
+new option: --fps
+
+------------------------------------------------------------------------
+r74 | pengvado | 2004-12-29 11:53:03 +0100 (mer, 29 déc 2004) | 3 lines
+
+various cleanups in macroblock caching.
+store motion data for each reference frame (but not yet used).
+
+------------------------------------------------------------------------
+r73 | pengvado | 2004-12-28 11:14:19 +0100 (mar, 28 déc 2004) | 2 lines
+
+more accurate cost for psub8x8 modes.
+
+------------------------------------------------------------------------
+r72 | pengvado | 2004-12-23 05:33:36 +0100 (jeu, 23 déc 2004) | 3 lines
+
+implement macroblock types B_16x8, B_8x16
+tweak thresholds for comparing B mb types
+
+------------------------------------------------------------------------
+r71 | pengvado | 2004-12-22 22:09:45 +0100 (mer, 22 déc 2004) | 2 lines
+
+simplify x264_mb_predict_mv_direct16x16_temporal
+
+------------------------------------------------------------------------
+r70 | pengvado | 2004-12-22 21:52:13 +0100 (mer, 22 déc 2004) | 3 lines
+
+option '--frames' limits number of frames to encode.
+patch by Tuukka Toivonen <tuukkat at ee.oulu.fi>
+
+------------------------------------------------------------------------
+r69 | pengvado | 2004-12-22 21:29:19 +0100 (mer, 22 déc 2004) | 2 lines
+
+simplify calvc mb type
+
+------------------------------------------------------------------------
+r68 | pengvado | 2004-12-17 11:57:02 +0100 (ven, 17 déc 2004) | 2 lines
+
+implement macroblock types B_SKIP, B_DIRECT, B_8x8
+
+------------------------------------------------------------------------
+r67 | pengvado | 2004-12-14 03:04:02 +0100 (mar, 14 déc 2004) | 2 lines
+
+rename 'core/' to 'common/', which avoids conflicts with libtool
+
+------------------------------------------------------------------------
+r66 | pengvado | 2004-12-08 06:01:57 +0100 (mer, 08 déc 2004) | 4 lines
+
+cleanup stats reporting
+report B macroblock types
+report average QP
+
+------------------------------------------------------------------------
+r65 | pengvado | 2004-12-08 03:28:58 +0100 (mer, 08 déc 2004) | 2 lines
+
+apply ip_factor and pb_factor in constant quantiser encodes.
+
+------------------------------------------------------------------------
+r64 | pengvado | 2004-12-01 22:23:06 +0100 (mer, 01 déc 2004) | 2 lines
+
+save a little bit of memory
+
+------------------------------------------------------------------------
+r63 | pengvado | 2004-11-22 08:34:17 +0100 (lun, 22 nov 2004) | 3 lines
+
+multiple hypothesis mv prediction:
+1-3% improved compression, and .5-1% faster
+
+------------------------------------------------------------------------
+r62 | fenrir | 2004-11-18 13:30:27 +0100 (jeu, 18 nov 2004) | 2 lines
+
+* analyse: we can do 4x4 Horizontal Up mode when LEFT is avaible.
+  Thanks Stephen Henry for the report.
+------------------------------------------------------------------------
+r61 | pengvado | 2004-11-17 19:40:26 +0100 (mer, 17 nov 2004) | 4 lines
+
+improved 2pass ratecontrol:
+ensures that I-frames have comparable quantizer to the following P-frames,
+and produces more consistent quality in areas of fluctuating complexity.
+
+------------------------------------------------------------------------
+r60 | pengvado | 2004-11-12 08:14:24 +0100 (ven, 12 nov 2004) | 2 lines
+
+more informative error message when 2pass fails to converge
+
+------------------------------------------------------------------------
+r59 | mru | 2004-11-11 13:37:24 +0100 (jeu, 11 nov 2004) | 2 lines
+
+#include <stdarg.h>
+
+------------------------------------------------------------------------
+r58 | pengvado | 2004-11-04 10:19:34 +0100 (jeu, 04 nov 2004) | 2 lines
+
+cleanup spacing of frame stats with verbose logging.
+
+------------------------------------------------------------------------
+r57 | pengvado | 2004-10-28 22:10:53 +0200 (jeu, 28 oct 2004) | 3 lines
+
+typo in x264_cabac_mb_sub_b_partition
+(see ITU-T H.264 clause 9.3.3.1.2)
+
+------------------------------------------------------------------------
+r56 | titer | 2004-10-27 21:14:24 +0200 (mer, 27 oct 2004) | 2 lines
+
+ Typo
+
+------------------------------------------------------------------------
+r55 | titer | 2004-10-27 21:06:47 +0200 (mer, 27 oct 2004) | 5 lines
+
+ + No need to emulate memalign on OS X
+ + Fixed Makefile for OS X
+
+ (Original patch by Peter Handel)
+
+------------------------------------------------------------------------
+r54 | mru | 2004-10-27 17:43:15 +0200 (mer, 27 oct 2004) | 5 lines
+
+Conditionally inits 1pass rc, only if it's enabled.
+This prevents a couple of irrelevant warnings from appearing in
+constant QP mode. (Loren Merritt <lorenm at u dot washington dot edu>)
+
+
+------------------------------------------------------------------------
+r53 | mru | 2004-10-25 11:40:23 +0200 (lun, 25 oct 2004) | 3 lines
+
+Oops, changing those types messed up some vprintf's. fixed.
+(Loren Merrit <lorenm at u dot washington dot edu>)
+
+------------------------------------------------------------------------
+r52 | mru | 2004-10-19 23:35:18 +0200 (mar, 19 oct 2004) | 5 lines
+
+filesize (bits) in a 32 bit int will overflow after 250MB, screwing up
+2pass ratecontrol.
+(patch by Loren Merritt <lorenm at u dot washington dot edu>)
+
+
+------------------------------------------------------------------------
+r51 | mru | 2004-10-11 12:13:05 +0200 (lun, 11 oct 2004) | 2 lines
+
+fix compilation on FreeBSD (from Loren Merritt (thanks to Igla))
+
+------------------------------------------------------------------------
+r50 | fenrir | 2004-09-29 18:05:24 +0200 (mer, 29 sep 2004) | 9 lines
+
+ * ratecontrol: Patch by Loren Merritt :
+
+" This patch
+* calculates average QP as a float, providing slightly improved
+ratecontrol if the first pass was CBR.
+* fixes the reported QP if you set both b_stat_read and b_stat_write,
+allowing 3 pass encoding (or just examination of the 2nd pass's stats)."
+
+
+------------------------------------------------------------------------
+r49 | fenrir | 2004-09-29 18:02:18 +0200 (mer, 29 sep 2004) | 12 lines
+
+ * all: Patch by Loren Merritt.
+
+" This patch makes scene-cut detection based on the relative cost of I-frame
+vs P-frame, rather than just on the number of I-blocks used.
+It also makes the scene-cut threshold configurable.
+
+This doesn't have a very large effect: Most scene cuts are obvious to
+either algorithm. But I think this way is better in some less clear cut
+cases, and sometimes finds a better spot for an I-frame than just waiting
+for the max I-frame interval."
+
+
+------------------------------------------------------------------------
+r48 | fenrir | 2004-09-22 09:37:43 +0200 (mer, 22 sep 2004) | 2 lines
+
+ * ratecontrol: added 'b' flag to fopen.
+
+------------------------------------------------------------------------
+r47 | fenrir | 2004-09-22 09:07:48 +0200 (mer, 22 sep 2004) | 31 lines
+
+ * all: Patches by Loren Merritt:
+"Improved patch. Now supports subpel ME on all candidate MB types,
+not just on the winner.
+
+subpel_refine: (completely different scale from before)
+0 => halfpel only
+1 => 1 iteration of qpel on the winner (same as x264 r46)
+2 => 2 iterations of qpel (about the same as my earlier patch, but faster
+3 => halfpel on all MB types, qpel on the winner
+4 => qpel on all
+5 => more iterations
+
+benchmarks:
+mencoder dvd://1 -ovc x264 -x264encopts
+qp_constant=19:fullinter:cabac:iframe=200:psnr
+
+subpel_refine=1:  PSNR Global:46.82 kb/s:1048.1 fps:17.335
+subpel_refine=2:  PSNR Global:46.83 kb/s:1034.4 fps:16.970
+subpel_refine=3:  PSNR Global:46.84 kb/s:1023.3 fps:14.770
+subpel_refine=4:  PSNR Global:46.87 kb/s:1010.8 fps:11.598
+subpel_refine=5:  PSNR Global:46.88 kb/s:1006.9 fps:10.824"
+
+ And
+
+"The current code for calculating the cost of encoding which reference
+frame a MB is predicted from, introduces a bias towards ref0 and
+against P16x16.
+Removing this bias produces an improvement of .4% - 2% bitrate,
+depending on content and number of reference frames."
+
+
+------------------------------------------------------------------------
+r46 | fenrir | 2004-08-29 14:02:50 +0200 (dim, 29 aoû 2004) | 2 lines
+
+ * x264: added --ipratio --pbratio in help section.
+
+------------------------------------------------------------------------
+r45 | fenrir | 2004-08-29 13:32:34 +0200 (dim, 29 aoû 2004) | 6 lines
+
+ * ratecontrol: path by Loren Merritt.
+
+ "Use average qp instead of last qp in the frame for 2pass rc.
+ (Improves quality and rate accuracy if the first pass was cbr.)"
+ 
+
+------------------------------------------------------------------------
+r44 | fenrir | 2004-08-29 00:30:44 +0200 (dim, 29 aoû 2004) | 2 lines
+
+ * x264: added --quiet and --no-psnr.
+
+------------------------------------------------------------------------
+r43 | fenrir | 2004-08-29 00:19:47 +0200 (dim, 29 aoû 2004) | 2 lines
+
+ * eval.c: lalala ;)
+
+------------------------------------------------------------------------
+r42 | fenrir | 2004-08-29 00:19:15 +0200 (dim, 29 aoû 2004) | 2 lines
+
+ * added Loren Merritt.
+
+------------------------------------------------------------------------
+r41 | fenrir | 2004-08-29 00:16:48 +0200 (dim, 29 aoû 2004) | 2 lines
+
+ * all: added eval.c (I hope libx264.dsp is correct, I can't test).
+
+------------------------------------------------------------------------
+r40 | fenrir | 2004-08-29 00:14:26 +0200 (dim, 29 aoû 2004) | 7 lines
+
+ * all: 2pass patch by Loren Merritt <lorenm AT u.washington DOT edu>
+
+ "Mostly borrowed from libavcodec.
+ There is not much theoretical basis behind my choice of defaults for
+ rc_eq, qcompress, qblur, and ip_factor."
+ 
+
+------------------------------------------------------------------------
+r39 | fenrir | 2004-08-28 21:24:08 +0200 (sam, 28 aoû 2004) | 3 lines
+
+ * all: first part of the 2pass patch by Loren Merritt
+ (only the header/textures bits computed for now).
+
+------------------------------------------------------------------------
+r38 | fenrir | 2004-08-22 17:01:46 +0200 (dim, 22 aoû 2004) | 2 lines
+
+ * all: include stdarg.h (needed for x264_log)
+
+------------------------------------------------------------------------
+r37 | mru | 2004-08-18 11:28:56 +0200 (mer, 18 aoû 2004) | 2 lines
+
+Use x264_log() in ratecontrol.c
+
+------------------------------------------------------------------------
+r36 | fenrir | 2004-08-17 23:08:23 +0200 (mar, 17 aoû 2004) | 2 lines
+
+ * encoder/encoder.c: oops. (fixed compilation).
+
+------------------------------------------------------------------------
+r35 | fenrir | 2004-08-17 22:39:03 +0200 (mar, 17 aoû 2004) | 2 lines
+
+ * all: more fprintf -> x264_log.
+
+------------------------------------------------------------------------
+r34 | fenrir | 2004-08-17 22:27:05 +0200 (mar, 17 aoû 2004) | 2 lines
+
+ * all: added a x264_param_t.analyse.b_psnr
+
+------------------------------------------------------------------------
+r33 | fenrir | 2004-08-17 22:03:46 +0200 (mar, 17 aoû 2004) | 3 lines
+
+ * encoder/encoder.c: kb/s with k=1000 (more consistant). Patch by Loren
+Merritt <lorenm AT u DOT washington DOT edu>
+
+------------------------------------------------------------------------
+r32 | fenrir | 2004-08-17 21:56:36 +0200 (mar, 17 aoû 2004) | 3 lines
+
+ * all: introduced a x264_log function. It's not yet used everywhere
+ but we should start using it :)
+
+------------------------------------------------------------------------
+r31 | titer | 2004-08-16 10:52:05 +0200 (lun, 16 aoû 2004) | 2 lines
+
+ OS X is missing exp2f()
+
+------------------------------------------------------------------------
+r30 | titer | 2004-08-16 10:47:51 +0200 (lun, 16 aoû 2004) | 1 line
+
+Fixed warnings with PPC 64
+------------------------------------------------------------------------
+r29 | mru | 2004-08-13 15:36:14 +0200 (ven, 13 aoû 2004) | 2 lines
+
+Add my svn user name.
+
+------------------------------------------------------------------------
+r28 | mru | 2004-08-13 15:34:47 +0200 (ven, 13 aoû 2004) | 2 lines
+
+Bugfix.
+
+------------------------------------------------------------------------
+r27 | mru | 2004-08-12 22:52:24 +0200 (jeu, 12 aoû 2004) | 3 lines
+
+Include timing info in VUI.
+Change frame rate from float to fraction (sorry for the inconvenience).
+
+------------------------------------------------------------------------
+r26 | mru | 2004-08-12 15:07:41 +0200 (jeu, 12 aoû 2004) | 2 lines
+
+Add TAGS rule.
+
+------------------------------------------------------------------------
+r25 | mru | 2004-08-11 22:24:20 +0200 (mer, 11 aoû 2004) | 2 lines
+
+Fixes by Loren Merritt (lorenm at u.washington.edu).
+
+------------------------------------------------------------------------
+r24 | mru | 2004-08-11 03:02:05 +0200 (mer, 11 aoû 2004) | 3 lines
+
+Get rid of integer overflows that caused the rate control to go
+haywire in some situations.
+
+------------------------------------------------------------------------
+r23 | fenrir | 2004-08-09 02:05:22 +0200 (lun, 09 aoû 2004) | 3 lines
+
+ * encoder: correct range for i_idr_pic_id is 0..65535
+ (Not 0..65534)
+
+------------------------------------------------------------------------
+r22 | fenrir | 2004-08-08 23:36:41 +0200 (dim, 08 aoû 2004) | 7 lines
+
+ ratecontrol: patch by Loren Merritt <lorenm AT u DOT washington DOT edu>
+
+ "The new cbr mode fails to completely disable itself when encoding in
+ constant QP mode. The per-block QPs are then randomized between QP+4 and
+ QP-2 based on uninitialized ratecontrol parameters."
+ 
+
+------------------------------------------------------------------------
+r21 | fenrir | 2004-08-08 21:15:10 +0200 (dim, 08 aoû 2004) | 4 lines
+
+ * ratecontrol: patch by Måns Rullgård <mru AT mru DOT ath DOT cx>
+ "This patch fixes a small bug (divide by 0 possible) in the rate control."
+
+
+------------------------------------------------------------------------
+r20 | fenrir | 2004-08-08 18:18:49 +0200 (dim, 08 aoû 2004) | 3 lines
+
+ * encoder: simpler scene cut detection (seems better but do not check
+size anymore, so need more testing).
+
+------------------------------------------------------------------------
+r19 | fenrir | 2004-08-08 16:23:50 +0200 (dim, 08 aoû 2004) | 15 lines
+
+ * all: Change the way PSNR is computed (based on a patch by Loren
+Merritt <lorenmn AT u DOT washington DOT edu>
+ Using SQE(DeltaSourceReconstructed) = Sum( delta^2 )
+       PSNR( SQE, Size ) = -10Ln(SQE / 255^2 / Size )/Ln(10) )
+       Y+U+V : Union of YUV planes.
+
+ Now there is 
+  - Mean PSNR : Sum( PSNR( SQE(Y/U/V), Size(Y/U/V) ) / TotalFrames
+  - Average PSNR: Sum( PSNR( SQE(Y+U+V), Size(Y+U+V) ) ) / TotalFrames
+  - Global PSNR: PSNR( Sum( SQE(Y+U+V) ), Size(Y+U+V)*TotalFrames )
+
+  Mean PSNR is used by the JM, and Average/Overall is used on Doom9 for
+example.
+
+
+------------------------------------------------------------------------
+r18 | fenrir | 2004-08-07 18:02:20 +0200 (sam, 07 aoû 2004) | 2 lines
+
+ * x264.h: increased X264_BUILD.
+
+------------------------------------------------------------------------
+r17 | fenrir | 2004-08-06 20:06:09 +0200 (ven, 06 aoû 2004) | 8 lines
+
+ * all: Patch from Måns Rullgård <mru AT mru DOT ath DOT cx>
+
+"Here's a patch that adds some kind of rate control.  I suppose it is
+ by no means perfect, but it's much better than constant quantizer.  It
+ also has a very crude scene change detection that sometimes avoids a
+ buffer underflow by reencoding oversized P/B frames as I frames."
+
+
+------------------------------------------------------------------------
+r16 | titer | 2004-08-02 09:05:05 +0200 (lun, 02 aoû 2004) | 2 lines
+
+ Linux PPC AltiVec fix
+
+------------------------------------------------------------------------
+r15 | titer | 2004-07-28 23:39:06 +0200 (mer, 28 jui 2004) | 2 lines
+
+ BeOS fixes (no stdint.h, no libm)
+
+------------------------------------------------------------------------
+r14 | titer | 2004-07-27 10:34:59 +0200 (mar, 27 jui 2004) | 2 lines
+
+ Attempt to fix build on Linux PPC
+
+------------------------------------------------------------------------
+r13 | fenrir | 2004-07-23 20:14:59 +0200 (ven, 23 jui 2004) | 4 lines
+
+ * encoder.c, analyse.c, macroblock: fixed when using a qp per MB.
+ (Buggy for pskip and mb with null cbp luma and chroma).
+ * dct*: fixed order of idct.
+
+------------------------------------------------------------------------
+r12 | fenrir | 2004-07-16 20:26:19 +0200 (ven, 16 jui 2004) | 2 lines
+
+ * cpu.asm: mmh trashing ebp,esi and edi isn't a good idea I fear ;)
+
+------------------------------------------------------------------------
+r11 | fenrir | 2004-06-30 00:41:42 +0200 (mer, 30 jun 2004) | 2 lines
+
+ * all: fixed ss2 runtime selection.
+
+------------------------------------------------------------------------
+r10 | chenm001 | 2004-06-18 04:00:40 +0200 (ven, 18 jun 2004) | 2 lines
+
+update & SSE2 support
+
+------------------------------------------------------------------------
+r9 | chenm001 | 2004-06-17 11:01:19 +0200 (jeu, 17 jun 2004) | 2 lines
+
+update
+
+------------------------------------------------------------------------
+r8 | chenm001 | 2004-06-17 10:58:43 +0200 (jeu, 17 jun 2004) | 2 lines
+
+remove some unused code
+
+------------------------------------------------------------------------
+r7 | chenm001 | 2004-06-14 07:47:51 +0200 (lun, 14 jun 2004) | 2 lines
+
+support for build checkasm.exe
+
+------------------------------------------------------------------------
+r6 | fenrir | 2004-06-10 20:13:38 +0200 (jeu, 10 jun 2004) | 2 lines
+
+ * build fix (thx xxcd).
+
+------------------------------------------------------------------------
+r5 | test | 2004-06-10 09:32:18 +0200 (jeu, 10 jun 2004) | 2 lines
+
+ * TODO: test.
+
+------------------------------------------------------------------------
+r4 | fenrir | 2004-06-09 21:35:31 +0200 (mer, 09 jun 2004) | 2 lines
+
+ * vfw/* : oops...
+
+------------------------------------------------------------------------
+r3 | fenrir | 2004-06-09 21:35:07 +0200 (mer, 09 jun 2004) | 2 lines
+
+ * mc-c.c compilation fix for gcc >= 3.3
+
+------------------------------------------------------------------------
+r2 | fenrir | 2004-06-03 21:29:57 +0200 (jeu, 03 jun 2004) | 2 lines
+
+ * all: re-import of CVS.
+
+------------------------------------------------------------------------
+r1 | fenrir | 2004-06-03 21:29:33 +0200 (jeu, 03 jun 2004) | 2 lines
+
+ * all: re-import of the CVS.
+
+------------------------------------------------------------------------

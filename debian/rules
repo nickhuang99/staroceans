@@ -86,7 +86,7 @@ install:
 binary-common:
 	dh_testdir
 	dh_testroot
-	dh_installchangelogs 
+	dh_installchangelogs ChangeLog
 	dh_installdocs
 	dh_installexamples
 	dh_installman debian/x264.1
