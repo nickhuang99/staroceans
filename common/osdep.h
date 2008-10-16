@@ -50,7 +50,7 @@
 #if defined(_MSC_VER) || defined(SYS_SunOS) || defined(SYS_MACOSX)
 #define sqrtf sqrt
 #endif
-#ifdef __WIN32__
+#ifdef _WIN32
 #define rename(src,dst) (unlink(dst), rename(src,dst)) // POSIX says that rename() removes the destination, but win32 doesn't.
 #ifndef strtok_r
 #define strtok_r(str,delim,save) strtok(str,delim)
@@ -58,15 +58,20 @@
 #endif
 
 #ifdef _MSC_VER
-#define DECLARE_ALIGNED( type, var, n ) __declspec(align(n)) type var
+#define DECLARE_ALIGNED( var, n ) __declspec(align(n)) var
 #else
-#define DECLARE_ALIGNED( type, var, n ) type var __attribute__((aligned(n)))
+#define DECLARE_ALIGNED( var, n ) var __attribute__((aligned(n)))
 #endif
+#define DECLARE_ALIGNED_16( var ) DECLARE_ALIGNED( var, 16 )
+#define DECLARE_ALIGNED_8( var )  DECLARE_ALIGNED( var, 8 )
+#define DECLARE_ALIGNED_4( var )  DECLARE_ALIGNED( var, 4 )
 
 #if defined(__GNUC__) && (__GNUC__ > 3 || __GNUC__ == 3 && __GNUC_MINOR__ > 0)
 #define UNUSED __attribute__((unused))
+#define ALWAYS_INLINE __attribute__((always_inline)) inline
 #else
 #define UNUSED
+#define ALWAYS_INLINE inline
 #endif
 
 /* threads */

@@ -34,7 +34,6 @@
 #include "x264.h"
 #include "common/common.h"
 #include "common/mc.h"
-#include "common/clip1.h"
 #include "mc.h"
 #include "ppccommon.h"
 
@@ -263,7 +262,7 @@ static void mc_chroma_altivec_4xh( uint8_t *dst, int i_dst_stride,
     int d8x = mvx & 0x07;
     int d8y = mvy & 0x07;
 
-    DECLARE_ALIGNED( uint16_t, coeff[4], 16 );
+    DECLARE_ALIGNED_16( uint16_t coeff[4] );
     coeff[0] = (8-d8x)*(8-d8y);
     coeff[1] = d8x    *(8-d8y);
     coeff[2] = (8-d8x)*d8y;
@@ -329,7 +328,7 @@ static void mc_chroma_altivec_8xh( uint8_t *dst, int i_dst_stride,
     int d8x = mvx & 0x07;
     int d8y = mvy & 0x07;
 
-    DECLARE_ALIGNED( uint16_t, coeff[4], 16 );
+    DECLARE_ALIGNED_16( uint16_t coeff[4] );
     coeff[0] = (8-d8x)*(8-d8y);
     coeff[1] = d8x    *(8-d8y);
     coeff[2] = (8-d8x)*d8y;
@@ -612,11 +611,30 @@ void x264_hpel_filter_altivec( uint8_t *dsth, uint8_t *dstv, uint8_t *dstc, uint
             HPEL_FILTER_CENTRAL();
         }
 
+        /* Partial vertical filter */
+        VEC_LOAD( &src[x+i_stride*(y-2)], src1v, 16, vec_u8_t );
+        VEC_LOAD( &src[x+i_stride*(y-1)], src2v, 16, vec_u8_t );
+        VEC_LOAD( &src[x+i_stride*(y-0)], src3v, 16, vec_u8_t );
+        VEC_LOAD( &src[x+i_stride*(y+1)], src4v, 16, vec_u8_t );
+        VEC_LOAD( &src[x+i_stride*(y+2)], src5v, 16, vec_u8_t );
+        VEC_LOAD( &src[x+i_stride*(y+3)], src6v, 16, vec_u8_t );
+
+        temp1v = vec_u8_to_s16_h( src1v );
+        temp2v = vec_u8_to_s16_h( src2v );
+        temp3v = vec_u8_to_s16_h( src3v );
+        temp4v = vec_u8_to_s16_h( src4v );
+        temp5v = vec_u8_to_s16_h( src5v );
+        temp6v = vec_u8_to_s16_h( src6v );
+
+        HPEL_FILTER_1( temp1v, temp2v, temp3v,
+                      temp4v, temp5v, temp6v );
+
         /* central_filter */
         tempav = tempcv;
         tempbv = tempdv;
         tempcv = tempev;
-        tempdv = vec_splat( tempcv, 7 ); /* last only */
+        tempdv = temp1v;
+        /* tempev is not used */
 
         HPEL_FILTER_CENTRAL();
     }

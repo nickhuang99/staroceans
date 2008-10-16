@@ -1,8 +1,7 @@
 /*****************************************************************************
- * mc.h: h264 encoder library
+ * predict.h: h264 encoder library
  *****************************************************************************
  * Copyright (C) 2003 Laurent Aimar
- * $Id: mc.h,v 1.1 2004/06/03 19:27:07 fenrir Exp $
  *
  * Authors: Laurent Aimar <fenrir@via.ecp.fr>
  *
@@ -21,13 +20,12 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111, USA.
  *****************************************************************************/
 
-#ifndef _I386_MC_H
-#define _I386_MC_H 1
+#ifndef _I386_PREDICT_H
+#define _I386_PREDICT_H 1
 
-void x264_mc_mmxext_init( x264_mc_functions_t *pf );
-void x264_mc_sse2_init( x264_mc_functions_t *pf );
+void x264_predict_16x16_init_mmx ( int cpu, x264_predict_t pf[7] );
+void x264_predict_8x8c_init_mmx  ( int cpu, x264_predict_t pf[7] );
+void x264_predict_4x4_init_mmx   ( int cpu, x264_predict_t pf[12] );
+void x264_predict_8x8_init_mmx   ( int cpu, x264_predict8x8_t pf[12] );
 
-void x264_mc_chroma_mmxext( uint8_t *src, int i_src_stride,
-                            uint8_t *dst, int i_dst_stride,
-                            int dx, int dy, int i_width, int i_height );
 #endif

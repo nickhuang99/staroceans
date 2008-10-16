@@ -28,7 +28,7 @@
 #ifdef SYS_BEOS
 #include <kernel/OS.h>
 #endif
-#ifdef SYS_MACOSX
+#if defined(SYS_MACOSX) || defined(SYS_FREEBSD)
 #include <sys/types.h>
 #include <sys/sysctl.h>
 #endif
@@ -48,8 +48,10 @@ uint32_t x264_cpu_detect( void )
     int max_extended_cap;
     int cache;
 
+#ifndef ARCH_X86_64
     if( !x264_cpu_cpuid_test() )
         return 0;
+#endif
 
     x264_cpu_cpuid( 0, &eax, vendor+0, vendor+2, vendor+1 );
     if( eax == 0 )
@@ -219,7 +221,7 @@ int x264_cpu_num_processors( void )
 #if !defined(HAVE_PTHREAD)
     return 1;
 
-#elif defined(WIN32)
+#elif defined(_WIN32)
     return pthread_num_processors_np();
 
 #elif defined(SYS_LINUX)
@@ -237,7 +239,7 @@ int x264_cpu_num_processors( void )
     get_system_info( &info );
     return info.cpu_count;
 
-#elif defined(SYS_MACOSX)
+#elif defined(SYS_MACOSX) || defined(SYS_FREEBSD)
     int numberOfCPUs;
     size_t length = sizeof( numberOfCPUs );
     if( sysctlbyname("hw.ncpu", &numberOfCPUs, &length, NULL, 0) )

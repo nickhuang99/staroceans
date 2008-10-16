@@ -23,7 +23,7 @@
 #include "common.h"
 
 #ifdef HAVE_MMX
-#include "i386/quant.h"
+#include "x86/quant.h"
 #endif
 #ifdef ARCH_PPC
 #   include "ppc/quant.h"
@@ -209,9 +209,14 @@ void x264_quant_init( x264_t *h, int cpu, x264_quant_function_t *pf )
 #ifdef ARCH_X86
         pf->quant_4x4 = x264_quant_4x4_mmx;
         pf->quant_8x8 = x264_quant_8x8_mmx;
-#endif
         pf->dequant_4x4 = x264_dequant_4x4_mmx;
         pf->dequant_8x8 = x264_dequant_8x8_mmx;
+        if( h->param.i_cqm_preset == X264_CQM_FLAT )
+        {
+            pf->dequant_4x4 = x264_dequant_4x4_flat16_mmx;
+            pf->dequant_8x8 = x264_dequant_8x8_flat16_mmx;
+        }
+#endif
     }
 
     if( cpu&X264_CPU_MMXEXT )
@@ -227,6 +232,13 @@ void x264_quant_init( x264_t *h, int cpu, x264_quant_function_t *pf )
         pf->quant_4x4_dc = x264_quant_4x4_dc_sse2;
         pf->quant_4x4 = x264_quant_4x4_sse2;
         pf->quant_8x8 = x264_quant_8x8_sse2;
+        pf->dequant_4x4 = x264_dequant_4x4_sse2;
+        pf->dequant_8x8 = x264_dequant_8x8_sse2;
+        if( h->param.i_cqm_preset == X264_CQM_FLAT )
+        {
+            pf->dequant_4x4 = x264_dequant_4x4_flat16_sse2;
+            pf->dequant_8x8 = x264_dequant_8x8_flat16_sse2;
+        }
     }
 #endif
 

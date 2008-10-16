@@ -24,6 +24,8 @@
 #ifndef _PIXEL_H
 #define _PIXEL_H 1
 
+// SSD assumes all args aligned
+// other cmp functions assume first arg aligned
 typedef int  (*x264_pixel_cmp_t) ( uint8_t *, int, uint8_t *, int );
 typedef void (*x264_pixel_cmp_x3_t) ( uint8_t *, uint8_t *, uint8_t *, uint8_t *, int, int[3] );
 typedef void (*x264_pixel_cmp_x4_t) ( uint8_t *, uint8_t *, uint8_t *, uint8_t *, uint8_t *, int, int[4] );
@@ -69,20 +71,24 @@ typedef struct
     x264_pixel_cmp_t ssim[7];
     x264_pixel_cmp_t sa8d[4];
     x264_pixel_cmp_t mbcmp[7]; /* either satd or sad for subpel refine and mode decision */
-    x264_pixel_cmp_t rdcmp[7]; /* either ssd or ssim for rate-distortion */
+    x264_pixel_cmp_t fpelcmp[7]; /* either satd or sad for fullpel motion search */
+    x264_pixel_cmp_x3_t fpelcmp_x3[7];
+    x264_pixel_cmp_x4_t fpelcmp_x4[7];
 
     void (*ssim_4x4x2_core)( const uint8_t *pix1, int stride1,
                              const uint8_t *pix2, int stride2, int sums[2][4] );
     float (*ssim_end4)( int sum0[5][4], int sum1[5][4], int width );
 
-    /* multiple parallel calls to sad. */
+    /* multiple parallel calls to cmp. */
     x264_pixel_cmp_x3_t sad_x3[7];
     x264_pixel_cmp_x4_t sad_x4[7];
+    x264_pixel_cmp_x3_t satd_x3[7];
+    x264_pixel_cmp_x4_t satd_x4[7];
 
     /* abs-diff-sum for successive elimination.
-     * may round width up to a multiple of 8. */
-    void (*ads[7])( int enc_dc[4], uint16_t *sums, int delta,
-                    uint16_t *res, int width );
+     * may round width up to a multiple of 16. */
+    int (*ads[7])( int enc_dc[4], uint16_t *sums, int delta,
+                   uint16_t *cost_mvx, int16_t *mvs, int width, int thresh );
 
     /* calculate satd of V, H, and DC modes.
      * may be NULL, in which case just use pred+satd instead. */

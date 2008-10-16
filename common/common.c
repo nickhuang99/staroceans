@@ -92,6 +92,8 @@ void    x264_param_default( x264_param_t *param )
     param->rc.i_qp_step = 4;
     param->rc.f_ip_factor = 1.4;
     param->rc.f_pb_factor = 1.3;
+    param->rc.i_aq_mode = X264_AQ_GLOBAL;
+    param->rc.f_aq_strength = 1.0;
 
     param->rc.b_stat_write = 0;
     param->rc.psz_stat_out = "x264_2pass.log";
@@ -494,6 +496,10 @@ int x264_param_parse( x264_param_t *p, const char *name, const char *value )
         p->rc.f_ip_factor = atof(value);
     OPT2("pbratio", "pb-factor")
         p->rc.f_pb_factor = atof(value);
+    OPT("aq-mode")
+        p->rc.i_aq_mode = atoi(value);
+    OPT("aq-strength")
+        p->rc.f_aq_strength = atof(value);
     OPT("pass")
     {
         int i = x264_clip3( atoi(value), 0, 3 );
@@ -589,63 +595,13 @@ void x264_picture_alloc( x264_picture_t *pic, int i_csp, int i_width, int i_heig
     pic->i_type = X264_TYPE_AUTO;
     pic->i_qpplus1 = 0;
     pic->img.i_csp = i_csp;
-    switch( i_csp & X264_CSP_MASK )
-    {
-        case X264_CSP_I420:
-        case X264_CSP_YV12:
-            pic->img.i_plane = 3;
-            pic->img.plane[0] = x264_malloc( 3 * i_width * i_height / 2 );
-            pic->img.plane[1] = pic->img.plane[0] + i_width * i_height;
-            pic->img.plane[2] = pic->img.plane[1] + i_width * i_height / 4;
-            pic->img.i_stride[0] = i_width;
-            pic->img.i_stride[1] = i_width / 2;
-            pic->img.i_stride[2] = i_width / 2;
-            break;
-
-        case X264_CSP_I422:
-            pic->img.i_plane = 3;
-            pic->img.plane[0] = x264_malloc( 2 * i_width * i_height );
-            pic->img.plane[1] = pic->img.plane[0] + i_width * i_height;
-            pic->img.plane[2] = pic->img.plane[1] + i_width * i_height / 2;
-            pic->img.i_stride[0] = i_width;
-            pic->img.i_stride[1] = i_width / 2;
-            pic->img.i_stride[2] = i_width / 2;
-            break;
-
-        case X264_CSP_I444:
-            pic->img.i_plane = 3;
-            pic->img.plane[0] = x264_malloc( 3 * i_width * i_height );
-            pic->img.plane[1] = pic->img.plane[0] + i_width * i_height;
-            pic->img.plane[2] = pic->img.plane[1] + i_width * i_height;
-            pic->img.i_stride[0] = i_width;
-            pic->img.i_stride[1] = i_width;
-            pic->img.i_stride[2] = i_width;
-            break;
-
-        case X264_CSP_YUYV:
-            pic->img.i_plane = 1;
-            pic->img.plane[0] = x264_malloc( 2 * i_width * i_height );
-            pic->img.i_stride[0] = 2 * i_width;
-            break;
-
-        case X264_CSP_RGB:
-        case X264_CSP_BGR:
-            pic->img.i_plane = 1;
-            pic->img.plane[0] = x264_malloc( 3 * i_width * i_height );
-            pic->img.i_stride[0] = 3 * i_width;
-            break;
-
-        case X264_CSP_BGRA:
-            pic->img.i_plane = 1;
-            pic->img.plane[0] = x264_malloc( 4 * i_width * i_height );
-            pic->img.i_stride[0] = 4 * i_width;
-            break;
-
-        default:
-            fprintf( stderr, "invalid CSP\n" );
-            pic->img.i_plane = 0;
-            break;
-    }
+    pic->img.i_plane = 3;
+    pic->img.plane[0] = x264_malloc( 3 * i_width * i_height / 2 );
+    pic->img.plane[1] = pic->img.plane[0] + i_width * i_height;
+    pic->img.plane[2] = pic->img.plane[1] + i_width * i_height / 4;
+    pic->img.i_stride[0] = i_width;
+    pic->img.i_stride[1] = i_width / 2;
+    pic->img.i_stride[2] = i_width / 2;
 }
 
 /****************************************************************************
@@ -933,6 +889,9 @@ char *x264_param2string( x264_param_t *p, int b_res )
         s += sprintf( s, " ip_ratio=%.2f", p->rc.f_ip_factor );
         if( p->i_bframe )
             s += sprintf( s, " pb_ratio=%.2f", p->rc.f_pb_factor );
+        s += sprintf( s, " aq=%d", p->rc.i_aq_mode );
+        if( p->rc.i_aq_mode )
+            s += sprintf( s, ":%.2f", p->rc.f_aq_strength );
         if( p->rc.psz_zones )
             s += sprintf( s, " zones=%s", p->rc.psz_zones );
         else if( p->rc.i_zones )

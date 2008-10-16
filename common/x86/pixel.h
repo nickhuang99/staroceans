@@ -1,10 +1,10 @@
 /*****************************************************************************
  * mc.h: h264 encoder library
  *****************************************************************************
- * Copyright (C) 2003 Laurent Aimar
- * $Id: pixel.h,v 1.1 2004/06/03 19:27:07 fenrir Exp $
+ * Copyright (C) 2003-2008 Laurent Aimar
  *
  * Authors: Laurent Aimar <fenrir@via.ecp.fr>
+ *          Loren Merritt <lorenm@u.washington.edu>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -68,12 +68,17 @@ DECL_X4( sad, cache64_ssse3 );
 #undef DECL_X4
 
 void x264_intra_satd_x3_4x4_mmxext( uint8_t *, uint8_t *, int * );
+void x264_intra_satd_x3_4x4_ssse3( uint8_t *, uint8_t *, int * );
 void x264_intra_satd_x3_8x8c_mmxext( uint8_t *, uint8_t *, int * );
+void x264_intra_satd_x3_8x8c_ssse3( uint8_t *, uint8_t *, int * );
 void x264_intra_satd_x3_16x16_mmxext( uint8_t *, uint8_t *, int * );
-void x264_intra_sa8d_x3_8x8_sse2( uint8_t *, uint8_t *, int * );
+void x264_intra_satd_x3_16x16_ssse3( uint8_t *, uint8_t *, int * );
 void x264_intra_sa8d_x3_8x8_mmxext( uint8_t *, uint8_t *, int * );
-void x264_intra_sa8d_x3_8x8_core_sse2( uint8_t *, int16_t [2][8], int * );
+void x264_intra_sa8d_x3_8x8_sse2( uint8_t *, uint8_t *, int * );
+void x264_intra_sa8d_x3_8x8_ssse3( uint8_t *, uint8_t *, int * );
 void x264_intra_sa8d_x3_8x8_core_mmxext( uint8_t *, int16_t [2][8], int * );
+void x264_intra_sa8d_x3_8x8_core_sse2( uint8_t *, int16_t [2][8], int * );
+void x264_intra_sa8d_x3_8x8_core_ssse3( uint8_t *, int16_t [2][8], int * );
 
 void x264_pixel_ssim_4x4x2_core_mmxext( const uint8_t *pix1, int stride1,
                                         const uint8_t *pix2, int stride2, int sums[2][4] );
@@ -81,11 +86,18 @@ void x264_pixel_ssim_4x4x2_core_sse2( const uint8_t *pix1, int stride1,
                                       const uint8_t *pix2, int stride2, int sums[2][4] );
 float x264_pixel_ssim_end4_sse2( int sum0[5][4], int sum1[5][4], int width );
 
-void x264_pixel_ads4_mmxext( int enc_dc[4], uint16_t *sums, int delta,
-                             uint16_t *res, int width );
-void x264_pixel_ads2_mmxext( int enc_dc[2], uint16_t *sums, int delta,
-                             uint16_t *res, int width );
-void x264_pixel_ads1_mmxext( int enc_dc[1], uint16_t *sums, int delta,
-                             uint16_t *res, int width );
+#define DECL_ADS( size, suffix ) \
+int x264_pixel_ads##size##_##suffix( int enc_dc[size], uint16_t *sums, int delta,\
+                                     uint16_t *cost_mvx, int16_t *mvs, int width, int thresh );
+DECL_ADS( 4, mmxext )
+DECL_ADS( 2, mmxext )
+DECL_ADS( 1, mmxext )
+DECL_ADS( 4, sse2 )
+DECL_ADS( 2, sse2 )
+DECL_ADS( 1, sse2 )
+DECL_ADS( 4, ssse3 )
+DECL_ADS( 2, ssse3 )
+DECL_ADS( 1, ssse3 )
+#undef DECL_ADS
 
 #endif

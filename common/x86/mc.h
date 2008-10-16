@@ -1,8 +1,7 @@
 /*****************************************************************************
- * csp.h: h264 encoder library
+ * mc.h: h264 encoder library
  *****************************************************************************
- * Copyright (C) 2004 Laurent Aimar
- * $Id: csp.h,v 1.1 2004/06/03 19:27:06 fenrir Exp $
+ * Copyright (C) 2003 Laurent Aimar
  *
  * Authors: Laurent Aimar <fenrir@via.ecp.fr>
  *
@@ -21,18 +20,12 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111, USA.
  *****************************************************************************/
 
-#ifndef _CSP_H
-#define _CSP_H 1
+#ifndef _I386_MC_H
+#define _I386_MC_H 1
 
-typedef void (*x264_csp_t) ( x264_mc_functions_t *, x264_frame_t *, x264_image_t *,
-                             int i_width, int i_height );
+void x264_mc_init_mmx( int cpu, x264_mc_functions_t *pf );
 
-typedef struct
-{
-    x264_csp_t convert[X264_CSP_MAX];
-} x264_csp_function_t;
-
-void x264_csp_init( int cpu, int i_csp, x264_csp_function_t *pf );
-
+void x264_mc_chroma_mmxext( uint8_t *src, int i_src_stride,
+                            uint8_t *dst, int i_dst_stride,
+                            int dx, int dy, int i_width, int i_height );
 #endif
-

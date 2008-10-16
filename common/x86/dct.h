@@ -2,7 +2,6 @@
  * dct.h: h264 encoder library
  *****************************************************************************
  * Copyright (C) 2003 Laurent Aimar
- * $Id: dct.h,v 1.1 2004/06/03 19:27:07 fenrir Exp $
  *
  * Authors: Laurent Aimar <fenrir@via.ecp.fr>
  *
@@ -47,7 +46,7 @@ void x264_sub16x16_dct8_sse2( int16_t dct[4][8][8], uint8_t *pix1, uint8_t *pix2
 void x264_add8x8_idct8_sse2( uint8_t *dst, int16_t dct[8][8] );
 void x264_add16x16_idct8_sse2( uint8_t *dst, int16_t dct[4][8][8] );
 
-void x264_zigzag_scan_4x4_field_sse2( int level[16], int16_t dct[4][4] );
-void x264_zigzag_scan_4x4_field_mmx( int level[16], int16_t dct[4][4] );
+void x264_zigzag_scan_4x4_field_mmxext( int16_t level[16], int16_t dct[4][4] );
+void x264_zigzag_sub_4x4_frame_ssse3( int16_t level[16], const uint8_t *src, uint8_t *dst );
 
 #endif

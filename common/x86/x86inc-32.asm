@@ -1,7 +1,7 @@
 ;*****************************************************************************
-;* i386inc.asm: h264 encoder library
+;* x86inc-32.asm: h264 encoder library
 ;*****************************************************************************
-;* Copyright (C) 2006 x264 project
+;* Copyright (C) 2006-2008 x264 project
 ;*
 ;* Author: Sam Hocevar <sam@zoy.org>
 ;*
@@ -22,31 +22,6 @@
 
 BITS 32
 
-;=============================================================================
-; Macros and other preprocessor constants
-;=============================================================================
-
-; Symbol prefix for C linkage
-%macro cglobal 1
-    %ifdef PREFIX
-        global _%1
-        %define %1 _%1
-    %else
-        global %1
-    %endif
-    align 16
-    %1:
-%endmacro
-
-%macro cextern 1
-    %ifdef PREFIX
-        extern _%1
-        %define %1 _%1
-    %else
-        extern %1
-    %endif
-%endmacro
-
 ; Name of the .rodata section. On OS X we cannot use .rodata because NASM
 ; is unable to compute address offsets outside of .text so we use the .text
 ; section instead until NASM is fixed.
@@ -66,14 +41,16 @@ BITS 32
 ; and let you load non-shared .so objects (Linux, Win32...). However, OS X
 ; requires PIC code in its .dylib objects.
 ;
-; - GOT_* should be used as a suffix for global addressing, eg.
+; - GLOBAL should be used as a suffix for global addressing, eg.
 ;     picgetgot ebx
-;     mov eax, [foo GOT_ebx]
+;     mov eax, [foo GLOBAL]
 ;   instead of
 ;     mov eax, [foo]
 ;
 ; - picgetgot computes the GOT address into the given register in PIC
-;   mode, otherwise does nothing. You need to do this before using GOT_*.
+;   mode, otherwise does nothing. You need to do this before using GLOBAL.
+;   Before in both execution order and compiled code order (so GLOBAL knows
+;   which register the GOT is in).
 ;
 ; - picpush and picpop respectively push and pop the given register
 ;   in PIC mode, otherwise do nothing. You should always use them around
@@ -91,18 +68,18 @@ BITS 32
 ;     mov eax, [esp + 12]
 ;
 %ifdef __PIC__
+    %define PIC32
     %ifidn __OUTPUT_FORMAT__,macho
         ; There is no real global offset table on OS X, but we still
         ; need to reference our variables by offset.
-        %define GOT_eax - fakegot + eax
-        %define GOT_ebx - fakegot + ebx
-        %define GOT_ecx - fakegot + ecx
-        %define GOT_edx - fakegot + edx
+        %define GOT_reg(x) - fakegot + x
         %macro picgetgot 1
             call %%getgot 
           %%getgot: 
             pop %1 
             add %1, $$ - %%getgot
+            %undef GLOBAL
+            %define GLOBAL GOT_reg(%1)
         %endmacro
     %else
         %ifidn __OUTPUT_FORMAT__,elf
@@ -111,15 +88,14 @@ BITS 32
             %define GOT __GLOBAL_OFFSET_TABLE_
         %endif
         extern GOT
-        %define GOT_eax + eax wrt ..gotoff
-        %define GOT_ebx + ebx wrt ..gotoff
-        %define GOT_ecx + ecx wrt ..gotoff
-        %define GOT_edx + edx wrt ..gotoff
+        %define GOT_reg(x) + x wrt ..gotoff
         %macro picgetgot 1
             call %%getgot 
           %%getgot: 
             pop %1 
             add %1, GOT + $$ - %%getgot wrt ..gotpc 
+            %undef GLOBAL
+            %define GLOBAL GOT_reg(%1)
         %endmacro
     %endif
     %macro picpush 1
@@ -130,10 +106,7 @@ BITS 32
     %endmacro
     %define picesp esp+4
 %else
-    %define GOT_eax
-    %define GOT_ebx
-    %define GOT_ecx
-    %define GOT_edx
+    %define GLOBAL
     %macro picgetgot 1
     %endmacro
     %macro picpush 1
@@ -141,14 +114,5 @@ BITS 32
     %macro picpop 1
     %endmacro
     %define picesp esp
-%endif
-
-%assign FENC_STRIDE 16
-%assign FDEC_STRIDE 32
-
-; This is needed for ELF, otherwise the GNU linker assumes the stack is
-; executable by default.
-%ifidn __OUTPUT_FORMAT__,elf
-SECTION ".note.GNU-stack" noalloc noexec nowrite progbits
 %endif
 

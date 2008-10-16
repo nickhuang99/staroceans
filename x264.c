@@ -187,6 +187,14 @@ static void Help( x264_param_t *defaults, int b_longhelp )
     H0( "      --ipratio <float>       QP factor between I and P [%.2f]\n", defaults->rc.f_ip_factor );
     H0( "      --pbratio <float>       QP factor between P and B [%.2f]\n", defaults->rc.f_pb_factor );
     H1( "      --chroma-qp-offset <integer>  QP difference between chroma and luma [%d]\n", defaults->analyse.i_chroma_qp_offset );
+    H0( "      --aq-mode <integer>     How AQ distributes bits [%d]\n"
+        "                                  - 0: Disabled\n"
+        "                                  - 1: Avoid moving bits between frames\n"
+        "                                  - 2: Move bits between frames\n", defaults->rc.i_aq_mode );
+    H0( "      --aq-strength <float>   Reduces blocking and blurring in flat and\n"
+        "                              textured areas. [%.1f]\n"
+        "                                  - 0.5: weak AQ\n"
+        "                                  - 1.5: strong AQ\n", defaults->rc.f_aq_strength );
     H0( "\n" );
     H0( "  -p, --pass <1|2|3>          Enable multipass ratecontrol\n"
         "                                  - 1: First pass, creates stats file\n"
@@ -225,7 +233,8 @@ static void Help( x264_param_t *defaults, int b_longhelp )
     H1( "                                  - dia: diamond search, radius 1 (fast)\n"
         "                                  - hex: hexagonal search, radius 2\n"
         "                                  - umh: uneven multi-hexagon search\n"
-        "                                  - esa: exhaustive search (slow)\n" );
+        "                                  - esa: exhaustive search\n"
+        "                                  - tesa: hadamard exhaustive search (slow)\n" );
     else H0( "                                  - dia, hex, umh\n" );
     H0( "      --merange <integer>     Maximum motion vector search range [%d]\n", defaults->analyse.i_me_range );
     H1( "      --mvrange <integer>     Maximum motion vector length [-1 (auto)]\n" );
@@ -406,6 +415,8 @@ static int  Parse( int argc, char **argv,
             { "trellis", required_argument, NULL, 't' },
             { "no-fast-pskip", no_argument, NULL, 0 },
             { "no-dct-decimate", no_argument, NULL, 0 },
+            { "aq-strength", required_argument, NULL, 0 },
+            { "aq-mode", required_argument, NULL, 0 },
             { "deadzone-inter", required_argument, NULL, '0' },
             { "deadzone-intra", required_argument, NULL, '0' },
             { "level",   required_argument, NULL, 0 },
@@ -759,7 +770,6 @@ static int  Encode( x264_param_t *param, cli_opt_t *opt )
     {
         fprintf( stderr, "x264 [error]: x264_encoder_open failed\n" );
         p_close_infile( opt->hin );
-        p_close_outfile( opt->hout );
         return -1;
     }
 
