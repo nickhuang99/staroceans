@@ -490,6 +490,11 @@ cglobal x264_intra_satd_x3_8x8c_mmxext
 cglobal x264_intra_satd_x3_16x16_mmxext
 cglobal x264_intra_sa8d_x3_8x8_core_mmxext
 
+cglobal x264_pixel_ssim_4x4x2_core_mmxext
+
+cglobal x264_pixel_ads4_mmxext
+cglobal x264_pixel_ads2_mmxext
+cglobal x264_pixel_ads1_mmxext
 
 %macro SAD_START 0
     push    ebx
@@ -1571,3 +1576,162 @@ x264_intra_sa8d_x3_8x8_core_mmxext:
 %undef trans
 %undef sum
 
+
+
+;-----------------------------------------------------------------------------
+; void x264_pixel_ssim_4x4x2_core_mmxext( const uint8_t *pix1, int stride1,
+;                                         const uint8_t *pix2, int stride2, int sums[2][4] )
+;-----------------------------------------------------------------------------
+ALIGN 16
+x264_pixel_ssim_4x4x2_core_mmxext:
+    push      ebx
+    push      edi
+    mov       ebx, [esp+16]
+    mov       edx, [esp+24]
+    mov       edi, 4
+    pxor      mm0, mm0
+.loop
+    mov       eax, [esp+12]
+    mov       ecx, [esp+20]
+    add       eax, edi
+    add       ecx, edi
+    pxor      mm1, mm1
+    pxor      mm2, mm2
+    pxor      mm3, mm3
+    pxor      mm4, mm4
+%rep 4
+    movd      mm5, [eax]
+    movd      mm6, [ecx]
+    punpcklbw mm5, mm0
+    punpcklbw mm6, mm0
+    paddw     mm1, mm5
+    paddw     mm2, mm6
+    movq      mm7, mm5
+    pmaddwd   mm5, mm5
+    pmaddwd   mm7, mm6
+    pmaddwd   mm6, mm6
+    paddd     mm3, mm5
+    paddd     mm4, mm7
+    paddd     mm3, mm6
+    add       eax, ebx
+    add       ecx, edx
+%endrep
+    mov       eax, [esp+28]
+    lea       eax, [eax+edi*4]
+    pshufw    mm5, mm1, 0xE
+    pshufw    mm6, mm2, 0xE
+    paddusw   mm1, mm5
+    paddusw   mm2, mm6
+    punpcklwd mm1, mm2
+    pshufw    mm2, mm1, 0xE
+    pshufw    mm5, mm3, 0xE
+    pshufw    mm6, mm4, 0xE
+    paddusw   mm1, mm2
+    paddd     mm3, mm5
+    paddd     mm4, mm6
+    punpcklwd mm1, mm0
+    punpckldq mm3, mm4
+    movq  [eax+0], mm1
+    movq  [eax+8], mm3
+    sub       edi, 4
+    jge       .loop
+    pop       edi
+    pop       ebx
+    emms
+    ret
+
+
+
+;-----------------------------------------------------------------------------
+;  void x264_pixel_ads4_mmxext( int enc_dc[4], uint16_t *sums, int delta,
+;                               uint16_t *res, int width )
+;-----------------------------------------------------------------------------
+ALIGN 16
+x264_pixel_ads4_mmxext:
+    push    ebx
+    mov     eax, [esp+8]
+    movq    mm6, [eax]
+    movq    mm4, [eax+8]
+    pshufw  mm7, mm6, 0
+    pshufw  mm6, mm6, 0xAA
+    pshufw  mm5, mm4, 0
+    pshufw  mm4, mm4, 0xAA
+    mov     eax, [esp+12]
+    mov     ebx, [esp+16]
+    mov     ecx, [esp+20]
+    mov     edx, [esp+24]
+    shl     ebx, 1
+.loop:
+    movq    mm0, [eax]
+    movq    mm1, [eax+16]
+    psubw   mm0, mm7
+    psubw   mm1, mm6
+    MMX_ABS mm0, mm2
+    MMX_ABS mm1, mm3
+    movq    mm2, [eax+ebx]
+    movq    mm3, [eax+ebx+16]
+    psubw   mm2, mm5
+    psubw   mm3, mm4
+    paddw   mm0, mm1
+    MMX_ABS mm2, mm1
+    MMX_ABS mm3, mm1
+    paddw   mm0, mm2
+    paddw   mm0, mm3
+    movq    [ecx], mm0
+    add     eax, 8
+    add     ecx, 8
+    sub     edx, 4
+    jg      .loop
+    pop     ebx
+    ret
+
+ALIGN 16
+x264_pixel_ads2_mmxext:
+    push    ebx
+    mov     eax, [esp+8]
+    movq    mm6, [eax]
+    pshufw  mm7, mm6, 0
+    pshufw  mm6, mm6, 0xAA
+    mov     eax, [esp+12]
+    mov     ebx, [esp+16]
+    mov     ecx, [esp+20]
+    mov     edx, [esp+24]
+    shl     ebx, 1
+.loop:
+    movq    mm0, [eax]
+    movq    mm1, [eax+ebx]
+    psubw   mm0, mm7
+    psubw   mm1, mm6
+    MMX_ABS mm0, mm2
+    MMX_ABS mm1, mm3
+    paddw   mm0, mm1
+    movq    [ecx], mm0
+    add     eax, 8
+    add     ecx, 8
+    sub     edx, 4
+    jg      .loop
+    pop     ebx
+    ret
+
+ALIGN 16
+x264_pixel_ads1_mmxext:
+    mov     eax, [esp+4]
+    pshufw  mm7, [eax], 0
+    mov     eax, [esp+8]
+    mov     ecx, [esp+16]
+    mov     edx, [esp+20]
+.loop:
+    movq    mm0, [eax]
+    movq    mm1, [eax+8]
+    psubw   mm0, mm7
+    psubw   mm1, mm7
+    MMX_ABS mm0, mm2
+    MMX_ABS mm1, mm3
+    movq    [ecx], mm0
+    movq    [ecx+8], mm1
+    add     eax, 16
+    add     ecx, 16
+    sub     edx, 8
+    jg      .loop
+    nop
+    ret

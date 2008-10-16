@@ -21,6 +21,18 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111, USA.
  *****************************************************************************/
 
+#if defined(HAVE_PTHREAD) && defined(SYS_LINUX)
+#define _GNU_SOURCE
+#include <sched.h>
+#endif
+#ifdef SYS_BEOS
+#include <kernel/OS.h>
+#endif
+#ifdef SYS_MACOSX
+#include <sys/types.h>
+#include <sys/sysctl.h>
+#endif
+
 #include <string.h>
 
 #include "common.h"
@@ -143,3 +155,41 @@ void     x264_cpu_restore( uint32_t cpu )
 }
 
 #endif
+
+
+int x264_cpu_num_processors( void )
+{
+#if !defined(HAVE_PTHREAD)
+    return 1;
+
+#elif defined(SYS_LINUX) || defined(WIN32)
+    int np;
+#if defined(WIN32)
+    uint32_t p_aff, s_aff;
+    GetProcessAffinityMask( GetCurrentProcess(), &p_aff, &s_aff );
+#else
+    uint64_t p_aff;
+    sched_getaffinity( 0, sizeof(p_aff), (cpu_set_t*)&p_aff );
+#endif
+    for( np = 0; p_aff != 0; p_aff >>= 1 )
+        np += p_aff&1;
+    return np;
+
+#elif defined(SYS_BEOS)
+    system_info info;
+    get_system_info( &info );
+    return info.cpu_count;
+
+#elif defined(SYS_MACOSX)
+    int numberOfCPUs;
+    size_t length = sizeof( numberOfCPUs );
+    if( sysctlbyname("hw.ncpu", &numberOfCPUs, &length, NULL, 0) )
+    {
+        numberOfCPUs = 1;
+    }
+    return numberOfCPUs;
+
+#else
+    return 1;
+#endif
+}

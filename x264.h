@@ -35,7 +35,7 @@
 
 #include <stdarg.h>
 
-#define X264_BUILD 48
+#define X264_BUILD 50
 
 /* x264_t:
  *      opaque handler for decoder and encoder */
@@ -79,6 +79,12 @@ typedef struct x264_t x264_t;
 
 static const char * const x264_direct_pred_names[] = { "none", "spatial", "temporal", "auto", 0 };
 static const char * const x264_motion_est_names[] = { "dia", "hex", "umh", "esa", 0 };
+static const char * const x264_overscan_names[] = { "undef", "show", "crop", 0 };
+static const char * const x264_vidformat_names[] = { "component", "pal", "ntsc", "secam", "mac", "undef", 0 };
+static const char * const x264_fullrange_names[] = { "off", "on", 0 };
+static const char * const x264_colorprim_names[] = { "", "bt709", "undef", "", "bt470m", "bt470bg", "smpte170m", "smpte240m", "film", 0 };
+static const char * const x264_transfer_names[] = { "", "bt709", "undef", "", "bt470m", "bt470bg", "smpte170m", "smpte240m", "linear", "log100", "log316", 0 };
+static const char * const x264_colmatrix_names[] = { "GBR", "bt709", "undef", "", "fcc", "bt470bg", "smpte170m", "smpte240m", "YCgCo", 0 };
 
 /* Colorspace type
  */
@@ -210,7 +216,8 @@ typedef struct
         int          b_dct_decimate; /* transform coefficient thresholding on P-frames */
         int          i_noise_reduction; /* adaptive pseudo-deadzone */
 
-        int          b_psnr;    /* Do we compute PSNR stats (save a few % of cpu) */
+        int          b_psnr;    /* compute and print PSNR stats */
+        int          b_ssim;    /* compute and print SSIM stats */
     } analyse;
 
     /* Rate control parameters */
@@ -244,7 +251,7 @@ typedef struct
         float       f_qblur;        /* temporally blur quants */
         float       f_complexity_blur; /* temporally blur complexity */
         x264_zone_t *zones;         /* ratecontrol overrides */
-        int         i_zones;        /* sumber of zone_t's */
+        int         i_zones;        /* number of zone_t's */
         char        *psz_zones;     /* alternate method of specifying zones */
     } rc;
 
@@ -275,6 +282,15 @@ extern const x264_level_t x264_levels[];
 /* x264_param_default:
  *      fill x264_param_t with default values and do CPU detection */
 void    x264_param_default( x264_param_t * );
+
+/* x264_param_parse:
+ *      set one parameter by name.
+ *      returns 0 on success, or returns one of the following errors.
+ *      note: bad value occurs only if it can't even parse the value,
+ *      numerical range is not checked until x264_encoder_open() or x264_encoder_reconfig(). */
+#define X264_PARAM_BAD_NAME  (-1)
+#define X264_PARAM_BAD_VALUE (-2)
+int x264_param_parse( x264_param_t *, const char *name, const char *value );
 
 /****************************************************************************
  * Picture structures and functions.

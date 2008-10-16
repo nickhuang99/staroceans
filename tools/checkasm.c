@@ -38,7 +38,7 @@ static int check_pixel( int cpu_ref, int cpu_new )
     x264_predict8x8_t predict_8x8[9+3];
     DECLARE_ALIGNED( uint8_t, edge[33], 8 );
     int ret = 0, ok, used_asm;
-    int i;
+    int i, j;
 
     x264_pixel_init( 0, &pixel_c );
     x264_pixel_init( cpu_ref, &pixel_ref );
@@ -130,6 +130,41 @@ static int check_pixel( int cpu_ref, int cpu_new )
     TEST_INTRA_SATD( intra_satd_x3_4x4, predict_4x4, satd[PIXEL_4x4], 0 );
     TEST_INTRA_SATD( intra_sa8d_x3_8x8, predict_8x8, sa8d[PIXEL_8x8], 1, edge );
     report( "intra satd_x3 :" );
+
+    if( pixel_asm.ssim_4x4x2_core != pixel_ref.ssim_4x4x2_core ||
+        pixel_asm.ssim_end4 != pixel_ref.ssim_end4 )
+    {
+        float res_c, res_a;
+        ok = 1;
+        x264_cpu_restore( cpu_new );
+        res_c = x264_pixel_ssim_wxh( &pixel_c,   buf1+2, 32, buf2+2, 32, 32, 28 );
+        res_a = x264_pixel_ssim_wxh( &pixel_asm, buf1+2, 32, buf2+2, 32, 32, 28 );
+        if( res_c != res_a )
+        {
+            ok = 0;
+            fprintf( stderr, "ssim: %.7f != %.7f [FAILED]\n", res_c, res_a );
+        }
+        report( "ssim :" );
+    }
+
+    ok = 1; used_asm = 0;
+    for( i=0; i<4; i++ )
+        if( pixel_asm.ads[i] != pixel_ref.ads[i] )
+        {
+            uint16_t res_a[32], res_c[32];
+            uint16_t sums[72];
+            int dc[4];
+            for( j=0; j<72; j++ )
+                sums[j] = rand() & 0x3fff;
+            for( j=0; j<4; j++ )
+                dc[j] = rand() & 0x3fff;
+            used_asm = 1;
+            pixel_c.ads[i]( dc, sums, 32, res_c, 32 );
+            pixel_asm.ads[i]( dc, sums, 32, res_a, 32 );
+            if( memcmp(res_a, res_c, sizeof(res_c)) )
+                ok = 0;
+        }
+    report( "esa ads:" );
 
     return ret;
 }

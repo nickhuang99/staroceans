@@ -67,8 +67,14 @@ typedef struct
     x264_pixel_cmp_t  sad[7];
     x264_pixel_cmp_t  ssd[7];
     x264_pixel_cmp_t satd[7];
+    x264_pixel_cmp_t ssim[7];
     x264_pixel_cmp_t sa8d[4];
     x264_pixel_cmp_t mbcmp[7]; /* either satd or sad for subpel refine and mode decision */
+    x264_pixel_cmp_t rdcmp[7]; /* either ssd or ssim for rate-distortion */
+
+    void (*ssim_4x4x2_core)( const uint8_t *pix1, int stride1,
+                             const uint8_t *pix2, int stride2, int sums[2][4] );
+    float (*ssim_end4)( int sum0[5][4], int sum1[5][4], int width );
 
     /* partial distortion elimination:
      * terminate early if partial score is worse than a threshold.
@@ -78,6 +84,11 @@ typedef struct
     /* multiple parallel calls to sad. */
     x264_pixel_cmp_x3_t sad_x3[7];
     x264_pixel_cmp_x4_t sad_x4[7];
+
+    /* abs-diff-sum for successive elimination.
+     * may round width up to a multiple of 8. */
+    void (*ads[7])( int enc_dc[4], uint16_t *sums, int delta,
+                    uint16_t *res, int width );
 
     /* calculate satd of V, H, and DC modes.
      * may be NULL, in which case just use pred+satd instead. */
@@ -89,5 +100,6 @@ typedef struct
 
 void x264_pixel_init( int cpu, x264_pixel_function_t *pixf );
 int64_t x264_pixel_ssd_wxh( x264_pixel_function_t *pf, uint8_t *pix1, int i_pix1, uint8_t *pix2, int i_pix2, int i_width, int i_height );
+float x264_pixel_ssim_wxh( x264_pixel_function_t *pf, uint8_t *pix1, int i_pix1, uint8_t *pix2, int i_pix2, int i_width, int i_height );
 
 #endif

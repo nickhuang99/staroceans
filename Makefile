@@ -60,7 +60,9 @@ OBJS = $(SRCS:%.c=%.o)
 OBJCLI = $(SRCCLI:%.c=%.o)
 DEP  = depend
 
-.PHONY: default fprofiled clean distclean install uninstall
+.PHONY: all default fprofiled clean distclean install install-gtk uninstall
+all: default
+
 default: $(DEP) x264$(EXE)
 
 libx264.a: .depend $(OBJS) $(OBJASM)
@@ -75,6 +77,9 @@ x264$(EXE): $(OBJCLI) libx264.a
 
 x264vfw.dll: libx264.a $(wildcard vfw/*.c vfw/*.h)
 	$(MAKE) -C vfw/build/cygwin
+
+libx264gtk.a: muxers.o libx264.a
+	$(MAKE) -C gtk
 
 checkasm: tools/checkasm.o libx264.a
 	$(CC) -o $@ $+ $(LDFLAGS)
@@ -132,7 +137,8 @@ clean:
 	$(MAKE) -C gtk clean
 
 distclean: clean
-	rm -f config.mak config.h vfw/build/cygwin/config.mak gtk/config.mak x264.pc
+	rm -f config.mak config.h vfw/build/cygwin/config.mak x264.pc
+	$(MAKE) -C gtk distclean
 
 install: x264 $(SONAME)
 	install -d $(DESTDIR)$(bindir) $(DESTDIR)$(includedir)
@@ -145,10 +151,14 @@ install: x264 $(SONAME)
 	$(if $(SONAME), ln -sf $(SONAME) $(DESTDIR)$(libdir)/libx264.so)
 	$(if $(SONAME), install -m 755 $(SONAME) $(DESTDIR)$(libdir))
 
+install-gtk: libx264gtk.a
+	$(MAKE) -C gtk install
+
 uninstall:
 	rm -f $(DESTDIR)$(includedir)/x264.h $(DESTDIR)$(libdir)/libx264.a
 	rm -f $(DESTDIR)$(bindir)/x264 $(DESTDIR)$(libdir)/pkgconfig/x264.pc
 	$(if $(SONAME), rm -f $(DESTDIR)$(libdir)/$(SONAME) $(DESTDIR)$(libdir)/libx264.so)
+	$(MAKE) -C gtk uninstall
 
 etags: TAGS
 
