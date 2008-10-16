@@ -26,6 +26,7 @@
 #include "i386/quant.h"
 #endif
 #ifdef ARCH_PPC
+#   include <altivec.h>
 #   include "ppc/quant.h"
 #endif
 
