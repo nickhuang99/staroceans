@@ -1,3 +1,9 @@
+x264 (1:0.svn20070930-0.0ubuntu2) hardy; urgency=low
+
+  * No source change reupload, got accidentally removed from archive.
+
+ -- John Dong <jdong@ubuntu.com>  Fri, 30 Nov 2007 23:00:11 -0500
+
 x264 (1:0.svn20070930-0.0ubuntu1) hardy; urgency=low
 
   * Fakesync with debian-multimedia (LP: #138854)
