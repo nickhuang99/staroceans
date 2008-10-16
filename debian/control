@@ -3,7 +3,7 @@ Section: libs
 Priority: extra
 Maintainer: Debian multimedia packages maintainers <pkg-multimedia-maintainers@lists.alioth.debian.org>
 Uploaders: Sam Hocevar (Debian packages) <sam+deb@zoy.org>, Fabian Greffrath <fabian@debian-unofficial.org>
-Build-Depends: debhelper (>= 5), nasm [i386 hurd-i386 kfreebsd-i386], yasm [amd64 kfreebsd-amd64], quilt
+Build-Depends: debhelper (>= 5), nasm [i386 hurd-i386 kfreebsd-i386 lpia], yasm [amd64 kfreebsd-amd64], quilt
 Standards-Version: 3.7.2
 XS-Vcs-Svn: svn://svn.debian.org/pkg-multimedia/unstable/x264
 XS-Vcs-Browser: http://svn.debian.org/wsvn/pkg-multimedia/unstable/x264/

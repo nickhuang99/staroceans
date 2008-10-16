@@ -1,3 +1,9 @@
+x264 (1:0.svn20070309-4ubuntu2) hardy; urgency=low
+
+  * Build-dep on nasm on lpia; thanks John L. Villalovos.
+
+ -- Loic Minier <lool@dooz.org>  Wed, 31 Oct 2007 15:16:28 +0100
+
 x264 (1:0.svn20070309-4ubuntu1) gutsy; urgency=low
 
   * 'fakesync' due to unfortunate epoch in ubuntu.
