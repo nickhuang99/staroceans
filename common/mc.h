@@ -41,12 +41,17 @@ typedef struct
                         int mvx, int mvy,
                         int i_width, int i_height );
 
+    /* mc_chroma may write up to 2 bytes of garbage to the right of dst,
+     * so it must be run from left to right. */
     void (*mc_chroma)(uint8_t *, int, uint8_t *, int,
                       int mvx, int mvy,
                       int i_width, int i_height );
 
     void (*avg[10])( uint8_t *dst, int, uint8_t *src, int );
     void (*avg_weight[10])( uint8_t *dst, int, uint8_t *src, int, int i_weight );
+
+    /* only 16x16, 8x8, and 4x4 defined */
+    void (*copy[7])( uint8_t *dst, int, uint8_t *src, int, int i_height );
 } x264_mc_functions_t;
 
 void x264_mc_init( int cpu, x264_mc_functions_t *pf );

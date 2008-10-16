@@ -35,7 +35,7 @@
 
 #include <stdarg.h>
 
-#define X264_BUILD 44
+#define X264_BUILD 48
 
 /* x264_t:
  *      opaque handler for decoder and encoder */
@@ -64,6 +64,7 @@ typedef struct x264_t x264_t;
 #define X264_DIRECT_PRED_NONE        0
 #define X264_DIRECT_PRED_SPATIAL     1
 #define X264_DIRECT_PRED_TEMPORAL    2
+#define X264_DIRECT_PRED_AUTO        3
 #define X264_ME_DIA                  0
 #define X264_ME_HEX                  1
 #define X264_ME_UMH                  2
@@ -72,7 +73,11 @@ typedef struct x264_t x264_t;
 #define X264_CQM_JVT                 1
 #define X264_CQM_CUSTOM              2
 
-static const char * const x264_direct_pred_names[] = { "none", "spatial", "temporal", 0 };
+#define X264_RC_CQP                  0
+#define X264_RC_CRF                  1
+#define X264_RC_ABR                  2
+
+static const char * const x264_direct_pred_names[] = { "none", "spatial", "temporal", "auto", 0 };
 static const char * const x264_motion_est_names[] = { "dia", "hex", "umh", "esa", 0 };
 
 /* Colorspace type
@@ -202,6 +207,7 @@ typedef struct
         int          b_mixed_references; /* allow each mb partition in P-frames to have it's own reference number */
         int          i_trellis;  /* trellis RD quantization */
         int          b_fast_pskip; /* early SKIP detection on P-frames */
+        int          b_dct_decimate; /* transform coefficient thresholding on P-frames */
         int          i_noise_reduction; /* adaptive pseudo-deadzone */
 
         int          b_psnr;    /* Do we compute PSNR stats (save a few % of cpu) */
@@ -210,12 +216,13 @@ typedef struct
     /* Rate control parameters */
     struct
     {
+        int         i_rc_method;    /* X264_RC_* */
+
         int         i_qp_constant;  /* 0-51 */
         int         i_qp_min;       /* min allowed QP value */
         int         i_qp_max;       /* max allowed QP value */
         int         i_qp_step;      /* max QP step between frames */
 
-        int         b_cbr;          /* use bitrate instead of CQP */
         int         i_bitrate;
         int         i_rf_constant;  /* 1pass VBR, nominal QP */
         float       f_rate_tolerance;
@@ -241,8 +248,10 @@ typedef struct
         char        *psz_zones;     /* alternate method of specifying zones */
     } rc;
 
+    /* Muxing parameters */
     int b_aud;                  /* generate access unit delimiters */
     int b_repeat_headers;       /* put SPS/PPS before each keyframe */
+    int i_sps_id;               /* SPS and PPS id number */
 } x264_param_t;
 
 typedef struct {

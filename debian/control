@@ -2,9 +2,8 @@ Source: x264
 Section: sound
 Priority: optional
 Maintainer: Ubuntu MOTU Media Team <motumedia@tauware.de>
-Uploaders: Reinhard Tartler <siretart@tauware.de>
-Standards-Version: 3.6.2
-Build-Depends: debhelper (>= 3.4.4), nasm [i386], yasm [amd64]
+Standards-Version: 3.7.2
+Build-Depends: debhelper (>= 4.0.0), nasm (>= 0.98.34) [i386], yasm [amd64]
 
 Package: libx264-dev
 Architecture: any

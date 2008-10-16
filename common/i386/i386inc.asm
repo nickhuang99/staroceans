@@ -26,12 +26,25 @@ BITS 32
 ; Macros and other preprocessor constants
 ;=============================================================================
 
+; Symbol prefix for C linkage
 %macro cglobal 1
     %ifdef PREFIX
         global _%1
         %define %1 _%1
     %else
         global %1
+    %endif
+%endmacro
+
+; Name of the .rodata section. On OS X we cannot use .rodata because NASM
+; is unable to compute address offsets outside of .text so we use the .text
+; section instead until NASM is fixed.
+%macro SECTION_RODATA 0
+    %ifidn __OUTPUT_FORMAT__,macho
+        SECTION .text
+        fakegot:
+    %else
+        SECTION .rodata data align=16
     %endif
 %endmacro
 
@@ -42,13 +55,14 @@ BITS 32
 ; and let you load non-shared .so objects (Linux, Win32...). However, OS X
 ; requires PIC code in its .dylib objects.
 ;
-; - GLOBAL should be used as a suffix for global addressing, eg.
-;     mov eax, [foo GLOBAL]
+; - GOT_* should be used as a suffix for global addressing, eg.
+;     picgetgot ebx
+;     mov eax, [foo GOT_ebx]
 ;   instead of
 ;     mov eax, [foo]
 ;
 ; - picgetgot computes the GOT address into the given register in PIC
-;   mode, otherwise does nothing. You need to do this before using GLOBAL.
+;   mode, otherwise does nothing. You need to do this before using GOT_*.
 ;
 ; - picpush and picpop respectively push and pop the given register
 ;   in PIC mode, otherwise do nothing. You should always use them around
@@ -66,25 +80,30 @@ BITS 32
 ;     mov eax, [esp + 12]
 ;
 %ifdef __PIC__
-    %ifdef FORMAT_MACHO
+    %ifidn __OUTPUT_FORMAT__,macho
         ; There is no real global offset table on OS X, but we still
         ; need to reference our variables by offset.
-        %define GLOBAL + ebx
+        %define GOT_eax - fakegot + eax
+        %define GOT_ebx - fakegot + ebx
+        %define GOT_ecx - fakegot + ecx
+        %define GOT_edx - fakegot + edx
         %macro picgetgot 1
             call %%getgot 
           %%getgot: 
             pop %1 
-            sub %1, %%getgot
+            add %1, $$ - %%getgot
         %endmacro
     %else
-        %ifdef FORMAT_ELF
+        %ifidn __OUTPUT_FORMAT__,elf
             %define GOT _GLOBAL_OFFSET_TABLE_
         %else ; for a.out
             %define GOT __GLOBAL_OFFSET_TABLE_
         %endif
         extern GOT
-        ; FIXME: find an elegant way to use registers other than ebx
-        %define GLOBAL + ebx wrt ..gotoff
+        %define GOT_eax + eax wrt ..gotoff
+        %define GOT_ebx + ebx wrt ..gotoff
+        %define GOT_ecx + ecx wrt ..gotoff
+        %define GOT_edx + edx wrt ..gotoff
         %macro picgetgot 1
             call %%getgot 
           %%getgot: 
@@ -100,7 +119,10 @@ BITS 32
     %endmacro
     %define picesp esp+4
 %else
-    %define GLOBAL
+    %define GOT_eax
+    %define GOT_ebx
+    %define GOT_ecx
+    %define GOT_edx
     %macro picgetgot 1
     %endmacro
     %macro picpush 1
@@ -108,5 +130,14 @@ BITS 32
     %macro picpop 1
     %endmacro
     %define picesp esp
+%endif
+
+%assign FENC_STRIDE 16
+%assign FDEC_STRIDE 32
+
+; This is needed for ELF, otherwise the GNU linker assumes the stack is
+; executable by default.
+%ifidn __OUTPUT_FORMAT__,elf
+SECTION .note.GNU-stack noalloc noexec nowrite progbits
 %endif
 

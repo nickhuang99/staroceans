@@ -272,3 +272,11 @@ SECTION .text
     %define GLOBAL
 %endif
 
+%assign FENC_STRIDE 16
+%assign FDEC_STRIDE 32
+
+; This is needed for ELF, otherwise the GNU linker assumes the stack is
+; executable by default.
+%ifidn __YASM_OBJFMT__,elf
+section ".note.GNU-stack" noalloc noexec nowrite progbits
+%endif

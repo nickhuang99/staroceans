@@ -24,8 +24,6 @@
 #ifndef _FRAME_H
 #define _FRAME_H 1
 
-#include <inttypes.h>
-
 typedef struct
 {
     /* */
@@ -36,6 +34,7 @@ typedef struct
     int     i_frame;    /* Presentation frame number */
     int     i_frame_num; /* Coded frame number */
     int     b_kept_as_ref;
+    float   f_qp_avg;
 
     /* YUV buffer */
     int     i_plane;
@@ -62,8 +61,13 @@ typedef struct
     /* for adaptive B-frame decision.
      * contains the SATD cost of the lowres frame encoded in various modes
      * FIXME: how big an array do we need? */
-    int     i_cost_est[16][16];
-    int     i_intra_mbs[16];
+    int     i_cost_est[X264_BFRAME_MAX+2][X264_BFRAME_MAX+2];
+    int     i_satd; // the i_cost_est of the selected frametype
+    int     i_intra_mbs[X264_BFRAME_MAX+2];
+    int     *i_row_satds[X264_BFRAME_MAX+2][X264_BFRAME_MAX+2];
+    int     *i_row_satd;
+    int     *i_row_bits;
+    int     *i_row_qp;
 
 } x264_frame_t;
 
