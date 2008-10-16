@@ -1,5 +1,5 @@
 /*****************************************************************************
- * x264: h264 encoder/decoder testing program.
+ * x264: h264 encoder testing program.
  *****************************************************************************
  * Copyright (C) 2003 Laurent Aimar
  * $Id: x264.c,v 1.1 2004/06/03 19:24:12 fenrir Exp $
@@ -92,6 +92,12 @@ int main( int argc, char **argv )
 {
     x264_param_t param;
     cli_opt_t opt;
+    int ret;
+
+#ifdef PTW32_STATIC_LIB
+    pthread_win32_process_attach_np();
+    pthread_win32_thread_attach_np();
+#endif
 
 #ifdef _MSC_VER
     _setmode(_fileno(stdin), _O_BINARY);
@@ -107,7 +113,14 @@ int main( int argc, char **argv )
     /* Control-C handler */
     signal( SIGINT, SigIntHandler );
 
-    return Encode( &param, &opt );
+    ret = Encode( &param, &opt );
+
+#ifdef PTW32_STATIC_LIB
+    pthread_win32_thread_detach_np();
+    pthread_win32_process_detach_np();
+#endif
+
+    return ret;
 }
 
 static char const *strtable_lookup( const char * const table[], int index )
@@ -156,21 +169,24 @@ static void Help( x264_param_t *defaults, int b_longhelp )
     H0( "  -I, --keyint <integer>      Maximum GOP size [%d]\n", defaults->i_keyint_max );
     H1( "  -i, --min-keyint <integer>  Minimum GOP size [%d]\n", defaults->i_keyint_min );
     H1( "      --scenecut <integer>    How aggressively to insert extra I-frames [%d]\n", defaults->i_scenecut_threshold );
+    H1( "      --pre-scenecut          Faster, less precise scenecut detection.\n"
+        "                                  Required and implied by multi-threading.\n" );
     H0( "  -b, --bframes <integer>     Number of B-frames between I and P [%d]\n", defaults->i_bframe );
     H1( "      --no-b-adapt            Disable adaptive B-frame decision\n" );
     H1( "      --b-bias <integer>      Influences how often B-frames are used [%d]\n", defaults->i_bframe_bias );
     H0( "      --b-pyramid             Keep some B-frames as references\n" );
     H0( "      --no-cabac              Disable CABAC\n" );
     H0( "  -r, --ref <integer>         Number of reference frames [%d]\n", defaults->i_frame_reference );
-    H1( "      --nf                    Disable loop filter\n" );
-    H0( "  -f, --filter <alpha:beta>   Loop filter AlphaC0 and Beta parameters [%d:%d]\n",
+    H1( "      --no-deblock            Disable loop filter\n" );
+    H0( "  -f, --deblock <alpha:beta>  Loop filter AlphaC0 and Beta parameters [%d:%d]\n",
                                        defaults->i_deblocking_filter_alphac0, defaults->i_deblocking_filter_beta );
+    H0( "      --interlaced            Enable pure-interlaced mode\n" );
     H0( "\n" );
     H0( "Ratecontrol:\n" );
     H0( "\n" );
     H0( "  -q, --qp <integer>          Set QP (0=lossless) [%d]\n", defaults->rc.i_qp_constant );
     H0( "  -B, --bitrate <integer>     Set bitrate (kbit/s)\n" );
-    H0( "      --crf <integer>         Quality-based VBR (nominal QP)\n" );
+    H0( "      --crf <float>           Quality-based VBR (nominal QP)\n" );
     H1( "      --vbv-maxrate <integer> Max local bitrate (kbit/s) [%d]\n", defaults->rc.i_vbv_max_bitrate );
     H0( "      --vbv-bufsize <integer> Enable CBR and set size of the VBV buffer (kbit) [%d]\n", defaults->rc.i_vbv_buffer_size );
     H1( "      --vbv-init <float>      Initial VBV buffer occupancy [%.1f]\n", defaults->rc.f_vbv_buffer_init );
@@ -201,13 +217,18 @@ static void Help( x264_param_t *defaults, int b_longhelp )
     H0( "\n" );
     H0( "Analysis:\n" );
     H0( "\n" );
-    H0( "  -A, --analyse <string>      Partitions to consider [\"p8x8,b8x8,i8x8,i4x4\"]\n"
+    H0( "  -A, --partitions <string>   Partitions to consider [\"p8x8,b8x8,i8x8,i4x4\"]\n"
         "                                  - p8x8, p4x4, b8x8, i8x8, i4x4\n"
         "                                  - none, all\n"
         "                                  (p4x4 requires p8x8. i8x8 requires --8x8dct.)\n" );
     H0( "      --direct <string>       Direct MV prediction mode [\"%s\"]\n"
         "                                  - none, spatial, temporal, auto\n",
                                        strtable_lookup( x264_direct_pred_names, defaults->analyse.i_direct_mv_pred ) );
+    H1( "      --direct-8x8 <-1|0|1>   Direct prediction size [%d]\n"
+        "                                  -  0: 4x4\n"
+        "                                  -  1: 8x8\n"
+        "                                  - -1: smallest possible according to level\n",
+                                       defaults->analyse.i_direct_8x8_inference );
     H0( "  -w, --weightb               Weighted prediction for B-frames\n" );
     H0( "      --me <string>           Integer pixel motion estimation method [\"%s\"]\n",
                                        strtable_lookup( x264_motion_est_names, defaults->analyse.i_me_method ) );
@@ -217,6 +238,8 @@ static void Help( x264_param_t *defaults, int b_longhelp )
         "                                  - esa: exhaustive search (slow)\n" );
     else H0( "                                  - dia, hex, umh\n" );
     H0( "      --merange <integer>     Maximum motion vector search range [%d]\n", defaults->analyse.i_me_range );
+    H1( "      --mvrange <integer>     Maximum motion vector length [-1 (auto)]\n" );
+    H1( "      --mvrange-thread <int>  Minimum buffer between threads [-1 (auto)]\n" );
     H0( "  -m, --subme <integer>       Subpixel motion estimation and partition\n"
         "                                  decision quality: 1=fast, 7=best. [%d]\n", defaults->analyse.i_subpel_refine );
     H0( "      --b-rdo                 RD based mode decision for B-frames. Requires subme 6.\n" );
@@ -232,6 +255,9 @@ static void Help( x264_param_t *defaults, int b_longhelp )
     H0( "      --no-dct-decimate       Disables coefficient thresholding on P-frames\n" );
     H0( "      --nr <integer>          Noise reduction [%d]\n", defaults->analyse.i_noise_reduction );
     H1( "\n" );
+    H1( "      --deadzone-inter <int>  Set the size of the inter luma quantization deadzone [%d]\n", defaults->analyse.i_luma_deadzone[0] );
+    H1( "      --deadzone-intra <int>  Set the size of the intra luma quantization deadzone [%d]\n", defaults->analyse.i_luma_deadzone[1] );
+    H1( "                                  Deadzones should be in the range 0 - 32.\n" );
     H1( "      --cqm <string>          Preset quant matrices [\"flat\"]\n"
         "                                  - jvt, flat\n" );
     H0( "      --cqmfile <string>      Read custom quant matrices from a JM-compatible file\n" );
@@ -287,8 +313,9 @@ static void Help( x264_param_t *defaults, int b_longhelp )
     H0( "      --quiet                 Quiet Mode\n" );
     H0( "      --no-psnr               Disable PSNR computation\n" );
     H0( "      --no-ssim               Disable SSIM computation\n" );
-    H0( "      --threads <integer>     Parallel encoding (uses slices)\n" );
+    H0( "      --threads <integer>     Parallel encoding\n" );
     H0( "      --thread-input          Run Avisynth in its own thread\n" );
+    H1( "      --non-deterministic     Slightly improve quality of SMP, at the cost of repeatability\n" );
     H1( "      --no-asm                Disable all CPU optimizations\n" );
     H1( "      --visualize             Show MB types overlayed on the encoded video\n" );
     H1( "      --sps-id <integer>      Set SPS and PPS id numbers [%d]\n", defaults->i_sps_id );
@@ -352,8 +379,12 @@ static int  Parse( int argc, char **argv,
             { "min-keyint",required_argument,NULL,'i' },
             { "keyint",  required_argument, NULL, 'I' },
             { "scenecut",required_argument, NULL, 0 },
+            { "pre-scenecut", no_argument,  NULL, 0 },
             { "nf",      no_argument,       NULL, 0 },
-            { "filter",  required_argument, NULL, 'f' },
+            { "no-deblock", no_argument,    NULL, 0 },
+            { "filter",  required_argument, NULL, 0 },
+            { "deblock", required_argument, NULL, 'f' },
+            { "interlaced", no_argument,    NULL, 0 },
             { "no-cabac",no_argument,       NULL, 0 },
             { "qp",      required_argument, NULL, 'q' },
             { "qpmin",   required_argument, NULL, 0 },
@@ -367,11 +398,15 @@ static int  Parse( int argc, char **argv,
             { "frames",  required_argument, NULL, OPT_FRAMES },
             { "seek",    required_argument, NULL, OPT_SEEK },
             { "output",  required_argument, NULL, 'o' },
-            { "analyse", required_argument, NULL, 'A' },
+            { "analyse", required_argument, NULL, 0 },
+            { "partitions", required_argument, NULL, 'A' },
             { "direct",  required_argument, NULL, 0 },
+            { "direct-8x8", required_argument, NULL, 0 },
             { "weightb", no_argument,       NULL, 'w' },
             { "me",      required_argument, NULL, 0 },
             { "merange", required_argument, NULL, 0 },
+            { "mvrange", required_argument, NULL, 0 },
+            { "mvrange-thread", required_argument, NULL, 0 },
             { "subme",   required_argument, NULL, 'm' },
             { "b-rdo",   no_argument,       NULL, 0 },
             { "mixed-refs", no_argument,    NULL, 0 },
@@ -381,6 +416,8 @@ static int  Parse( int argc, char **argv,
             { "trellis", required_argument, NULL, 't' },
             { "no-fast-pskip", no_argument, NULL, 0 },
             { "no-dct-decimate", no_argument, NULL, 0 },
+            { "deadzone-inter", required_argument, NULL, '0' },
+            { "deadzone-intra", required_argument, NULL, '0' },
             { "level",   required_argument, NULL, 0 },
             { "ratetol", required_argument, NULL, 0 },
             { "vbv-maxrate", required_argument, NULL, 0 },
@@ -399,6 +436,7 @@ static int  Parse( int argc, char **argv,
             { "qpfile",  required_argument, NULL, OPT_QPFILE },
             { "threads", required_argument, NULL, 0 },
             { "thread-input", no_argument,  NULL, OPT_THREAD_INPUT },
+            { "non-deterministic", no_argument, NULL, 0 },
             { "no-psnr", no_argument,       NULL, 0 },
             { "no-ssim", no_argument,       NULL, 0 },
             { "quiet",   no_argument,       NULL, OPT_QUIET },
@@ -537,7 +575,7 @@ static int  Parse( int argc, char **argv,
                     }
                 }
 
-                b_error |= x264_param_parse( param, long_options[long_options_index].name, optarg ? optarg : "true" );
+                b_error |= x264_param_parse( param, long_options[long_options_index].name, optarg );
             }
         }
 

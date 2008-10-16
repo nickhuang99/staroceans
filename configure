@@ -9,7 +9,6 @@ echo ""
 echo "  --help                   print this message"
 echo "  --enable-avis-input      enables avisynth input (win32 only)"
 echo "  --enable-mp4-output      enables mp4 output (using gpac)"
-echo "  --enable-vfw             compiles the VfW frontend"
 echo "  --enable-gtk             build GTK+ interface"
 echo "  --enable-pthread         enables multithreaded encoding"
 echo "  --enable-debug           adds -g, doesn't strip"
@@ -30,9 +29,9 @@ cc_check() {
 #include <$1>
 int main () { $3 return 0; }
 EOF
-    $CC $CFLAGS $LDFLAGS $2 conftest.c -o conftest 2>$DEVNULL
+    $CC conftest.c $CFLAGS $LDFLAGS $2 -o conftest 2>$DEVNULL
     TMP="$?"
-    rm -f conftest.c conftest*
+    rm -f conftest*
     return $TMP
 }
 
@@ -51,20 +50,31 @@ pthread="auto"
 debug="no"
 gprof="no"
 pic="no"
-vfw="no"
 gtk="no"
 vis="no"
 shared="no"
 
 CC="${CC-gcc}"
-CFLAGS="-Wall -I. -D__X264__"
-LDFLAGS=""
+CFLAGS="$CFLAGS -Wall -I. -D__X264__"
+LDFLAGS="$LDFLAGS"
 HAVE_GETOPT_LONG=1
 
 AS="nasm"
 ASFLAGS=""
 
 EXE=""
+
+# check whether 'echo -n' works as expected, otherwise try printf
+if [ "x`echo -n houba`" = xhouba ]
+then
+  ECHON="echo -n"
+elif [ "x`printf houba`" = xhouba ]
+then
+  ECHON="printf"
+else
+  echo "Neither 'echo -n' nor 'printf' are working with your shell!"
+  exit 1
+fi
 
 MACHINE="$(./config.guess)"
 
@@ -80,6 +90,11 @@ case "${MACHINE#*-*-}" in
     ;;
   freebsd*)
     SYS="FREEBSD"
+    LDFLAGS="$LDFLAGS -lm"
+    ;;
+  kfreebsd*-gnu)
+    SYS="FREEBSD"
+    CFLAGS="$CFLAGS -DHAVE_MALLOC_H"
     LDFLAGS="$LDFLAGS -lm"
     ;;
   netbsd*)
@@ -179,6 +194,21 @@ case "${MACHINE%%-*}" in
     ;;
 esac
 
+# check requirements
+
+if [ $SYS = MACOSX -a $ARCH = X86 ]
+then
+  # we want Apple's nasm from Xcode 2.4.1 or later
+  NASM_BUILD_REQUIRED=11
+  NASM_BUILD=`nasm -v|grep "Apple Computer"|sed 's/.*build \([0-9]*\).*/\1/'`
+  if [ $NASM_BUILD -lt $NASM_BUILD_REQUIRED ]
+  then
+    echo "Your version of 'nasm' is too old."
+    echo "Please install Xcode 2.4.1 or later."
+    exit 1
+  fi
+fi
+
 CFLAGS="$CFLAGS -DARCH_$ARCH -DSYS_$SYS"
 
 # parse options
@@ -218,14 +248,12 @@ for opt do
             ;;
         --extra-cflags=*)
             CFLAGS="$CFLAGS ${opt#--extra-cflags=}"
-            VFW_CFLAGS="${opt#--extra-cflags=}"
             ;;
         --extra-ldflags=*)
             LDFLAGS="$LDFLAGS ${opt#--extra-ldflags=}"
-            VFW_LDFLAGS="${opt#--extra-ldflags=}"
             ;;
         --enable-pthread)
-            pthread="yes"
+            pthread="auto" # can't skip detection, since it differs by OS
             ;;
         --disable-pthread)
             pthread="no"
@@ -240,12 +268,6 @@ for opt do
             ;;
         --enable-pic)
             pic="yes"
-            ;;
-        --enable-vfw)
-            vfw="yes"
-            ;;
-        --disable-vfw)
-            vfw="no"
             ;;
         --enable-gtk)
             gtk="yes"
@@ -272,25 +294,34 @@ done
 
 # autodetect options that weren't forced nor disabled
 
+libpthread=""
 if test "$pthread" = "auto" ; then
+    pthread="no"
     case $SYS in
-        MINGW|CYGWIN|BEOS)
+        BEOS)
             pthread="yes"
             ;;
+        MINGW|CYGWIN)
+            if cc_check pthread.h -lpthread "pthread_create(0,0,0,0);" ; then
+                pthread="yes"
+                libpthread="-lpthread"
+            elif cc_check pthread.h -lpthreadGC2 "pthread_create(0,0,0,0);" ; then
+                pthread="yes"
+                libpthread="-lpthreadGC2"
+            elif cc_check pthread.h "-lpthreadGC2 -lwsock32 -DPTW32_STATIC_LIB" "pthread_create(0,0,0,0);" ; then
+                pthread="yes"
+                libpthread="-lpthreadGC2 -lwsock32"\
+                CFLAGS="$CFLAGS -DPTW32_STATIC_LIB"
+            fi
+            ;;
         *)
-            pthread="no"
-            cc_check pthread.h -lpthread && pthread="yes"
+            cc_check pthread.h -lpthread && pthread="yes" && libpthread="-lpthread"
             ;;
     esac
 fi
 if test "$pthread" = "yes" ; then
     CFLAGS="$CFLAGS -DHAVE_PTHREAD"
-    case $SYS in
-        MINGW|CYGWIN|BEOS)
-            ;;
-        *) LDFLAGS="$LDFLAGS -lpthread"
-            ;;
-    esac
+    LDFLAGS="$LDFLAGS $libpthread"
 fi
 
 MP4_LDFLAGS="-lgpac_static"
@@ -326,7 +357,6 @@ fi
 if [ "$debug" != "yes" -a "$gprof" != "yes" ]; then
     CFLAGS="$CFLAGS -s -fomit-frame-pointer"
     LDFLAGS="$LDFLAGS -s"
-    VFW_LDFLAGS="$VFW_LDFLAGS -s"
 fi
 
 if [ "$debug" = "yes" ]; then
@@ -358,30 +388,21 @@ CFLAGS=$CFLAGS
 LDFLAGS=$LDFLAGS
 AS=$AS
 ASFLAGS=$ASFLAGS
-VFW=$vfw
 GTK=$gtk
 EXE=$EXE
 VIS=$vis
 HAVE_GETOPT_LONG=$HAVE_GETOPT_LONG
 DEVNULL=$DEVNULL
+ECHON=$ECHON
 EOF
 
-echo -n 'CONFIGURE_ARGS=' >> config.mak
+$ECHON 'CONFIGURE_ARGS=' >> config.mak
 for A in "$@" ; do
-    echo -n " '$A'" >> config.mak
+    $ECHON " '$A'" >> config.mak
 done
 echo '' >> config.mak
 
 cp config.mak gtk/config.mak
-
-if [ "$vfw" = "yes" ]; then
-    rm -f vfw/build/cygwin/config.mak
-    cat > vfw/build/cygwin/config.mak << EOF
-CFLAGS=$VFW_CFLAGS
-LDFLAGS=$VFW_LDFLAGS
-EOF
-    echo "default: x264vfw.dll" >> config.mak
-fi
 
 if [ "$shared" = "yes" ]; then
     API=$(grep '#define X264_BUILD' < x264.h | cut -f 3 -d ' ')
@@ -399,15 +420,7 @@ fi
 
 ./version.sh
 
-pclibs="-L$libdir -lx264"
-if test "$pthread" = "yes" ; then
-  case $SYS in
-    MINGW|CYGWIN|BEOS)
-      ;;
-    *) pclibs="$pclibs -lpthread"
-      ;;
-  esac
-fi
+pclibs="-L$libdir -lx264 $libpthread"
 
 cat > x264.pc << EOF
 prefix=$prefix
@@ -428,7 +441,6 @@ echo "System:     $SYS"
 echo "avis input: $avis_input"
 echo "mp4 output: $mp4_output"
 echo "pthread:    $pthread"
-echo "vfw:        $vfw"
 echo "gtk:        $gtk"
 echo "debug:      $debug"
 echo "gprof:      $gprof"

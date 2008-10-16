@@ -31,6 +31,7 @@
 #endif
 #include <stdarg.h>
 #include <stdlib.h>
+#include <assert.h>
 
 #ifdef _MSC_VER
 #define snprintf _snprintf
@@ -45,13 +46,9 @@
 #endif
 
 /* threads */
-#ifdef __WIN32__
-#include <windows.h>
-#define pthread_t               HANDLE
-#define pthread_create(t,u,f,d) *(t)=CreateThread(NULL,0,f,d,0,NULL)
-#define pthread_join(t,s)       { WaitForSingleObject(t,INFINITE); \
-                                  CloseHandle(t); } 
-#define HAVE_PTHREAD 1
+#if defined(__WIN32__) && defined(HAVE_PTHREAD)
+#include <pthread.h>
+#define USE_CONDITION_VAR
 
 #elif defined(SYS_BEOS)
 #include <kernel/OS.h>
@@ -60,10 +57,31 @@
                                   resume_thread(*(t)); }
 #define pthread_join(t,s)       { long tmp; \
                                   wait_for_thread(t,(s)?(long*)(s):&tmp); }
+#ifndef usleep
+#define usleep(t)               snooze(t)
+#endif
 #define HAVE_PTHREAD 1
 
 #elif defined(HAVE_PTHREAD)
 #include <pthread.h>
+#define USE_CONDITION_VAR
+#else
+#define pthread_t               int
+#define pthread_create(t,u,f,d)
+#define pthread_join(t,s)
+#endif //SYS_*
+
+#ifndef USE_CONDITION_VAR
+#define pthread_mutex_t         int
+#define pthread_mutex_init(m,f)
+#define pthread_mutex_destroy(m)
+#define pthread_mutex_lock(m)
+#define pthread_mutex_unlock(m)
+#define pthread_cond_t          int
+#define pthread_cond_init(c,f)
+#define pthread_cond_destroy(c)
+#define pthread_cond_broadcast(c)
+#define pthread_cond_wait(c,m)  usleep(100)
 #endif
 
 /****************************************************************************
@@ -77,6 +95,10 @@
 #define X264_MAX4(a,b,c,d) X264_MAX((a),X264_MAX3((b),(c),(d)))
 #define XCHG(type,a,b) { type t = a; a = b; b = t; }
 #define FIX8(f) ((int)(f*(1<<8)+.5))
+
+#ifndef offsetof
+#define offsetof(T,F) ((unsigned int)((char *)&((T *)0)->F))
+#endif
 
 #if defined(__GNUC__) && (__GNUC__ > 3 || __GNUC__ == 3 && __GNUC_MINOR__ > 0)
 #define UNUSED __attribute__((unused))
@@ -95,8 +117,10 @@
 }
 
 #define X264_BFRAME_MAX 16
+#define X264_THREAD_MAX 16
 #define X264_SLICE_MAX 4
 #define X264_NAL_MAX (4 + X264_SLICE_MAX)
+#define X264_THREAD_HEIGHT 24 // number of pixels (per thread) in progress at any given time. could theoretically be as low as 22
 
 /****************************************************************************
  * Includes
@@ -193,6 +217,7 @@ typedef struct
 
     int i_frame_num;
 
+    int b_mbaff;
     int b_field_pic;
     int b_bottom_field;
 
@@ -270,7 +295,10 @@ struct x264_t
     /* encoder parameters */
     x264_param_t    param;
 
-    x264_t *thread[X264_SLICE_MAX];
+    x264_t          *thread[X264_THREAD_MAX];
+    pthread_t       thread_handle;
+    int             b_thread_active;
+    int             i_thread_phase; /* which thread to use for the next frame */
 
     /* bitstream output */
     struct
@@ -280,6 +308,7 @@ struct x264_t
         int         i_bitstream;    /* size of p_bitstream */
         uint8_t     *p_bitstream;   /* will hold data for all nal */
         bs_t        bs;
+        int         i_frame_size;
     } out;
 
     /* frame number/poc */
@@ -326,12 +355,12 @@ struct x264_t
         /* Temporary buffer (frames types not yet decided) */
         x264_frame_t *next[X264_BFRAME_MAX+3];
         /* Unused frames */
-        x264_frame_t *unused[X264_BFRAME_MAX+3];
+        x264_frame_t *unused[X264_BFRAME_MAX + X264_THREAD_MAX*2 + 16+4];
         /* For adaptive B decision */
         x264_frame_t *last_nonb;
 
-        /* frames used for reference +1 for decoding + sentinels */
-        x264_frame_t *reference[16+2+1+2];
+        /* frames used for reference + sentinels */
+        x264_frame_t *reference[16+2];
 
         int i_last_idr; /* Frame number of the last IDR */
 
@@ -397,6 +426,11 @@ struct x264_t
         int     b_trellis;
         int     b_noise_reduction;
 
+        int     b_interlaced;
+
+        /* Inverted luma quantization deadzone */
+        int     i_luma_deadzone[2]; // {inter, intra}
+
         /* Allowed qpel MV range to stay within the picture + emulated edge pixels */
         int     mv_min[2];
         int     mv_max[2];
@@ -416,6 +450,8 @@ struct x264_t
         int     i_mb_type_left; 
         int     i_mb_type_topleft; 
         int     i_mb_type_topright; 
+        int     i_mb_prev_xy;
+        int     i_mb_top_xy;
 
         /* mb table */
         int8_t  *type;                      /* mb type */
@@ -427,9 +463,10 @@ struct x264_t
         int16_t (*mv[2])[2];                /* mb mv. set to 0 for intra mb */
         int16_t (*mvd[2])[2];               /* mb mv difference with predict. set to 0 if intra. cabac only */
         int8_t   *ref[2];                   /* mb ref. set to -1 if non used (intra or Lx only) */
-        int16_t (*mvr[2][16])[2];           /* 16x16 mv for each possible ref */
+        int16_t (*mvr[2][32])[2];           /* 16x16 mv for each possible ref */
         int8_t  *skipbp;                    /* block pattern for SKIP or DIRECT (sub)mbs. B-frames + cabac only */
         int8_t  *mb_transform_size;         /* transform_size_8x8_flag of each mb */
+        uint8_t *intra_border_backup[2][3]; /* bottom pixels of the previous mb row, used for intra prediction after the framebuffer has been deblocked */
 
         /* current value */
         int     i_type;
@@ -458,7 +495,8 @@ struct x264_t
             uint8_t *p_fdec[3];
 
             /* pointer over mb of the references */
-            uint8_t *p_fref[2][16][4+2]; /* last: lN, lH, lV, lHV, cU, cV */
+            int i_fref[2];
+            uint8_t *p_fref[2][32][4+2]; /* last: lN, lH, lV, lHV, cU, cV */
             uint16_t *p_integral[2][16];
 
             /* fref stride */
@@ -486,14 +524,17 @@ struct x264_t
 
             int16_t direct_mv[2][X264_SCAN8_SIZE][2];
             int8_t  direct_ref[2][X264_SCAN8_SIZE];
+            int     pskip_mv[2];
 
             /* number of neighbors (top and left) that used 8x8 dct */
             int     i_neighbour_transform_size;
             int     b_transform_8x8_allowed;
+            int     i_neighbour_interlaced;
         } cache;
 
         /* */
         int     i_qp;       /* current qp */
+        int     i_chroma_qp;
         int     i_last_qp;  /* last qp */
         int     i_last_dqp; /* last delta qp */
         int     b_variable_qp; /* whether qp is allowed to vary per macroblock */
@@ -502,8 +543,8 @@ struct x264_t
         int     b_direct_auto_write; /* analyse direct modes, to use and/or save */
 
         /* B_direct and weighted prediction */
-        int     dist_scale_factor[16][16];
-        int     bipred_weight[16][16];
+        int     dist_scale_factor[16][2];
+        int     bipred_weight[32][4];
         /* maps fref1[0]'s ref indices into the current list0 */
         int     map_col_to_list0_buf[2]; // for negative indices
         int     map_col_to_list0[16];
@@ -532,11 +573,12 @@ struct x264_t
             int i_mb_count_skip;
             int i_mb_count_8x8dct[2];
             int i_mb_count_size[7];
-            int i_mb_count_ref[16];
+            int i_mb_count_ref[32];
             /* Estimated (SATD) cost as Intra/Predicted frame */
             /* XXX: both omit the cost of MBs coded as P_SKIP */
             int i_intra_cost;
             int i_inter_cost;
+            int i_mbs_analysed;
             /* Adaptive direct mv pred */
             int i_direct_score[2];
         } frame;
@@ -558,7 +600,7 @@ struct x264_t
         int64_t i_mb_count[5][19];
         int64_t i_mb_count_8x8dct[2];
         int64_t i_mb_count_size[2][7];
-        int64_t i_mb_count_ref[2][16];
+        int64_t i_mb_count_ref[2][32];
         /* */
         int     i_direct_score[2];
         int     i_direct_frames[2];
@@ -574,6 +616,7 @@ struct x264_t
     x264_pixel_function_t pixf;
     x264_mc_functions_t   mc;
     x264_dct_function_t   dctf;
+    x264_zigzag_function_t zigzagf;
     x264_csp_function_t   csp;
     x264_quant_function_t quantf;
     x264_deblock_function_t loopf;

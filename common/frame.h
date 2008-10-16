@@ -49,7 +49,8 @@ typedef struct
 
     /* for unrestricted mv we allocate more data than needed
      * allocated data are stored in buffer */
-    void    *buffer[12];
+    void    *buffer[8];
+    void    *buffer_lowres[4];
 
     /* motion data */
     int8_t  *mb_type;
@@ -68,6 +69,12 @@ typedef struct
     int     *i_row_satd;
     int     *i_row_bits;
     int     *i_row_qp;
+
+    /* threading */
+    int     i_lines_completed; /* in pixels */
+    int     i_reference_count; /* number of threads using this frame (not necessarily the number of pointers) */
+    pthread_mutex_t mutex;      
+    pthread_cond_t  cv;
 
 } x264_frame_t;
 
@@ -90,16 +97,30 @@ void          x264_frame_delete( x264_frame_t *frame );
 
 void          x264_frame_copy_picture( x264_t *h, x264_frame_t *dst, x264_picture_t *src );
 
-void          x264_frame_expand_border( x264_frame_t *frame );
-void          x264_frame_expand_border_filtered( x264_frame_t *frame );
+void          x264_frame_expand_border( x264_t *h, x264_frame_t *frame, int mb_y, int b_end );
+void          x264_frame_expand_border_filtered( x264_t *h, x264_frame_t *frame, int mb_y, int b_end );
 void          x264_frame_expand_border_lowres( x264_frame_t *frame );
 void          x264_frame_expand_border_mod16( x264_t *h, x264_frame_t *frame );
 
-void          x264_frame_deblocking_filter( x264_t *h, int i_slice_type );
+void          x264_frame_deblock( x264_t *h );
+void          x264_frame_deblock_row( x264_t *h, int mb_y );
 
-void          x264_frame_filter( int cpu, x264_frame_t *frame );
+void          x264_frame_filter( int cpu, x264_frame_t *frame, int b_interlaced, int mb_y, int b_end );
 void          x264_frame_init_lowres( int cpu, x264_frame_t *frame );
 
 void          x264_deblock_init( int cpu, x264_deblock_function_t *pf );
+
+void          x264_frame_cond_broadcast( x264_frame_t *frame, int i_lines_completed );
+void          x264_frame_cond_wait( x264_frame_t *frame, int i_lines_completed );
+
+void          x264_frame_push( x264_frame_t **list, x264_frame_t *frame );
+x264_frame_t *x264_frame_pop( x264_frame_t **list );
+void          x264_frame_unshift( x264_frame_t **list, x264_frame_t *frame );
+x264_frame_t *x264_frame_shift( x264_frame_t **list );
+void          x264_frame_push_unused( x264_t *h, x264_frame_t *frame );
+x264_frame_t *x264_frame_pop_unused( x264_t *h );
+void          x264_frame_sort( x264_frame_t **list, int b_dts );
+#define x264_frame_sort_dts(list) x264_frame_sort(list, 1)
+#define x264_frame_sort_pts(list) x264_frame_sort(list, 0)
 
 #endif
