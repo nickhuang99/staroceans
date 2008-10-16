@@ -35,7 +35,7 @@
 
 #include <stdarg.h>
 
-#define X264_BUILD 54
+#define X264_BUILD 56
 
 /* x264_t:
  *      opaque handler for encoder */
@@ -53,6 +53,8 @@ typedef struct x264_t x264_t;
 #define X264_CPU_3DNOW      0x000010    /* 3dnow! */
 #define X264_CPU_3DNOWEXT   0x000020    /* 3dnow! ext */
 #define X264_CPU_ALTIVEC    0x000040    /* altivec */
+#define X264_CPU_SSE3       0x000080    /* sse 3 */
+#define X264_CPU_SSSE3      0x000100    /* ssse 3 */
 
 /* Analyse flags
  */
@@ -72,7 +74,7 @@ typedef struct x264_t x264_t;
 #define X264_CQM_FLAT                0
 #define X264_CQM_JVT                 1
 #define X264_CQM_CUSTOM              2
-
+#define X264_RC_NONE                 -1
 #define X264_RC_CQP                  0
 #define X264_RC_CRF                  1
 #define X264_RC_ABR                  2
@@ -120,15 +122,19 @@ static const char * const x264_colmatrix_names[] = { "GBR", "bt709", "undef", ""
 #define X264_LOG_INFO           2
 #define X264_LOG_DEBUG          3
 
+/* Zones: override ratecontrol or other options for specific sections of the video.
+ * See x264_encoder_reconfig() for which options can be changed.
+ * If zones overlap, whichever comes later in the list takes precedence. */
 typedef struct
 {
-    int i_start, i_end;
-    int b_force_qp;
+    int i_start, i_end; /* range of frame numbers */
+    int b_force_qp; /* whether to use qp vs bitrate factor */
     int i_qp;
     float f_bitrate_factor;
+    struct x264_param_t *param;
 } x264_zone_t;
 
-typedef struct
+typedef struct x264_param_t
 {
     /* CPU flags */
     unsigned int cpu;
@@ -224,7 +230,7 @@ typedef struct
         int          i_noise_reduction; /* adaptive pseudo-deadzone */
 
         /* the deadzone size that will be used in luma quantization */
-        int          i_luma_deadzone[2]; // {inter, intra}
+        int          i_luma_deadzone[2]; /* {inter, intra} */
 
         int          b_psnr;    /* compute and print PSNR stats */
         int          b_ssim;    /* compute and print SSIM stats */
@@ -245,7 +251,7 @@ typedef struct
         float       f_rate_tolerance;
         int         i_vbv_max_bitrate;
         int         i_vbv_buffer_size;
-        float       f_vbv_buffer_init;
+        float       f_vbv_buffer_init; /* <=1: fraction of buffer_size. >1: kbit */
         float       f_ip_factor;
         float       f_pb_factor;
 
@@ -273,17 +279,17 @@ typedef struct
 
 typedef struct {
     int level_idc;
-    int mbps;        // max macroblock processing rate (macroblocks/sec)
-    int frame_size;  // max frame size (macroblocks)
-    int dpb;         // max decoded picture buffer (bytes)
-    int bitrate;     // max bitrate (kbit/sec)
-    int cpb;         // max vbv buffer (kbit)
-    int mv_range;    // max vertical mv component range (pixels)
-    int mvs_per_2mb; // max mvs per 2 consecutive mbs.
-    int slice_rate;  // ??
-    int bipred8x8;   // limit bipred to >=8x8
-    int direct8x8;   // limit b_direct to >=8x8
-    int frame_only;  // forbid interlacing
+    int mbps;        /* max macroblock processing rate (macroblocks/sec) */
+    int frame_size;  /* max frame size (macroblocks) */
+    int dpb;         /* max decoded picture buffer (bytes) */
+    int bitrate;     /* max bitrate (kbit/sec) */
+    int cpb;         /* max vbv buffer (kbit) */
+    int mv_range;    /* max vertical mv component range (pixels) */
+    int mvs_per_2mb; /* max mvs per 2 consecutive mbs. */
+    int slice_rate;  /* ?? */
+    int bipred8x8;   /* limit bipred to >=8x8 */
+    int direct8x8;   /* limit b_direct to >=8x8 */
+    int frame_only;  /* forbid interlacing */
 } x264_level_t;
 
 /* all of the levels defined in the standard, terminated by .level_idc=0 */
@@ -405,18 +411,5 @@ int     x264_encoder_encode ( x264_t *, x264_nal_t **, int *, x264_picture_t *, 
 /* x264_encoder_close:
  *      close an encoder handler */
 void    x264_encoder_close  ( x264_t * );
-
-/****************************************************************************
- * Private stuff for internal usage:
- ****************************************************************************/
-#ifdef __X264__
-#   ifdef _MSC_VER
-#       define inline __inline
-#       define DECLARE_ALIGNED( type, var, n ) __declspec(align(n)) type var
-#		define strncasecmp(s1, s2, n) strnicmp(s1, s2, n)
-#   else
-#       define DECLARE_ALIGNED( type, var, n ) type var __attribute__((aligned(n)))
-#   endif
-#endif
 
 #endif

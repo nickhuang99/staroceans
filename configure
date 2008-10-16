@@ -19,6 +19,7 @@ echo "  --enable-shared          build libx264.so"
 echo "  --extra-asflags=EASFLAGS add EASFLAGS to ASFLAGS"
 echo "  --extra-cflags=ECFLAGS   add ECFLAGS to CFLAGS"
 echo "  --extra-ldflags=ELDFLAGS add ELDFLAGS to LDFLAGS"
+echo "  --host=HOST              build programs to run on HOST"
 echo ""
 exit 1
 fi
@@ -30,6 +31,15 @@ cc_check() {
 int main () { $3 return 0; }
 EOF
     $CC conftest.c $CFLAGS $LDFLAGS $2 -o conftest 2>$DEVNULL
+    TMP="$?"
+    rm -f conftest*
+    return $TMP
+}
+
+as_check() {
+    rm -f conftest*
+    echo "$1" > conftest.asm
+    $AS conftest.asm $ASFLAGS $2 -o conftest.o 2>$DEVNULL
     TMP="$?"
     rm -f conftest*
     return $TMP
@@ -55,11 +65,11 @@ vis="no"
 shared="no"
 
 CC="${CC-gcc}"
-CFLAGS="$CFLAGS -Wall -I. -D__X264__"
+CFLAGS="$CFLAGS -Wall -I."
 LDFLAGS="$LDFLAGS"
 HAVE_GETOPT_LONG=1
 
-AS="nasm"
+AS="yasm"
 ASFLAGS=""
 
 EXE=""
@@ -75,141 +85,6 @@ else
   echo "Neither 'echo -n' nor 'printf' are working with your shell!"
   exit 1
 fi
-
-MACHINE="$(./config.guess)"
-
-case "${MACHINE#*-*-}" in
-  beos*)
-    SYS="BEOS"
-    CFLAGS="$CFLAGS -DHAVE_MALLOC_H"
-    ;;
-  darwin*)
-    SYS="MACOSX"
-    CFLAGS="$CFLAGS -falign-loops=16"
-    LDFLAGS="$LDFLAGS -lm -lmx"
-    ;;
-  freebsd*)
-    SYS="FREEBSD"
-    LDFLAGS="$LDFLAGS -lm"
-    ;;
-  kfreebsd*-gnu)
-    SYS="FREEBSD"
-    CFLAGS="$CFLAGS -DHAVE_MALLOC_H"
-    LDFLAGS="$LDFLAGS -lm"
-    ;;
-  netbsd*)
-    SYS="NETBSD"
-    LDFLAGS="$LDFLAGS -lm"
-    ;;
-  openbsd*)
-    SYS="OPENBSD"
-    CFLAGS="$CFLAGS -I/usr/X11R6/include"
-    LDFLAGS="$LDFLAGS -lm"
-    ;;
-  linux*)
-    SYS="LINUX"
-    CFLAGS="$CFLAGS -DHAVE_MALLOC_H"
-    LDFLAGS="$LDFLAGS -lm"
-    ;;
-  cygwin*)
-    SYS="CYGWIN"
-    CFLAGS="$CFLAGS -mno-cygwin"
-    LDFLAGS="$LDFLAGS -mno-cygwin"
-    EXE=".exe"
-    DEVNULL="NUL"
-    ;;
-  mingw*)
-    SYS="MINGW"
-    EXE=".exe"
-    DEVNULL="NUL"
-    ;;
-  sunos*|solaris*)
-    SYS="SunOS"
-    CFLAGS="$CFLAGS -DHAVE_MALLOC_H"
-    LDFLAGS="$LDFLAGS -lm"
-    HAVE_GETOPT_LONG=0
-    ;;
-  *)
-    echo "Unknown system $MACHINE, edit the configure"
-    exit 1
-    ;;
-esac
-
-case "${MACHINE%%-*}" in
-  i*86)
-    ARCH="X86"
-    CFLAGS="$CFLAGS -DHAVE_MMXEXT -DHAVE_SSE2"
-    AS="nasm"
-    ASFLAGS="-O2"
-    if [ "$SYS" = MACOSX ]; then
-      ASFLAGS="$ASFLAGS -f macho -DPREFIX"
-    elif [ "$SYS" = CYGWIN -o "$SYS" = MINGW ]; then
-      ASFLAGS="$ASFLAGS -f win32 -DPREFIX"
-    elif [ "$SYS" = NETBSD ]; then
-      ASFLAGS="$ASFLAGS -f aoutb"
-    else
-      ASFLAGS="$ASFLAGS -f elf"
-    fi
-    ;;
-  x86_64)
-    ARCH="X86_64"
-    CFLAGS="$CFLAGS -DHAVE_MMXEXT -DHAVE_SSE2"
-    AS="yasm"
-    ASFLAGS="-f elf -m amd64"
-    ;;
-  powerpc|powerpc64)
-    ARCH="PPC"
-    if [ $SYS = MACOSX ]
-    then
-      CFLAGS="$CFLAGS -faltivec -fastf -mcpu=G4"
-    else
-      CFLAGS="$CFLAGS -maltivec -mabi=altivec"
-    fi
-    ;;
-  sparc)
-    if test "$(uname -m)" = "sun4u"; then
-      ARCH="UltraSparc"
-      CFLAGS="$CFLAGS -mcpu=ultrasparc"
-      LDFLAGS="$LDFLAGS -mcpu=ultrasparc"
-      AS="as"
-      ASFLAGS="-xarch=v8plusa"
-    else
-      ARCH="Sparc"
-    fi
-    ;;
-  mips|mipsel|mips64|mips64el)
-    ARCH="MIPS"
-    ;;
-  arm*)
-    ARCH="ARM"
-    ;;
-  s390|s390x)
-    ARCH="S390"
-    ;;
-  parisc|parisc64)
-    ARCH="PARISC"
-    ;;
-  *)
-    ARCH="$(echo ${MACHINE%%-*} | tr a-z A-Z)"
-    ;;
-esac
-
-# check requirements
-
-if [ $SYS = MACOSX -a $ARCH = X86 ]
-then
-  # we want Apple's nasm from Xcode 2.4.1 or later
-  NASM_BUILD_REQUIRED=11
-  NASM_BUILD=`nasm -v|grep "Apple Computer"|sed 's/.*build \([0-9]*\).*/\1/'`
-  if [ $NASM_BUILD -lt $NASM_BUILD_REQUIRED ]
-  then
-    echo "Your version of 'nasm' is too old."
-    echo "Please install Xcode 2.4.1 or later."
-    exit 1
-  fi
-fi
-
-CFLAGS="$CFLAGS -DARCH_$ARCH -DSYS_$SYS"
 
 # parse options
 
@@ -277,20 +152,182 @@ for opt do
             ;;
         --enable-shared)
             shared="yes"
-            if [ $ARCH = "X86_64" -o $ARCH = "PPC" -o $ARCH = "ALPHA" ] ; then
-                pic="yes"
-            fi
             ;;
         --enable-visualize)
             LDFLAGS="$LDFLAGS -L/usr/X11R6/lib -lX11"
             CFLAGS="$CFLAGS -DVISUALIZE=1"
             vis="yes"
             ;;
+        --host=*)
+            host="${opt#--host=}"
+            ;;
         *)
             echo "Unknown option $opt, ignored"
             ;;
     esac
 done
+
+if [ "x$host" = x ]; then
+    host=`./config.guess`
+fi
+# normalize a triplet into a quadruplet
+host=`./config.sub $host`
+
+# split $host
+host_cpu="${host%%-*}"
+host="${host#*-}"
+host_vendor="${host%%-*}"
+host_os="${host#*-}"
+
+case $host_os in
+  beos*)
+    SYS="BEOS"
+    CFLAGS="$CFLAGS -DHAVE_MALLOC_H"
+    ;;
+  darwin*)
+    SYS="MACOSX"
+    CFLAGS="$CFLAGS -falign-loops=16"
+    LDFLAGS="$LDFLAGS -lm -lmx"
+    ;;
+  freebsd*)
+    SYS="FREEBSD"
+    LDFLAGS="$LDFLAGS -lm"
+    ;;
+  kfreebsd*-gnu)
+    SYS="FREEBSD"
+    CFLAGS="$CFLAGS -DHAVE_MALLOC_H"
+    LDFLAGS="$LDFLAGS -lm"
+    ;;
+  netbsd*)
+    SYS="NETBSD"
+    LDFLAGS="$LDFLAGS -lm"
+    ;;
+  openbsd*)
+    SYS="OPENBSD"
+    CFLAGS="$CFLAGS -I/usr/X11R6/include"
+    LDFLAGS="$LDFLAGS -lm"
+    ;;
+  linux*)
+    SYS="LINUX"
+    CFLAGS="$CFLAGS -DHAVE_MALLOC_H"
+    LDFLAGS="$LDFLAGS -lm"
+    ;;
+  cygwin*)
+    SYS="CYGWIN"
+    CFLAGS="$CFLAGS -mno-cygwin"
+    LDFLAGS="$LDFLAGS -mno-cygwin"
+    EXE=".exe"
+    DEVNULL="NUL"
+    ;;
+  mingw*)
+    SYS="MINGW"
+    EXE=".exe"
+    DEVNULL="NUL"
+    ;;
+  sunos*|solaris*)
+    SYS="SunOS"
+    CFLAGS="$CFLAGS -DHAVE_MALLOC_H"
+    LDFLAGS="$LDFLAGS -lm"
+    HAVE_GETOPT_LONG=0
+    ;;
+  *)
+    echo "Unknown system $host, edit the configure"
+    exit 1
+    ;;
+esac
+
+case $host_cpu in
+  i*86)
+    ARCH="X86"
+    AS="yasm"
+    ASFLAGS="-O2"
+    if [ "$SYS" = MACOSX ]; then
+      ASFLAGS="$ASFLAGS -f macho -DPREFIX"
+    elif [ "$SYS" = CYGWIN -o "$SYS" = MINGW ]; then
+      ASFLAGS="$ASFLAGS -f win32 -DPREFIX"
+    elif [ "$SYS" = NETBSD ]; then
+      ASFLAGS="$ASFLAGS -f aoutb"
+    else
+      ASFLAGS="$ASFLAGS -f elf"
+    fi
+    as_check || AS="nasm"
+    ;;
+  x86_64)
+    ARCH="X86_64"
+    AS="yasm"
+    ASFLAGS="-f elf -m amd64"
+    ;;
+  powerpc|powerpc64)
+    ARCH="PPC"
+    if [ $SYS = MACOSX ]
+    then
+      ALTIVECFLAGS="$ALTIVECFLAGS -faltivec -fastf -mcpu=G4"
+    else
+      ALTIVECFLAGS="$ALTIVECFLAGS -maltivec -mabi=altivec"
+    fi
+    ;;
+  sparc)
+    if test "$(uname -m)" = "sun4u"; then
+      ARCH="UltraSparc"
+      CFLAGS="$CFLAGS -mcpu=ultrasparc"
+      LDFLAGS="$LDFLAGS -mcpu=ultrasparc"
+      AS="as"
+      ASFLAGS="-xarch=v8plusa"
+    else
+      ARCH="Sparc"
+    fi
+    ;;
+  mips|mipsel|mips64|mips64el)
+    ARCH="MIPS"
+    ;;
+  arm*)
+    ARCH="ARM"
+    ;;
+  s390|s390x)
+    ARCH="S390"
+    ;;
+  parisc|parisc64)
+    ARCH="PARISC"
+    ;;
+  *)
+    ARCH="$(echo $host_cpu | tr a-z A-Z)"
+    ;;
+esac
+
+# check requirements
+
+if [ $shared = yes -a \( $ARCH = "X86_64" -o $ARCH = "PPC" -o $ARCH = "ALPHA" \) ] ; then
+    pic="yes"
+fi
+
+if [ $SYS = MACOSX -a $ARCH = X86 ]
+then
+  # we want Apple's nasm from Xcode 2.4.1 or later
+  NASM_BUILD_REQUIRED=11
+  NASM_BUILD=`nasm -v|grep "Apple Computer"|sed 's/.*build \([0-9]*\).*/\1/'`
+  if [ $NASM_BUILD -lt $NASM_BUILD_REQUIRED ]
+  then
+    echo "Your version of 'nasm' is too old."
+    echo "Please install Xcode 2.4.1 or later."
+    AS=""
+  fi
+fi
+
+if [ $ARCH = X86 -o $ARCH = X86_64 ] ; then
+    if as_check ; then
+        CFLAGS="$CFLAGS -DHAVE_MMX"
+        if as_check "pabsw xmm0, xmm0" ; then
+            ASFLAGS="$ASFLAGS -DHAVE_SSE3"
+            CFLAGS="$CFLAGS -DHAVE_SSE3"
+        fi
+    else
+        echo "No suitable assembler found.  x264 will be several times slower."
+        echo "Please install 'yasm' to get MMX/SSE optimized code."
+        AS=""
+    fi
+fi
+
+CFLAGS="$CFLAGS -DARCH_$ARCH -DSYS_$SYS"
 
 # autodetect options that weren't forced nor disabled
 
@@ -310,7 +347,7 @@ if test "$pthread" = "auto" ; then
                 libpthread="-lpthreadGC2"
             elif cc_check pthread.h "-lpthreadGC2 -lwsock32 -DPTW32_STATIC_LIB" "pthread_create(0,0,0,0);" ; then
                 pthread="yes"
-                libpthread="-lpthreadGC2 -lwsock32"\
+                libpthread="-lpthreadGC2 -lwsock32"
                 CFLAGS="$CFLAGS -DPTW32_STATIC_LIB"
             fi
             ;;
@@ -385,6 +422,7 @@ ARCH=$ARCH
 SYS=$SYS
 CC=$CC
 CFLAGS=$CFLAGS
+ALTIVECFLAGS=$ALTIVECFLAGS
 LDFLAGS=$LDFLAGS
 AS=$AS
 ASFLAGS=$ASFLAGS

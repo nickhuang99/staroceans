@@ -31,6 +31,7 @@
 extern void x264_pixel_avg_w4_mmxext( uint8_t *,  int, uint8_t *, int, uint8_t *, int, int );
 extern void x264_pixel_avg_w8_mmxext( uint8_t *,  int, uint8_t *, int, uint8_t *, int, int );
 extern void x264_pixel_avg_w16_mmxext( uint8_t *,  int, uint8_t *, int, uint8_t *, int, int );
+extern void x264_pixel_avg_w20_mmxext( uint8_t *,  int, uint8_t *, int, uint8_t *, int, int );
 extern void x264_pixel_avg_w16_sse2( uint8_t *,  int, uint8_t *, int, uint8_t *, int, int );
 extern void x264_pixel_avg_weight_4x4_mmxext( uint8_t *, int, uint8_t *, int, int );
 extern void x264_pixel_avg_weight_w8_mmxext( uint8_t *, int, uint8_t *, int, int, int );
@@ -68,13 +69,14 @@ AVG_WEIGHT(8,16)
 AVG_WEIGHT(8,8)
 AVG_WEIGHT(8,4)
 
-static void (* const x264_pixel_avg_wtab_mmxext[5])( uint8_t *, int, uint8_t *, int, uint8_t *, int, int ) =
+static void (* const x264_pixel_avg_wtab_mmxext[6])( uint8_t *, int, uint8_t *, int, uint8_t *, int, int ) =
 {
     NULL,
     x264_pixel_avg_w4_mmxext,
     x264_pixel_avg_w8_mmxext,
-    NULL,
-    x264_pixel_avg_w16_mmxext
+    x264_pixel_avg_w16_mmxext,
+    x264_pixel_avg_w16_mmxext,
+    x264_pixel_avg_w20_mmxext,
 };
 static void (* const x264_mc_copy_wtab_mmx[5])( uint8_t *, int, uint8_t *, int, int ) =
 {
@@ -89,7 +91,7 @@ static const int hpel_ref1[16] = {0,0,0,0,2,2,3,2,2,2,3,2,2,2,3,2};
 
 void mc_luma_mmx( uint8_t *src[4], int i_src_stride,
                   uint8_t *dst,    int i_dst_stride,
-                  int mvx,int mvy,
+                  int mvx, int mvy,
                   int i_width, int i_height )
 {
     int qpel_idx = ((mvy&3)<<2) + (mvx&3);
@@ -112,7 +114,7 @@ void mc_luma_mmx( uint8_t *src[4], int i_src_stride,
 
 uint8_t *get_ref_mmx( uint8_t *src[4], int i_src_stride,
                       uint8_t *dst,   int *i_dst_stride,
-                      int mvx,int mvy,
+                      int mvx, int mvy,
                       int i_width, int i_height )
 {
     int qpel_idx = ((mvy&3)<<2) + (mvx&3);
@@ -126,7 +128,6 @@ uint8_t *get_ref_mmx( uint8_t *src[4], int i_src_stride,
                 dst, *i_dst_stride, src1, i_src_stride,
                 src2, i_src_stride, i_height );
         return dst;
-
     }
     else
     {

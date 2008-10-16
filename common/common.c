@@ -21,8 +21,6 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111, USA.
  *****************************************************************************/
 
-#include <stdio.h>
-#include <string.h>
 #include <stdarg.h>
 
 #ifdef HAVE_MALLOC_H
@@ -81,7 +79,7 @@ void    x264_param_default( x264_param_t *param )
     param->b_cabac = 1;
     param->i_cabac_init_idc = 0;
 
-    param->rc.i_rc_method = X264_RC_CQP;
+    param->rc.i_rc_method = X264_RC_NONE;
     param->rc.i_bitrate = 0;
     param->rc.f_rate_tolerance = 1.0;
     param->rc.i_vbv_max_bitrate = 0;
@@ -862,8 +860,11 @@ char *x264_slurp_file( const char *filename )
  ****************************************************************************/
 char *x264_param2string( x264_param_t *p, int b_res )
 {
-    char *buf = x264_malloc( 1000 );
-    char *s = buf;
+    int len = 1000;
+    char *buf, *s;
+    if( p->rc.psz_zones )
+        len += strlen(p->rc.psz_zones);
+    buf = s = x264_malloc( len );
 
     if( b_res )
     {
@@ -932,7 +933,9 @@ char *x264_param2string( x264_param_t *p, int b_res )
         s += sprintf( s, " ip_ratio=%.2f", p->rc.f_ip_factor );
         if( p->i_bframe )
             s += sprintf( s, " pb_ratio=%.2f", p->rc.f_pb_factor );
-        if( p->rc.i_zones )
+        if( p->rc.psz_zones )
+            s += sprintf( s, " zones=%s", p->rc.psz_zones );
+        else if( p->rc.i_zones )
             s += sprintf( s, " zones" );
     }
 

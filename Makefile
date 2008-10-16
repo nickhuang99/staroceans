@@ -19,6 +19,7 @@ endif
 
 # MMX/SSE optims
 ifeq ($(ARCH),X86)
+ifneq ($(AS),)
 SRCS   += common/i386/mc-c.c common/i386/predict-c.c
 ASMSRC  = common/i386/dct-a.asm common/i386/cpu-a.asm \
           common/i386/pixel-a.asm common/i386/mc-a.asm \
@@ -28,9 +29,11 @@ ASMSRC  = common/i386/dct-a.asm common/i386/cpu-a.asm \
 OBJASM  = $(ASMSRC:%.asm=%.o)
 ASFLAGS += -Icommon/i386/
 endif
+endif
 
 # MMX/SSE optims
 ifeq ($(ARCH),X86_64)
+ifneq ($(AS),)
 SRCS   += common/i386/mc-c.c common/i386/predict-c.c
 ASMSRC  = common/amd64/dct-a.asm common/amd64/cpu-a.asm \
           common/amd64/pixel-a.asm common/amd64/mc-a.asm \
@@ -40,11 +43,14 @@ ASMSRC  = common/amd64/dct-a.asm common/amd64/cpu-a.asm \
 OBJASM  = $(ASMSRC:%.asm=%.o)
 ASFLAGS += -Icommon/amd64
 endif
+endif
 
 # AltiVec optims
 ifeq ($(ARCH),PPC)
-SRCS += common/ppc/mc.c common/ppc/pixel.c common/ppc/dct.c \
-	common/ppc/quant.c
+ALTIVECSRC += common/ppc/mc.c common/ppc/pixel.c common/ppc/dct.c \
+              common/ppc/quant.c common/ppc/deblock.c
+SRCS += $(ALTIVECSRC)
+$(ALTIVECSRC:%.c=%.o): CFLAGS += $(ALTIVECFLAGS)
 endif
 
 # VIS optims
@@ -92,7 +98,7 @@ common/i386/*.o: common/i386/i386inc.asm
 .depend: config.mak
 	rm -f .depend
 # Hacky - because gcc 2.9x doesn't have -MT
-	$(foreach SRC, $(SRCS) $(SRCCLI), ( $(ECHON) "`dirname $(SRC)`/" && $(CC) $(CFLAGS) $(SRC) -MM -g0 ) 1>> .depend;)
+	$(foreach SRC, $(SRCS) $(SRCCLI), ( $(ECHON) "`dirname $(SRC)`/" && $(CC) $(CFLAGS) $(ALTIVECFLAGS) $(SRC) -MM -g0 ) 1>> .depend;)
 
 config.mak: $(wildcard .svn/entries */.svn/entries */*/.svn/entries)
 	./configure $(CONFIGURE_ARGS)

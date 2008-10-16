@@ -34,6 +34,8 @@ BITS 32
     %else
         global %1
     %endif
+    align 16
+    %1:
 %endmacro
 
 ; Name of the .rodata section. On OS X we cannot use .rodata because NASM
@@ -44,7 +46,7 @@ BITS 32
         SECTION .text align=16
         fakegot:
     %else
-        SECTION .rodata data align=16
+        SECTION .rodata align=16
     %endif
 %endmacro
 
@@ -138,6 +140,6 @@ BITS 32
 ; This is needed for ELF, otherwise the GNU linker assumes the stack is
 ; executable by default.
 %ifidn __OUTPUT_FORMAT__,elf
-SECTION .note.GNU-stack noalloc noexec nowrite progbits
+SECTION ".note.GNU-stack" noalloc noexec nowrite progbits
 %endif
 

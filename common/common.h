@@ -24,66 +24,6 @@
 #ifndef _COMMON_H
 #define _COMMON_H 1
 
-#ifdef HAVE_STDINT_H
-#include <stdint.h>
-#else
-#include <inttypes.h>
-#endif
-#include <stdarg.h>
-#include <stdlib.h>
-#include <assert.h>
-
-#ifdef _MSC_VER
-#define snprintf _snprintf
-#define X264_VERSION "" // no configure script for msvc
-#endif
-
-/* alloca: force 16byte alignment */
-#ifdef _MSC_VER
-#define x264_alloca(x) (void*)(((intptr_t)_alloca((x)+15)+15)&~15)
-#else
-#define x264_alloca(x) (void*)(((intptr_t) alloca((x)+15)+15)&~15)
-#endif
-
-/* threads */
-#if defined(__WIN32__) && defined(HAVE_PTHREAD)
-#include <pthread.h>
-#define USE_CONDITION_VAR
-
-#elif defined(SYS_BEOS)
-#include <kernel/OS.h>
-#define pthread_t               thread_id
-#define pthread_create(t,u,f,d) { *(t)=spawn_thread(f,"",10,d); \
-                                  resume_thread(*(t)); }
-#define pthread_join(t,s)       { long tmp; \
-                                  wait_for_thread(t,(s)?(long*)(s):&tmp); }
-#ifndef usleep
-#define usleep(t)               snooze(t)
-#endif
-#define HAVE_PTHREAD 1
-
-#elif defined(HAVE_PTHREAD)
-#include <pthread.h>
-#define USE_CONDITION_VAR
-#else
-#define pthread_t               int
-#define pthread_create(t,u,f,d)
-#define pthread_join(t,s)
-#endif //SYS_*
-
-#ifndef USE_CONDITION_VAR
-#define pthread_mutex_t         int
-#define pthread_mutex_init(m,f)
-#define pthread_mutex_destroy(m)
-#define pthread_mutex_lock(m)
-#define pthread_mutex_unlock(m)
-#define pthread_cond_t          int
-#define pthread_cond_init(c,f)
-#define pthread_cond_destroy(c)
-#define pthread_cond_broadcast(c)
-#define pthread_cond_wait(c,m)  usleep(100)
-#endif
-
 /****************************************************************************
  * Macros
  ****************************************************************************/
@@ -100,12 +40,6 @@
 #define offsetof(T,F) ((unsigned int)((char *)&((T *)0)->F))
 #endif
 
-#if defined(__GNUC__) && (__GNUC__ > 3 || __GNUC__ == 3 && __GNUC_MINOR__ > 0)
-#define UNUSED __attribute__((unused))
-#else
-#define UNUSED
-#endif
-
 #define CHECKED_MALLOC( var, size )\
 {\
     var = x264_malloc( size );\
@@ -117,14 +51,22 @@
 }
 
 #define X264_BFRAME_MAX 16
-#define X264_THREAD_MAX 16
+#define X264_THREAD_MAX 128
 #define X264_SLICE_MAX 4
 #define X264_NAL_MAX (4 + X264_SLICE_MAX)
-#define X264_THREAD_HEIGHT 24 // number of pixels (per thread) in progress at any given time. could theoretically be as low as 22
+
+// number of pixels (per thread) in progress at any given time.
+// 16 for the macroblock in progress + 3 for deblocking + 3 for motion compensation filter + 2 for extra safety
+#define X264_THREAD_HEIGHT 24
 
 /****************************************************************************
  * Includes
  ****************************************************************************/
+#include "osdep.h"
+#include <stdarg.h>
+#include <stdlib.h>
+#include <string.h>
+#include <assert.h>
 #include "x264.h"
 #include "bs.h"
 #include "set.h"
@@ -141,9 +83,7 @@
  * Generals functions
  ****************************************************************************/
 /* x264_malloc : will do or emulate a memalign
- * XXX you HAVE TO use x264_free for buffer allocated
- * with x264_malloc
- */
+ * you have to use x264_free for buffers allocated with x264_malloc */
 void *x264_malloc( int );
 void *x264_realloc( void *p, int i_size );
 void  x264_free( void * );
@@ -168,7 +108,7 @@ static inline int x264_clip3( int v, int i_min, int i_max )
     return ( (v < i_min) ? i_min : (v > i_max) ? i_max : v );
 }
 
-static inline float x264_clip3f( float v, float f_min, float f_max )
+static inline double x264_clip3f( double v, double f_min, double f_max )
 {
     return ( (v < f_min) ? f_min : (v > f_max) ? f_max : v );
 }
@@ -296,7 +236,7 @@ struct x264_t
     x264_param_t    param;
 
     x264_t          *thread[X264_THREAD_MAX];
-    pthread_t       thread_handle;
+    x264_pthread_t  thread_handle;
     int             b_thread_active;
     int             i_thread_phase; /* which thread to use for the next frame */
 
@@ -331,12 +271,17 @@ struct x264_t
     x264_pps_t      *pps;
     int             i_idr_pic_id;
 
+    /* quantization matrix for decoding, [cqm][qp%6][coef_y][coef_x] */
     int             (*dequant4_mf[4])[4][4]; /* [4][6][4][4] */
     int             (*dequant8_mf[2])[8][8]; /* [2][6][8][8] */
-    int             (*quant4_mf[4])[4][4];   /* [4][6][4][4] */
-    int             (*quant8_mf[2])[8][8];   /* [2][6][8][8] */
+    /* quantization matrix for trellis, [cqm][qp][coef] */
     int             (*unquant4_mf[4])[16];   /* [4][52][16] */
     int             (*unquant8_mf[2])[64];   /* [2][52][64] */
+    /* quantization matrix for deadzone */
+    uint16_t        (*quant4_mf[4])[16];     /* [4][52][16] */
+    uint16_t        (*quant8_mf[2])[64];     /* [2][52][64] */
+    uint16_t        (*quant4_bias[4])[16];   /* [4][52][16] */
+    uint16_t        (*quant8_bias[2])[64];   /* [2][52][64] */
 
     uint32_t        nr_residual_sum[2][64];
     uint32_t        nr_offset[2][64];
@@ -428,9 +373,6 @@ struct x264_t
 
         int     b_interlaced;
 
-        /* Inverted luma quantization deadzone */
-        int     i_luma_deadzone[2]; // {inter, intra}
-
         /* Allowed qpel MV range to stay within the picture + emulated edge pixels */
         int     mv_min[2];
         int     mv_max[2];
@@ -467,6 +409,7 @@ struct x264_t
         int8_t  *skipbp;                    /* block pattern for SKIP or DIRECT (sub)mbs. B-frames + cabac only */
         int8_t  *mb_transform_size;         /* transform_size_8x8_flag of each mb */
         uint8_t *intra_border_backup[2][3]; /* bottom pixels of the previous mb row, used for intra prediction after the framebuffer has been deblocked */
+        uint8_t (*nnz_backup)[16];          /* when using cavlc + 8x8dct, the deblocker uses a modified nnz */
 
         /* current value */
         int     i_type;

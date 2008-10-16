@@ -21,12 +21,10 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111, USA.
  *****************************************************************************/
 
-#include <string.h>
-
 #include "common.h"
 #include "clip1.h"
 
-#ifdef HAVE_MMXEXT
+#ifdef HAVE_MMX
 #   include "i386/pixel.h"
 #endif
 #ifdef ARCH_PPC
@@ -385,8 +383,8 @@ float x264_pixel_ssim_wxh( x264_pixel_function_t *pf,
 {
     int x, y, z;
     float ssim = 0.0;
-    int (*sum0)[4] = x264_alloca(4 * (width/4+3) * sizeof(int));
-    int (*sum1)[4] = x264_alloca(4 * (width/4+3) * sizeof(int));
+    int (*sum0)[4] = x264_malloc(4 * (width/4+3) * sizeof(int));
+    int (*sum1)[4] = x264_malloc(4 * (width/4+3) * sizeof(int));
     width >>= 2;
     height >>= 2;
     z = 0;
@@ -401,6 +399,8 @@ float x264_pixel_ssim_wxh( x264_pixel_function_t *pf,
         for( x = 0; x < width-1; x += 4 )
             ssim += pf->ssim_end4( sum0+x, sum1+x, X264_MIN(4,width-x-1) );
     }
+    x264_free(sum0);
+    x264_free(sum1);
     return ssim / ((width-1) * (height-1));
 }
 
@@ -470,7 +470,7 @@ void x264_pixel_init( int cpu, x264_pixel_function_t *pixf )
     pixf->ads[PIXEL_16x8] = pixel_ads2;
     pixf->ads[PIXEL_8x8] = pixel_ads1;
 
-#ifdef HAVE_MMXEXT
+#ifdef HAVE_MMX
     if( cpu&X264_CPU_MMX )
     {
         INIT( ssd, _mmx );
@@ -501,9 +501,7 @@ void x264_pixel_init( int cpu, x264_pixel_function_t *pixf )
         pixf->intra_satd_x3_8x8c  = x264_intra_satd_x3_8x8c_mmxext;
         pixf->intra_satd_x3_4x4   = x264_intra_satd_x3_4x4_mmxext;
     }
-#endif
 
-#ifdef HAVE_SSE2
     // disable on AMD processors since it is slower
     if( (cpu&X264_CPU_SSE2) && !(cpu&X264_CPU_3DNOW) )
     {
@@ -516,13 +514,10 @@ void x264_pixel_init( int cpu, x264_pixel_function_t *pixf )
         pixf->satd[PIXEL_8x8]  = x264_pixel_satd_8x8_sse2;
         pixf->satd[PIXEL_8x4]  = x264_pixel_satd_8x4_sse2;
 
-#ifdef ARCH_X86
         pixf->sad_x3[PIXEL_16x16] = x264_pixel_sad_x3_16x16_sse2;
         pixf->sad_x3[PIXEL_16x8 ] = x264_pixel_sad_x3_16x8_sse2;
-
         pixf->sad_x4[PIXEL_16x16] = x264_pixel_sad_x4_16x16_sse2;
         pixf->sad_x4[PIXEL_16x8 ] = x264_pixel_sad_x4_16x8_sse2;
-#endif
     }
     // these are faster on both Intel and AMD
     if( cpu&X264_CPU_SSE2 )
@@ -538,7 +533,22 @@ void x264_pixel_init( int cpu, x264_pixel_function_t *pixf )
         pixf->intra_sa8d_x3_8x8 = x264_intra_sa8d_x3_8x8_sse2;
 #endif
     }
+
+    if( cpu&X264_CPU_SSSE3 )
+    {
+#ifdef HAVE_SSE3
+        pixf->satd[PIXEL_16x16]= x264_pixel_satd_16x16_ssse3;
+        pixf->satd[PIXEL_16x8] = x264_pixel_satd_16x8_ssse3;
+        pixf->satd[PIXEL_8x16] = x264_pixel_satd_8x16_ssse3;
+        pixf->satd[PIXEL_8x8]  = x264_pixel_satd_8x8_ssse3;
+        pixf->satd[PIXEL_8x4]  = x264_pixel_satd_8x4_ssse3;
+#ifdef ARCH_X86_64
+        pixf->sa8d[PIXEL_16x16]= x264_pixel_sa8d_16x16_ssse3;
+        pixf->sa8d[PIXEL_8x8]  = x264_pixel_sa8d_8x8_ssse3;
 #endif
+#endif
+    }
+#endif //HAVE_MMX
 
 #ifdef ARCH_PPC
     if( cpu&X264_CPU_ALTIVEC )

@@ -21,10 +21,6 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111, USA.
  *****************************************************************************/
 
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-
 #include "common.h"
 
 #define PADH 32
@@ -132,8 +128,8 @@ x264_frame_t *x264_frame_new( x264_t *h )
         for( j = 0; j < h->param.i_bframe + 2; j++ )
             CHECKED_MALLOC( frame->i_row_satds[i][j], i_lines/16 * sizeof(int) );
 
-    pthread_mutex_init( &frame->mutex, NULL );
-    pthread_cond_init( &frame->cv, NULL );
+    x264_pthread_mutex_init( &frame->mutex, NULL );
+    x264_pthread_cond_init( &frame->cv, NULL );
 
     return frame;
 
@@ -159,8 +155,8 @@ void x264_frame_delete( x264_frame_t *frame )
     x264_free( frame->mv[1] );
     x264_free( frame->ref[0] );
     x264_free( frame->ref[1] );
-    pthread_mutex_destroy( &frame->mutex );
-    pthread_cond_destroy( &frame->cv );
+    x264_pthread_mutex_destroy( &frame->mutex );
+    x264_pthread_cond_destroy( &frame->cv );
     x264_free( frame );
 }
 
@@ -290,6 +286,48 @@ void x264_frame_expand_border_mod16( x264_t *h, x264_frame_t *frame )
                         &frame->plane[i][(i_height-1)*frame->i_stride[i]],
                         i_width + i_padx );
         }
+    }
+}
+
+
+/* cavlc + 8x8 transform stores nnz per 16 coeffs for the purpose of
+ * entropy coding, but per 64 coeffs for the purpose of deblocking */
+void munge_cavlc_nnz_row( x264_t *h, int mb_y, uint8_t (*buf)[16] )
+{
+    uint32_t (*src)[6] = (uint32_t(*)[6])h->mb.non_zero_count + mb_y * h->sps->i_mb_width;
+    int8_t *transform = h->mb.mb_transform_size + mb_y * h->sps->i_mb_width;
+    int x;
+    for( x=0; x<h->sps->i_mb_width; x++ )
+    {
+        memcpy( buf+x, src+x, 16 );
+        if( transform[x] )
+        {
+            if( src[x][0] ) src[x][0] = 0x01010101;
+            if( src[x][1] ) src[x][1] = 0x01010101;
+            if( src[x][2] ) src[x][2] = 0x01010101;
+            if( src[x][3] ) src[x][3] = 0x01010101;
+        }
+    }
+}
+
+static void restore_cavlc_nnz_row( x264_t *h, int mb_y, uint8_t (*buf)[16] )
+{
+    uint8_t (*dst)[24] = h->mb.non_zero_count + mb_y * h->sps->i_mb_width;
+    int x;
+    for( x=0; x<h->sps->i_mb_width; x++ )
+        memcpy( dst+x, buf+x, 16 );
+}
+
+static void munge_cavlc_nnz( x264_t *h, int mb_y, uint8_t (*buf)[16], void (*func)(x264_t*, int, uint8_t (*)[16]) )
+{
+    func( h, mb_y, buf );
+    if( mb_y > 0 )
+        func( h, mb_y-1, buf + h->sps->i_mb_width );
+    if( h->sh.b_mbaff )
+    {
+        func( h, mb_y+1, buf + h->sps->i_mb_width * 2 );
+        if( mb_y > 0 )
+            func( h, mb_y-2, buf + h->sps->i_mb_width * 3 );
     }
 }
 
@@ -536,6 +574,9 @@ void x264_frame_deblock_row( x264_t *h, int mb_y )
                          h->fdec->i_stride[1] << b_interlaced,
                          h->fdec->i_stride[2] << b_interlaced };
 
+    if( !h->pps->b_cabac && h->pps->b_transform_8x8_mode )
+        munge_cavlc_nnz( h, mb_y, h->mb.nnz_backup, munge_cavlc_nnz_row );
+
     for( mb_x = 0; mb_x < h->sps->i_mb_width; )
     {
         const int mb_xy  = mb_y * h->mb.i_mb_stride + mb_x;
@@ -556,17 +597,6 @@ void x264_frame_deblock_row( x264_t *h, int mb_y )
         }
 
         x264_prefetch_fenc( h, h->fdec, mb_x, mb_y );
-
-        /* cavlc + 8x8 transform stores nnz per 16 coeffs for the purpose of
-         * entropy coding, but per 64 coeffs for the purpose of deblocking */
-        if( !h->param.b_cabac && b_8x8_transform )
-        {
-            uint32_t *nnz = (uint32_t*)h->mb.non_zero_count[mb_xy];
-            if( nnz[0] ) nnz[0] = 0x01010101;
-            if( nnz[1] ) nnz[1] = 0x01010101;
-            if( nnz[2] ) nnz[2] = 0x01010101;
-            if( nnz[3] ) nnz[3] = 0x01010101;
-        }
 
         /* i_dir == 0 -> vertical edge
          * i_dir == 1 -> horizontal edge */
@@ -694,6 +724,9 @@ void x264_frame_deblock_row( x264_t *h, int mb_y )
             mb_x++;
         mb_y ^= b_interlaced;
     }
+
+    if( !h->pps->b_cabac && h->pps->b_transform_8x8_mode )
+        munge_cavlc_nnz( h, mb_y, h->mb.nnz_backup, restore_cavlc_nnz_row );
 }
 
 void x264_frame_deblock( x264_t *h )
@@ -703,7 +736,7 @@ void x264_frame_deblock( x264_t *h )
         x264_frame_deblock_row( h, mb_y );
 }
 
-#ifdef HAVE_MMXEXT
+#ifdef HAVE_MMX
 void x264_deblock_v_chroma_mmxext( uint8_t *pix, int stride, int alpha, int beta, int8_t *tc0 );
 void x264_deblock_h_chroma_mmxext( uint8_t *pix, int stride, int alpha, int beta, int8_t *tc0 );
 void x264_deblock_v_chroma_intra_mmxext( uint8_t *pix, int stride, int alpha, int beta );
@@ -724,6 +757,11 @@ void x264_deblock_v_luma_mmxext( uint8_t *pix, int stride, int alpha, int beta, 
 #endif
 #endif
 
+#ifdef ARCH_PPC
+void x264_deblock_v_luma_altivec( uint8_t *pix, int stride, int alpha, int beta, int8_t *tc0 );
+void x264_deblock_h_luma_altivec( uint8_t *pix, int stride, int alpha, int beta, int8_t *tc0 );
+#endif // ARCH_PPC
+
 void x264_deblock_init( int cpu, x264_deblock_function_t *pf )
 {
     pf->deblock_v_luma = deblock_v_luma_c;
@@ -735,7 +773,7 @@ void x264_deblock_init( int cpu, x264_deblock_function_t *pf )
     pf->deblock_v_chroma_intra = deblock_v_chroma_intra_c;
     pf->deblock_h_chroma_intra = deblock_h_chroma_intra_c;
 
-#ifdef HAVE_MMXEXT
+#ifdef HAVE_MMX
     if( cpu&X264_CPU_MMXEXT )
     {
         pf->deblock_v_chroma = x264_deblock_v_chroma_mmxext;
@@ -755,6 +793,14 @@ void x264_deblock_init( int cpu, x264_deblock_function_t *pf )
 #endif
     }
 #endif
+
+#ifdef ARCH_PPC
+    if( cpu&X264_CPU_ALTIVEC )
+    {
+        pf->deblock_v_luma = x264_deblock_v_luma_altivec;
+        pf->deblock_h_luma = x264_deblock_h_luma_altivec;
+   }
+#endif // ARCH_PPC
 }
 
 
@@ -763,18 +809,18 @@ void x264_deblock_init( int cpu, x264_deblock_function_t *pf )
 #ifdef HAVE_PTHREAD
 void x264_frame_cond_broadcast( x264_frame_t *frame, int i_lines_completed )
 {
-    pthread_mutex_lock( &frame->mutex );
+    x264_pthread_mutex_lock( &frame->mutex );
     frame->i_lines_completed = i_lines_completed;
-    pthread_cond_broadcast( &frame->cv );
-    pthread_mutex_unlock( &frame->mutex );
+    x264_pthread_cond_broadcast( &frame->cv );
+    x264_pthread_mutex_unlock( &frame->mutex );
 }
 
 void x264_frame_cond_wait( x264_frame_t *frame, int i_lines_completed )
 {
-    pthread_mutex_lock( &frame->mutex );
+    x264_pthread_mutex_lock( &frame->mutex );
     while( frame->i_lines_completed < i_lines_completed )
-        pthread_cond_wait( &frame->cv, &frame->mutex );
-    pthread_mutex_unlock( &frame->mutex );
+        x264_pthread_cond_wait( &frame->cv, &frame->mutex );
+    x264_pthread_mutex_unlock( &frame->mutex );
 }
 
 #else
