@@ -1,0 +1,50 @@
+Index: x264-0.svn20070309/Makefile
+===================================================================
+--- x264-0.svn20070309.orig/Makefile	2007-03-10 00:03:24.000000000 +0100
++++ x264-0.svn20070309/Makefile	2007-03-10 00:06:48.000000000 +0100
+@@ -72,15 +72,18 @@
+ 
+ $(SONAME): .depend $(OBJS) $(OBJASM)
+ 	$(CC) -shared -o $@ $(OBJS) $(OBJASM) -Wl,-soname,$(SONAME) $(LDFLAGS)
++	ln -sf $(SONAME) libx264.so
+ 
+-x264$(EXE): $(OBJCLI) libx264.a 
+-	$(CC) -o $@ $+ $(LDFLAGS)
++x264$(EXE): $(SONAME)
++x264$(EXE): $(OBJCLI)
++	$(CC) -o $@ $+ $(LDFLAGS) -L. -lx264
+ 
+-libx264gtk.a: muxers.o libx264.a
++libx264gtk.a: muxers.o $(SONAME)
+ 	$(MAKE) -C gtk
+ 
+-checkasm: tools/checkasm.o libx264.a
+-	$(CC) -o $@ $+ $(LDFLAGS)
++checkasm: $(SONAME)
++checkasm: tools/checkasm.o
++	$(CC) -o $@ $+ $(LDFLAGS) -L. -lx264
+ 
+ common/amd64/*.o: common/amd64/amd64inc.asm
+ common/i386/*.o: common/i386/i386inc.asm
+@@ -128,7 +131,7 @@
+ endif
+ 
+ clean:
+-	rm -f $(OBJS) $(OBJASM) $(OBJCLI) $(SONAME) *.a x264 x264.exe .depend TAGS
++	rm -f $(OBJS) $(OBJASM) $(OBJCLI) $(SONAME) *.a *.so x264 x264.exe .depend TAGS
+ 	rm -f checkasm checkasm.exe tools/checkasm.o
+ 	rm -f tools/avc2avi tools/avc2avi.exe tools/avc2avi.o
+ 	rm -f $(SRC2:%.c=%.gcda) $(SRC2:%.c=%.gcno)
+Index: x264-0.svn20070309/gtk/Makefile
+===================================================================
+--- x264-0.svn20070309.orig/gtk/Makefile	2007-03-10 00:03:27.000000000 +0100
++++ x264-0.svn20070309/gtk/Makefile	2007-03-10 00:06:05.000000000 +0100
+@@ -53,7 +53,7 @@
+ 
+ # Already provides iconv/intl
+ CPPFLAGS = -g `pkg-config --cflags gtk+-2.0 gthread-2.0` -I.. -DX264_DATA_DIR=\"${datadir}\"
+-LDFLAGS += `pkg-config --libs gtk+-2.0 gthread-2.0` ../libx264.a
++LDFLAGS += `pkg-config --libs gtk+-2.0 gthread-2.0` -L.. -lx264
+ 
+ 
+ # gettext rules

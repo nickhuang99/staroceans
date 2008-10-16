@@ -1,18 +1,71 @@
-This package was debianized by Christian Marillat <marillat@debian.org> on
-Thu, 31 Mar 2005 13:53:48 +0200.
+This package was debianized by Sam Hocevar (Debian packages)
+<sam+deb@zoy.org> on Fri, 9 Mar 2007 22:59:37 +0100.
 
-It was downloaded from http://www.videolan.org/x264.html
+It was downloaded from svn://svn.videolan.org/x264/trunk/
 
-Copyright Holder:  Laurent Aimar <fenrir@videolan.org>
-		   Eric Petit <titer@videolan.org>
-		   Min Chen <chenm001@163.com>
-		   Justin Clay
-		   Måns Rullgård <mru@mru.ath.cx>
-		   Loren Merritt <pengvado@users.sourceforge.net>
+encoder/eval.c, extras/getopt.c:
+  Copyright (C) 2002 Michael Niedermayer <michaelni@gmx.at>
+  Copyright (C) 1987-1996, 1998-2001 Free Software Foundation, Inc.
+  Licensed unter the GNU LGPL, version 2.1 or later.
 
-License: 2004
+all other files:
+  Copyright (c) 2003-2006 Laurent Aimar <fenrir@via.ecp.fr>
+                          Alex Izvorski (aizvorski(at)gmail.com)
+                          Alex Wright (alexw0885(at)hotmail.com)
+                          Andrew Dunstan
+                          bobololo
+                          Christian Heine (sennindemokrit(at)gmx.net)
+                          Eric Petit <titer@videolan.org>
+                          Francesco Corriga
+                          Justin Clay (justin_clay(at)hotmail.com)
+                          Loren Merritt (lorenm(at)u.washington.edu)
+                          Måns Rullgård (mru(at)mru.ath.cx)
+                          Michael Niedermayer (michaelni(at)gmx.at)
+                          Mike Matsnev (mike(at)po.cs.msu.su)
+                          Min Chen <chenm001@163.com>
+                          Phil Jensen (philj(at)csufresno.edu)
+                          Radek Czyz (radoslaw(at)syskin.cjb.net)
+                          Riccardo Stievano (walkunafraid(at)tin.it)
+                          Tuukka Toivonen (tuukkat(at)ee.oulu.fi)
+                          Vincent Torri (Vincent.Torri(at)iecn.u-nancy.fr)
+  Copyright (C) 1989-1994, 1996-1999, 2001 Free Software Foundation, Inc.
+  Licensed under the GNU General Public License, version 2 or later.
 
-  You should have received a copy of the GNU General Public License with the
-  Debian GNU/Linux distribution in file /usr/share/common-licenses/GPL; if
-  not, write to the Free Software Foundation, Inc., 51 Franklin St, Fifth
-  Floor, Boston, MA 02110-1301, USA.
+The blurb for the GNU Lesser General Publice License, version 2.1 or later:
+
+ | This library is free software; you can redistribute it and/or
+ | modify it under the terms of the GNU Lesser General Public
+ | License as published by the Free Software Foundation; either
+ | version 2.1 of the License, or (at your option) any later version.
+ |
+ | This library is distributed in the hope that it will be useful,
+ | but WITHOUT ANY WARRANTY; without even the implied warranty of
+ | MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ | Lesser General Public License for more details.
+ |
+ | You should have received a copy of the GNU Lesser General Public
+ | License along with this library; if not, write to the Free Software
+ | Foundation, Inc., 51 Franklin St, Fifth Floor, Boston,  MA 02110-1301, USA.
+
+The blurb for the GNU General Publice License, version 2 or later:
+
+ | This program is free software; you can redistribute it and/or modify
+ | it under the terms of the GNU General Public License as published by
+ | the Free Software Foundation; either version 2, or (at your option)
+ | any later version.
+ |
+ |  This program is distributed in the hope that it will be useful,
+ | but WITHOUT ANY WARRANTY; without even the implied warranty of
+ | MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ | General Public License for more details.
+ |
+ |  You should have received a copy of the GNU General Public License
+ | along with this program; if not, write to the Free Software
+ | Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
+
+On Debian GNU/Linux systems, the complete text of the GNU General Public
+License can be found in `/usr/share/common-licenses/GPL'. and the
+complete text of the GNU Lesser General Public License can be found in
+the `/usr/share/common-licenses/LGPL' file.
+
+

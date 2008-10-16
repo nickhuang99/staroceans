@@ -1,242 +1,48 @@
-x264 (1:0.cvs20070117-0ubuntu3) feisty; urgency=low
+x264 (1:0.svn20070309-4ubuntu1) gutsy; urgency=low
 
-  * Reversed upstream revision 604 and 601. They are ppc optimizations that
-    cause it to not compile anymore under Linux gcc.
+  * 'fakesync' due to unfortunate epoch in ubuntu.
+  * dropping all ubuntu changes
 
- -- John Dong <jdong@ubuntu.com>  Fri, 19 Jan 2007 01:08:42 -0500
+ -- Reinhard Tartler <siretart@tauware.de>  Sun, 29 Apr 2007 20:18:55 +0200
 
-x264 (1:0.cvs20070117-0ubuntu2) feisty; urgency=low
+x264 (0.svn20070309-4) unstable; urgency=low
 
-  * Attempt to address FTBFS on PPC due to Altivec
+  * debian/patches/010_altivec_crash.diff:
+    + Updated upstream patch to fix an FTBFS.
 
- -- John Dong <jdong@ubuntu.com>  Thu, 18 Jan 2007 23:23:37 -0500
+ -- Sam Hocevar (Debian packages) <sam+deb@zoy.org>  Wed, 14 Mar 2007 23:10:23 +0100
 
-x264 (1:0.cvs20070117-0ubuntu1) feisty; urgency=low
+x264 (0.svn20070309-3) unstable; urgency=low
 
-  * New svn version 618
-  * Includes substantially improved multithreading
+  * debian/control:
+    + Set pkg-multimedia-maintainers as main maintainer, added Fabian
+      Greffrath as uploader.
+    + Updated VCS fields.
 
- -- John Dong <jdong@ubuntu.com>  Wed, 17 Jan 2007 22:00:05 -0500
+  * debian/patches/010_altivec_crash.diff:
+    + New patch from upstream: runtime AltiVec detection and workaround
+      for gcc generating AltiVec code here and there with -maltivec.
 
-x264 (1:0.cvs20061210-0.0) unstable; urgency=low
+ -- Sam Hocevar (Debian packages) <sam+deb@zoy.org>  Wed, 14 Mar 2007 19:20:43 +0100
 
-  * New svn version 604.
+x264 (0.svn20070309-2) unstable; urgency=low
 
- -- Christian Marillat <marillat@debian.org>  Sun, 10 Dec 2006 09:25:29 +0100
+  * debian/rules:
+    + Activate --enable-pthread.
+  * debian/control:
+    + Added conflicts/replaces x264-bin because of unofficial packages that
+      decided "x264" was not a good package name for the "x264" program
+      (Closes: #414648).
+  * debian/copyright:
+    + Cleaned up, removed mention to NetBSD files that are no longer here.
+  * debian/patches/000_usr_prefix.diff:
+    + Remove this patch in favour of --prefix=/usr.
 
-x264 (1:0.cvs20061107-0.0) unstable; urgency=low
+ -- Sam Hocevar (Debian packages) <sam+deb@zoy.org>  Tue, 13 Mar 2007 02:04:58 +0100
 
-  * New svn version 600.
+x264 (0.svn20070309-1) unstable; urgency=low
 
- -- Christian Marillat <marillat@debian.org>  Tue,  7 Nov 2006 09:39:49 +0100
+  * Initial release (Closes: #405212).
 
-x264 (1:0.cvs20061026-0.0) unstable; urgency=low
-
-  * New svn version 594.
-
- -- Christian Marillat <marillat@debian.org>  Thu, 26 Oct 2006 09:07:49 +0200
-
-x264 (1:0.cvs20061009-0.0) unstable; urgency=low
-
-  * New svn version 584.
-
- -- Christian Marillat <marillat@debian.org>  Mon,  9 Oct 2006 10:26:24 +0200
-
-x264 (1:0.cvs20060928-0.0) unstable; urgency=low
-
-  * New svn version 569.
-
- -- Christian Marillat <marillat@debian.org>  Thu, 28 Sep 2006 11:01:25 +0200
-
-x264 (1:0.cvs20060825-0.0) unstable; urgency=low
-
-  * New svn version 558.
-
- -- Christian Marillat <marillat@debian.org>  Fri, 25 Aug 2006 11:09:32 +0200
-
-x264 (1:0.cvs20060813-0.0) unstable; urgency=low
-
-  * New svn version.
-  * Enable en package the GTK2 front-end.
-
- -- Christian Marillat <marillat@debian.org>  Mon, 14 Aug 2006 10:25:04 +0200
-
-x264 (1:0.cvs20060720-0.0) unstable; urgency=low
-
-  * New svn version.
-
- -- Christian Marillat <marillat@debian.org>  Thu, 20 Jul 2006 14:21:14 +0200
-
-x264 (1:0.cvs20060624-0.0) unstable; urgency=low
-
-  * New svn version.
-
- -- Christian Marillat <marillat@debian.org>  Sat, 24 Jun 2006 15:02:05 +0200
-
-x264 (1:0.cvs20060520-0.0) unstable; urgency=low
-
-  * New svn version.
-
- -- Christian Marillat <marillat@debian.org>  Sat, 20 May 2006 18:02:44 +0200
-
-x264 (1:0.cvs20060430-0.0) unstable; urgency=low
-
-  * New svn version.
-
- -- Christian Marillat <marillat@debian.org>  Sun, 30 Apr 2006 11:50:59 +0200
-
-x264 (1:0.cvs20060416-0.0) unstable; urgency=low
-
-  * New svn version.
-
- -- Christian Marillat <marillat@debian.org>  Sun, 16 Apr 2006 07:16:49 +0200
-
-x264 (1:0.cvs20060405-0.1) unstable; urgency=low
-
-  * Need to Build-Depends on a versioned 0.98.34 nasm. Thanks to Simon Addareyss.
-
- -- Christian Marillat <marillat@debian.org>  Fri, 14 Apr 2006 08:25:41 +0200
-
-x264 (1:0.cvs20060405-0.0) unstable; urgency=low
-
-  * New svn version.
-
- -- Christian Marillat <marillat@debian.org>  Wed,  5 Apr 2006 06:39:55 +0200
-
-x264 (1:0.cvs20060318-0.0) unstable; urgency=low
-
-  * New svn version.
-
- -- Christian Marillat <marillat@debian.org>  Sat, 18 Mar 2006 09:13:09 +0100
-
-x264 (1:0.cvs20060304-0.0) unstable; urgency=low
-
-  * New svn version.
-
- -- Christian Marillat <marillat@debian.org>  Sat,  4 Mar 2006 11:06:58 +0100
-
-x264 (1:0.cvs20060221-0.0) unstable; urgency=low
-
-  * New svn version.
-
- -- Christian Marillat <marillat@debian.org>  Tue, 21 Feb 2006 10:48:50 +0100
-
-x264 (1:0.cvs20060210-0.0) unstable; urgency=low
-
-  * New svn version.
-
- -- Christian Marillat <marillat@debian.org>  Fri, 10 Feb 2006 13:14:44 +0100
-
-x264 (1:0.cvs20060129-0.0) unstable; urgency=low
-
-  * New svn version.
-
- -- Christian Marillat <marillat@debian.org>  Sun, 29 Jan 2006 09:30:36 +0100
-
-x264 (1:0.cvs20060118-0.0) unstable; urgency=low
-
-  * New svn version.
-
- -- Christian Marillat <marillat@debian.org>  Wed, 18 Jan 2006 18:32:07 +0100
-
-x264 (1:0.cvs20060102-0.0) unstable; urgency=low
-
-  * New svn version.
-
- -- Christian Marillat <marillat@debian.org>  Mon,  2 Jan 2006 23:08:32 +0100
-
-x264 (1:0.cvs20051227-0.0) unstable; urgency=low
-
-  * New svn version.
-  * Build with --extra-asflags="-D__PIC__" to enable x264 in ffmpeg. Thanks
-    to Harald Welte.
-
- -- Christian Marillat <marillat@debian.org>  Tue, 27 Dec 2005 09:33:46 +0100
-
-x264 (1:0.cvs20051220-0.0) unstable; urgency=low
-
-  * New svn version.
-
- -- Christian Marillat <marillat@debian.org>  Tue, 20 Dec 2005 14:36:06 +0100
-
-x264 (1:0.cvs20051201-0.0) unstable; urgency=low
-
-  * New svn version.
-  * Build with --enable-pthread.
-
- -- Christian Marillat <marillat@debian.org>  Thu,  1 Dec 2005 16:53:40 +0100
-
-x264 (1:0.cvs20051119-0.0) unstable; urgency=low
-
-  * New svn version.
-
- -- Christian Marillat <marillat@debian.org>  Sat, 19 Nov 2005 09:37:06 +0100
-
-x264 (1:0.cvs20051031-0.0) unstable; urgency=low
-
-  * New svn version.
-
- -- Christian Marillat <marillat@debian.org>  Mon, 31 Oct 2005 08:34:28 +0100
-
-x264 (1:0.cvs20050925-0.1) unstable; urgency=low
-
-  * Need to build-depends on yasm for amd64.
-  * Provides a pic library.
-  * 1:0.cvs20051031-0.0 New svn version.
-
- -- Christian Marillat <marillat@debian.org>  Mon, 31 Oct 2005 08:29:13 +0100
-
-x264 (1:0.cvs20050925-0.0) unstable; urgency=low
-
-  * New svn version.
-
- -- Christian Marillat <marillat@debian.org>  Sun, 25 Sep 2005 14:13:04 +0200
-
-x264 (1:0.cvs20050716-0.1) unstable; urgency=low
-
-  * debian/rules Added ppc changes from Guido.
-
- -- Christian Marillat <marillat@debian.org>  Sun, 31 Jul 2005 18:25:22 +0200
-
-x264 (1:0.cvs20050716-0.0) unstable; urgency=low
-
-  * New svn version.
-
- -- Christian Marillat <marillat@debian.org>  Sat, 16 Jul 2005 17:19:31 +0200
-
-x264 (1:0.cvs20050701-0.0) unstable; urgency=low
-
-  * New svn version.
-
- -- Christian Marillat <marillat@debian.org>  Fri,  1 Jul 2005 15:17:59 +0200
-
-x264 (1:0.cvs20050419-0.1) unstable; urgency=low
-
-  * Rebuild for stable.
-
- -- Christian Marillat <marillat@debian.org>  Thu,  9 Jun 2005 17:19:47 +0200
-
-x264 (0.cvs20050419-0.0) unstable; urgency=low
-
-  * New cvs version.
-
- -- Christian Marillat <marillat@debian.org>  Sun, 24 Apr 2005 14:22:10 +0200
-
-x264 (0.cvs20050331-3) unstable; urgency=low
-
-  * Add nasm [i386] in Build-depends
-
- -- Christian Marillat <marillat@debian.org>  Sun, 10 Apr 2005 00:09:01 +0200
-
-x264 (0.cvs20050331-2) unstable; urgency=low
-
-  * Add Guido's changes for ppc.
-
- -- Christian Marillat <marillat@debian.org>  Fri,  1 Apr 2005 21:06:52 +0200
-
-x264 (0.cvs20050331-1) unstable; urgency=low
-
-  * Initial Release.
-
- -- Christian Marillat <marillat@debian.org>  Thu, 31 Mar 2005 13:53:48 +0200
+ -- Sam Hocevar (Debian packages) <sam+deb@zoy.org>  Fri,  9 Mar 2007 22:59:37 +0100
 

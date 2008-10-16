@@ -1,47 +1,60 @@
 Source: x264
-Section: sound
-Priority: optional
-Maintainer: Christian Marillat <marillat@debian.org>
+Section: libs
+Priority: extra
+Maintainer: Debian multimedia packages maintainers <pkg-multimedia-maintainers@lists.alioth.debian.org>
+Uploaders: Sam Hocevar (Debian packages) <sam+deb@zoy.org>, Fabian Greffrath <fabian@debian-unofficial.org>
+Build-Depends: debhelper (>= 5), nasm [i386 hurd-i386 kfreebsd-i386], yasm [amd64 kfreebsd-amd64], quilt
 Standards-Version: 3.7.2
-Build-Depends: debhelper (>= 4), nasm (>= 0.98.34) [i386], yasm [amd64], libgtk2.0-dev
+XS-Vcs-Svn: svn://svn.debian.org/pkg-multimedia/unstable/x264
+XS-Vcs-Browser: http://svn.debian.org/wsvn/pkg-multimedia/unstable/x264/
+
+Package: x264
+Section: graphics
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Conflicts: x264-bin
+Replaces: x264-bin
+Description: video encoder for the H.264/MPEG-4 AVC standard
+ x264 is an advanced commandline encoder for creating H.264 (MPEG-4 AVC)
+ video streams.
+ .
+ x264 supports the following features:
+  * CABAC (context-based adaptive binary arithmetic coding) and CAVLC
+    (context-based adaptive variable length coding
+  * multiple reference frames
+  * 16x16, 8x8 and 4x4 intra-predicted macroblocks
+  * all P-frame inter-predicted macroblock types
+  * B-Inter-predicted macroblock types from 16x16 down to 8x8
+  * rate distortion optimization
+  * multiple rate control modes (constant quantizer, constant quality, single
+    or multipass ABR with the option of VBV)
+  * scene cut detection
+  * adaptive B-frame placement, with the option of keeping B-frames as
+    references / arbitrary frame order
+  * 8x8 and 4x4 adaptive spatial transform (high profile)
+  * lossless mode (high 4:4:4 profile)
+  * custom quantization matrices (high profile)
+  * parallel encoding on multiple CPUs
+  * interlaced streams
+
+Package: libx264-54
+Section: libs
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: x264 video coding library
+ libx264 is an advanced encoding library for creating H.264 (MPEG-4 AVC)
+ video streams.
+ .
+ This package contains the libx264 shared library.
 
 Package: libx264-dev
-Architecture: any
 Section: libdevel
-Depends: libc6-dev
-Description: a free library for encoding H264/AVC video streams
- Encoder features
- .
-  o CAVLC/CABAC
-  o Multi-references
-  o Intra: all macroblock types (16x16 and 4x4 with all predictions)
-  o Inter P: all partitions (from 16x16 down to 4x4)
-  o Inter B: partitions from 16x16 down to 8x8 (including SKIP/DIRECT)
-  o Ratecontrol: constant quantizer, constant bitrate, or multipass ABR
-  o Scene cut detection
-  o Adaptive B-frame placement
-  o B-frames as references / arbitrary frame order
- .
- Encoder limitations
- .
-  o No real RD
-
-Package: x264-bin
 Architecture: any
-Depends: ${shlibs:Depends}
-Description: a free library for encoding H264/AVC video streams
- Encoder features
+Depends: libx264-54 (= ${Source-Version}), ${shlibs:Depends}, ${misc:Depends}
+Description: development files for libx264
+ libx264 is an advanced encoding library for creating H.264 (MPEG-4 AVC)
+ video streams.
  .
-  o CAVLC/CABAC
-  o Multi-references
-  o Intra: all macroblock types (16x16 and 4x4 with all predictions)
-  o Inter P: all partitions (from 16x16 down to 4x4)
-  o Inter B: partitions from 16x16 down to 8x8 (including SKIP/DIRECT)
-  o Ratecontrol: constant quantizer, constant bitrate, or multipass ABR
-  o Scene cut detection
-  o Adaptive B-frame placement
-  o B-frames as references / arbitrary frame order
- .
- Encoder limitations
- .
-  o No real RD
+ This package contains the static library and headers used to build programs
+ that use libx264.
+
