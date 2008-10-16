@@ -1,3 +1,34 @@
+x264 (1:0.cvs20070117-0ubuntu1) feisty; urgency=low
+
+  * New svn version 618
+  * Includes substantially improved multithreading
+
+ -- John Dong <jdong@ubuntu.com>  Wed, 17 Jan 2007 22:00:05 -0500
+
+x264 (1:0.cvs20061210-0.0) unstable; urgency=low
+
+  * New svn version 604.
+
+ -- Christian Marillat <marillat@debian.org>  Sun, 10 Dec 2006 09:25:29 +0100
+
+x264 (1:0.cvs20061107-0.0) unstable; urgency=low
+
+  * New svn version 600.
+
+ -- Christian Marillat <marillat@debian.org>  Tue,  7 Nov 2006 09:39:49 +0100
+
+x264 (1:0.cvs20061026-0.0) unstable; urgency=low
+
+  * New svn version 594.
+
+ -- Christian Marillat <marillat@debian.org>  Thu, 26 Oct 2006 09:07:49 +0200
+
+x264 (1:0.cvs20061009-0.0) unstable; urgency=low
+
+  * New svn version 584.
+
+ -- Christian Marillat <marillat@debian.org>  Mon,  9 Oct 2006 10:26:24 +0200
+
 x264 (1:0.cvs20060928-0.0) unstable; urgency=low
 
   * New svn version 569.

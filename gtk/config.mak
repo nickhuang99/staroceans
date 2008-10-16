@@ -10,11 +10,9 @@ CFLAGS=-O4 -ffast-math -Wall -I. -D__X264__ -DHAVE_MALLOC_H -DHAVE_MMXEXT -DHAVE
 LDFLAGS= -lm -lpthread -s
 AS=nasm
 ASFLAGS=-O2 -f elf
-VFW=no
 GTK=yes
 EXE=
 VIS=no
 HAVE_GETOPT_LONG=1
 DEVNULL=/dev/null
-CONFIGURE_ARGS= '--enable-shared' '--enable-pthread' '--prefix=/usr' '--enable-gtk'
-SONAMEGTK=libx264gtk.so.50
+CONFIGURE_ARGS= '--enable-pthread' '--prefix=/usr' '--enable-gtk'

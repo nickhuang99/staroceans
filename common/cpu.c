@@ -162,17 +162,17 @@ int x264_cpu_num_processors( void )
 #if !defined(HAVE_PTHREAD)
     return 1;
 
-#elif defined(SYS_LINUX) || defined(WIN32)
+#elif defined(WIN32)
+    return pthread_num_processors_np();
+
+#elif defined(SYS_LINUX)
+    unsigned int bit;
     int np;
-#if defined(WIN32)
-    uint32_t p_aff, s_aff;
-    GetProcessAffinityMask( GetCurrentProcess(), &p_aff, &s_aff );
-#else
-    uint64_t p_aff;
-    sched_getaffinity( 0, sizeof(p_aff), (cpu_set_t*)&p_aff );
-#endif
-    for( np = 0; p_aff != 0; p_aff >>= 1 )
-        np += p_aff&1;
+    cpu_set_t p_aff;
+    memset( &p_aff, 0, sizeof(p_aff) );
+    sched_getaffinity( 0, sizeof(p_aff), &p_aff );
+    for( np = 0, bit = 0; bit < sizeof(p_aff); bit++ )
+        np += (((uint8_t *)&p_aff)[bit / 8] >> (bit % 8)) & 1;
     return np;
 
 #elif defined(SYS_BEOS)

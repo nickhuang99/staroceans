@@ -38,7 +38,7 @@ clean:
 
 	-$(MAKE) clean
 
-	dh_clean x264.pc config.h
+	dh_clean x264.pc config.h debian/libx264_pic.a
 
 install: build
 	dh_testdir
