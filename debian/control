@@ -5,8 +5,9 @@ Maintainer: Ubuntu MOTU Developers <ubuntu-motu@lists.ubuntu.com>
 XSBC-Original-Maintainer: Christian Marillat <marillat@debian.org>
 Bugs: mailto:marillat@debian.org
 Homepage: http://www.videolan.org/developers/x264.html
-Standards-Version: 3.7.2
-Build-Depends: debhelper (>= 5), yasm [amd64], nasm [i386 lpia], libgtk2.0-dev, libgpac-dev, dpatch
+Standards-Version: 3.7.3
+Build-Depends: debhelper (>= 5), yasm [amd64], nasm [i386], libgtk2.0-dev, libgpac-dev,
+ quilt
 
 Package: x264
 Section: graphics
@@ -37,7 +38,7 @@ Description: video encoder for the H.264/MPEG-4 AVC standard
   * parallel encoding on multiple CPUs
   * interlaced streams
 
-Package: libx264-57
+Package: libx264-59
 Section: libs
 Architecture: any
 Depends: ${shlibs:Depends}
@@ -50,7 +51,7 @@ Description: x264 video coding library
 Package: libx264-dev
 Section: libdevel
 Architecture: any
-Depends: libx264-57 (= ${binary:Version})
+Depends: libx264-59 (= ${binary:Version})
 Description: development files for libx264
  libx264 is an advanced encoding library for creating H.264 (MPEG-4 AVC)
  video streams.

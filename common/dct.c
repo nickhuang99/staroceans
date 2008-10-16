@@ -23,7 +23,7 @@
 
 #include "common.h"
 #ifdef HAVE_MMX
-#   include "i386/dct.h"
+#   include "x86/dct.h"
 #endif
 #ifdef ARCH_PPC
 #   include "ppc/dct.h"
@@ -31,14 +31,6 @@
 
 int x264_dct4_weight2_zigzag[2][16];
 int x264_dct8_weight2_zigzag[2][64];
-
-static inline int clip_uint8( int a )
-{
-    if (a&(~255))
-        return (-a)>>31;
-    else
-        return a;
-}
 
 /*
  * XXX For all dct dc : input could be equal to output so ...
@@ -232,7 +224,7 @@ static void add4x4_idct( uint8_t *p_dst, int16_t dct[4][4] )
     {
         for( x = 0; x < 4; x++ )
         {
-            p_dst[x] = clip_uint8( p_dst[x] + d[y][x] );
+            p_dst[x] = x264_clip_uint8( p_dst[x] + d[y][x] );
         }
         p_dst += FDEC_STRIDE;
     }
@@ -356,7 +348,7 @@ static void add8x8_idct8( uint8_t *dst, int16_t dct[8][8] )
 #undef DST
 
 #define SRC(x)     dct[i][x]
-#define DST(x,rhs) dst[i + x*FDEC_STRIDE] = clip_uint8( dst[i + x*FDEC_STRIDE] + ((rhs) >> 6) );
+#define DST(x,rhs) dst[i + x*FDEC_STRIDE] = x264_clip_uint8( dst[i + x*FDEC_STRIDE] + ((rhs) >> 6) );
     for( i = 0; i < 8; i++ )
         IDCT8_1D
 #undef SRC
@@ -421,16 +413,16 @@ void x264_dct_init( int cpu, x264_dct_function_t *dctf )
 #endif
     }
 
-#ifdef ARCH_X86_64
     if( cpu&X264_CPU_SSE2 )
     {
+        #ifdef ARCH_X86_64
         dctf->sub8x8_dct8   = x264_sub8x8_dct8_sse2;
         dctf->sub16x16_dct8 = x264_sub16x16_dct8_sse2;
-
+        #endif
         dctf->add8x8_idct8  = x264_add8x8_idct8_sse2;
         dctf->add16x16_idct8= x264_add16x16_idct8_sse2;
     }
-#endif
+
 #endif //HAVE_MMX
 
 #ifdef ARCH_PPC
@@ -466,9 +458,10 @@ void x264_dct_init_weights( void )
 }
 
 
-#define ZIG(i,y,x) level[i] = dct[x][y];
+// gcc pessimizes multi-dimensional arrays here, even with constant indices
+#define ZIG(i,y,x) level[i] = dct[0][x*8+y];
 
-static void zigzag_scan_8x8_frame( int level[64], int16_t dct[8][8] )
+static void zigzag_scan_8x8_frame( int16_t level[64], int16_t dct[8][8] )
 {
     ZIG( 0,0,0) ZIG( 1,0,1) ZIG( 2,1,0) ZIG( 3,2,0)
     ZIG( 4,1,1) ZIG( 5,0,2) ZIG( 6,0,3) ZIG( 7,1,2)
@@ -488,7 +481,7 @@ static void zigzag_scan_8x8_frame( int level[64], int16_t dct[8][8] )
     ZIG(60,5,7) ZIG(61,6,7) ZIG(62,7,6) ZIG(63,7,7)
 }
 
-static void zigzag_scan_8x8_field( int level[64], int16_t dct[8][8] )
+static void zigzag_scan_8x8_field( int16_t level[64], int16_t dct[8][8] )
 {
     ZIG( 0,0,0) ZIG( 1,1,0) ZIG( 2,2,0) ZIG( 3,0,1)
     ZIG( 4,1,1) ZIG( 5,3,0) ZIG( 6,4,0) ZIG( 7,2,1)
@@ -508,7 +501,10 @@ static void zigzag_scan_8x8_field( int level[64], int16_t dct[8][8] )
     ZIG(60,4,7) ZIG(61,5,7) ZIG(62,6,7) ZIG(63,7,7)
 }
 
-static void zigzag_scan_4x4_frame( int level[16], int16_t dct[4][4] )
+#undef ZIG
+#define ZIG(i,y,x) level[i] = dct[0][x*4+y];
+
+static void zigzag_scan_4x4_frame( int16_t level[16], int16_t dct[4][4] )
 {
     ZIG( 0,0,0) ZIG( 1,0,1) ZIG( 2,1,0) ZIG( 3,2,0)
     ZIG( 4,1,1) ZIG( 5,0,2) ZIG( 6,0,3) ZIG( 7,1,2)
@@ -516,72 +512,47 @@ static void zigzag_scan_4x4_frame( int level[16], int16_t dct[4][4] )
     ZIG(12,1,3) ZIG(13,2,3) ZIG(14,3,2) ZIG(15,3,3)
 }
 
-static void zigzag_scan_4x4_field( int level[16], int16_t dct[4][4] )
+static void zigzag_scan_4x4_field( int16_t level[16], int16_t dct[4][4] )
 {
-    ZIG( 0,0,0) ZIG( 1,1,0) ZIG( 2,0,1) ZIG( 3,2,0)
-    ZIG( 4,3,0) ZIG( 5,1,1) ZIG( 6,2,1) ZIG( 7,3,1)
-    ZIG( 8,0,2) ZIG( 9,1,2) ZIG(10,2,2) ZIG(11,3,2)
-    ZIG(12,0,3) ZIG(13,1,3) ZIG(14,2,3) ZIG(15,3,3)
-}
-
-static void zigzag_scan_4x4ac_frame( int level[15], int16_t dct[4][4] )
-{
-                ZIG( 0,0,1) ZIG( 1,1,0) ZIG( 2,2,0)
-    ZIG( 3,1,1) ZIG( 4,0,2) ZIG( 5,0,3) ZIG( 6,1,2)
-    ZIG( 7,2,1) ZIG( 8,3,0) ZIG( 9,3,1) ZIG(10,2,2)
-    ZIG(11,1,3) ZIG(12,2,3) ZIG(13,3,2) ZIG(14,3,3)
-}
-
-static void zigzag_scan_4x4ac_field( int level[15], int16_t dct[4][4] )
-{
-                ZIG( 0,1,0) ZIG( 1,0,1) ZIG( 2,2,0)
-    ZIG( 3,3,0) ZIG( 4,1,1) ZIG( 5,2,1) ZIG( 6,3,1)
-    ZIG( 7,0,2) ZIG( 8,1,2) ZIG( 9,2,2) ZIG(10,3,2)
-    ZIG(11,0,3) ZIG(12,1,3) ZIG(13,2,3) ZIG(14,3,3)
+    *(uint32_t*)level = *(uint32_t*)dct;
+    ZIG(2,0,1) ZIG(3,2,0) ZIG(4,3,0) ZIG(5,1,1)
+    *(uint32_t*)(level+6) = *(uint32_t*)(*dct+6);
+    *(uint64_t*)(level+8) = *(uint64_t*)(*dct+8);
+    *(uint64_t*)(level+12) = *(uint64_t*)(*dct+12);
 }
 
 #undef ZIG
-
 #define ZIG(i,y,x) {\
     int oe = x+y*FENC_STRIDE;\
     int od = x+y*FDEC_STRIDE;\
     level[i] = p_src[oe] - p_dst[od];\
-    p_dst[od] = p_src[oe];\
 }
+#define COPY4x4\
+    *(uint32_t*)(p_dst+0*FDEC_STRIDE) = *(uint32_t*)(p_src+0*FENC_STRIDE);\
+    *(uint32_t*)(p_dst+1*FDEC_STRIDE) = *(uint32_t*)(p_src+1*FENC_STRIDE);\
+    *(uint32_t*)(p_dst+2*FDEC_STRIDE) = *(uint32_t*)(p_src+2*FENC_STRIDE);\
+    *(uint32_t*)(p_dst+3*FDEC_STRIDE) = *(uint32_t*)(p_src+3*FENC_STRIDE);\
 
-static void zigzag_sub_4x4_frame( int level[16], const uint8_t *p_src, uint8_t *p_dst )
+static void zigzag_sub_4x4_frame( int16_t level[16], const uint8_t *p_src, uint8_t *p_dst )
 {
     ZIG( 0,0,0) ZIG( 1,0,1) ZIG( 2,1,0) ZIG( 3,2,0)
     ZIG( 4,1,1) ZIG( 5,0,2) ZIG( 6,0,3) ZIG( 7,1,2)
     ZIG( 8,2,1) ZIG( 9,3,0) ZIG(10,3,1) ZIG(11,2,2)
     ZIG(12,1,3) ZIG(13,2,3) ZIG(14,3,2) ZIG(15,3,3)
+    COPY4x4
 }
 
-static void zigzag_sub_4x4_field( int level[16], const uint8_t *p_src, uint8_t *p_dst )
+static void zigzag_sub_4x4_field( int16_t level[16], const uint8_t *p_src, uint8_t *p_dst )
 {
     ZIG( 0,0,0) ZIG( 1,1,0) ZIG( 2,0,1) ZIG( 3,2,0)
     ZIG( 4,3,0) ZIG( 5,1,1) ZIG( 6,2,1) ZIG( 7,3,1)
     ZIG( 8,0,2) ZIG( 9,1,2) ZIG(10,2,2) ZIG(11,3,2)
     ZIG(12,0,3) ZIG(13,1,3) ZIG(14,2,3) ZIG(15,3,3)
-}
-
-static void zigzag_sub_4x4ac_frame( int level[15], const uint8_t *p_src, uint8_t *p_dst )
-{
-                ZIG( 0,0,1) ZIG( 1,1,0) ZIG( 2,2,0)
-    ZIG( 3,1,1) ZIG( 4,0,2) ZIG( 5,0,3) ZIG( 6,1,2)
-    ZIG( 7,2,1) ZIG( 8,3,0) ZIG( 9,3,1) ZIG(10,2,2)
-    ZIG(11,1,3) ZIG(12,2,3) ZIG(13,3,2) ZIG(14,3,3)
-}
-
-static void zigzag_sub_4x4ac_field( int level[15], const uint8_t *p_src, uint8_t *p_dst )
-{
-                ZIG( 0,1,0) ZIG( 1,0,1) ZIG( 2,2,0)
-    ZIG( 3,3,0) ZIG( 4,1,1) ZIG( 5,2,1) ZIG( 6,3,1)
-    ZIG( 7,0,2) ZIG( 8,1,2) ZIG( 9,2,2) ZIG(10,3,2)
-    ZIG(11,0,3) ZIG(12,1,3) ZIG(13,2,3) ZIG(14,3,3)
+    COPY4x4
 }
 
 #undef ZIG
+#undef COPY4x4
 
 void x264_zigzag_init( int cpu, x264_zigzag_function_t *pf, int b_interlaced )
 {
@@ -589,42 +560,30 @@ void x264_zigzag_init( int cpu, x264_zigzag_function_t *pf, int b_interlaced )
     {
         pf->scan_8x8   = zigzag_scan_8x8_field;
         pf->scan_4x4   = zigzag_scan_4x4_field;
-        pf->scan_4x4ac = zigzag_scan_4x4ac_field;
         pf->sub_4x4    = zigzag_sub_4x4_field;
-        pf->sub_4x4ac  = zigzag_sub_4x4ac_field;
 #ifdef HAVE_MMX
-#ifdef ARCH_X86
-        if( cpu&X264_CPU_MMX )
-            pf->scan_4x4 = x264_zigzag_scan_4x4_field_mmx;
-#endif
-#ifdef ARCH_X86_64
-        if( cpu&X264_CPU_SSE2 )
-            pf->scan_4x4 = x264_zigzag_scan_4x4_field_sse2;
-#endif
+        if( cpu&X264_CPU_MMXEXT )
+            pf->scan_4x4 = x264_zigzag_scan_4x4_field_mmxext;
 #endif
 
 #ifdef ARCH_PPC
         if( cpu&X264_CPU_ALTIVEC )
-        {
             pf->scan_4x4   = x264_zigzag_scan_4x4_field_altivec;
-            pf->scan_4x4ac = x264_zigzag_scan_4x4ac_field_altivec;
-        }
 #endif
     }
     else
     {
         pf->scan_8x8   = zigzag_scan_8x8_frame;
         pf->scan_4x4   = zigzag_scan_4x4_frame;
-        pf->scan_4x4ac = zigzag_scan_4x4ac_frame;
         pf->sub_4x4    = zigzag_sub_4x4_frame;
-        pf->sub_4x4ac  = zigzag_sub_4x4ac_frame;
+#ifdef HAVE_SSE3
+        if( cpu&X264_CPU_SSSE3 )
+            pf->sub_4x4 = x264_zigzag_sub_4x4_frame_ssse3;
+#endif
 
 #ifdef ARCH_PPC
         if( cpu&X264_CPU_ALTIVEC )
-        {
             pf->scan_4x4   = x264_zigzag_scan_4x4_frame_altivec;
-            pf->scan_4x4ac = x264_zigzag_scan_4x4ac_frame_altivec;
-        }
 #endif
     }
 }

@@ -44,7 +44,7 @@ typedef struct
     /* output */
     int cost_mv;        /* lambda * nbits for the chosen mv */
     int cost;           /* satd + lambda * nbits */
-    int mv[2];
+    DECLARE_ALIGNED_8( int mv[2] );
 } x264_me_t;
 
 void x264_me_search_ref( x264_t *h, x264_me_t *m, int (*mvc)[2], int i_mvc, int *p_fullpel_thresh );
@@ -55,6 +55,8 @@ void x264_me_refine_qpel( x264_t *h, x264_me_t *m );
 void x264_me_refine_qpel_rd( x264_t *h, x264_me_t *m, int i_lambda2, int i8 );
 int x264_me_refine_bidir( x264_t *h, x264_me_t *m0, x264_me_t *m1, int i_weight );
 int x264_rd_cost_part( x264_t *h, int i_lambda2, int i8, int i_pixel );
+
+extern uint16_t *x264_cost_mv_fpel[52][4];
 
 #define COPY1_IF_LT(x,y)\
 if((y)<(x))\

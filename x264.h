@@ -35,7 +35,7 @@
 
 #include <stdarg.h>
 
-#define X264_BUILD 57
+#define X264_BUILD 59
 
 /* x264_t:
  *      opaque handler for encoder */
@@ -74,6 +74,7 @@ typedef struct x264_t x264_t;
 #define X264_ME_HEX                  1
 #define X264_ME_UMH                  2
 #define X264_ME_ESA                  3
+#define X264_ME_TESA                 4
 #define X264_CQM_FLAT                0
 #define X264_CQM_JVT                 1
 #define X264_CQM_CUSTOM              2
@@ -81,9 +82,12 @@ typedef struct x264_t x264_t;
 #define X264_RC_CQP                  0
 #define X264_RC_CRF                  1
 #define X264_RC_ABR                  2
+#define X264_AQ_NONE                 0
+#define X264_AQ_LOCAL                1
+#define X264_AQ_GLOBAL               2
 
 static const char * const x264_direct_pred_names[] = { "none", "spatial", "temporal", "auto", 0 };
-static const char * const x264_motion_est_names[] = { "dia", "hex", "umh", "esa", 0 };
+static const char * const x264_motion_est_names[] = { "dia", "hex", "umh", "esa", "tesa", 0 };
 static const char * const x264_overscan_names[] = { "undef", "show", "crop", 0 };
 static const char * const x264_vidformat_names[] = { "component", "pal", "ntsc", "secam", "mac", "undef", 0 };
 static const char * const x264_fullrange_names[] = { "off", "on", 0 };
@@ -92,6 +96,7 @@ static const char * const x264_transfer_names[] = { "", "bt709", "undef", "", "b
 static const char * const x264_colmatrix_names[] = { "GBR", "bt709", "undef", "", "fcc", "bt470bg", "smpte170m", "smpte240m", "YCgCo", 0 };
 
 /* Colorspace type
+ * legacy only; nothing other than I420 is really supported.
  */
 #define X264_CSP_MASK           0x00ff  /* */
 #define X264_CSP_NONE           0x0000  /* Invalid mode     */
@@ -257,6 +262,9 @@ typedef struct x264_param_t
         float       f_vbv_buffer_init; /* <=1: fraction of buffer_size. >1: kbit */
         float       f_ip_factor;
         float       f_pb_factor;
+
+        int         i_aq_mode;      /* psy adaptive QP. (X264_AQ_*) */
+        float       f_aq_strength;
 
         /* 2pass */
         int         b_stat_write;   /* Enable stat writing in psz_stat_out */

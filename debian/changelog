@@ -1,3 +1,23 @@
+x264 (1:0.svn20080408-0.0ubuntu1) intrepid; urgency=low
+
+  * Merge from debian-multimedia. Remaining Ubuntu changes:
+   - Maintainer field
+   - Set epoch
+
+ -- John Dong <jdong@ubuntu.com>  Sat, 03 May 2008 01:12:18 -0400
+
+x264 (0.svn20080408-0.0) unstable; urgency=low
+
+  * New git release.
+
+ -- Christian Marillat <marillat@debian.org>  Tue, 08 Apr 2008 14:21:37 +0200
+
+x264 (0.svn20080223-0.0) unstable; urgency=low
+
+  * New svn release 736.
+
+ -- Christian Marillat <marillat@debian.org>  Sat, 23 Feb 2008 14:31:31 +0100
+
 x264 (1:0.svn20071224-0.0ubuntu1) hardy; urgency=low
 
   * Merge from debian-multimedia (LP: #177082)

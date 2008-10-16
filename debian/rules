@@ -6,8 +6,6 @@
 # This has to be exported to make some magic below work.
 export DH_OPTIONS
 
-include /usr/share/dpatch/dpatch.make
-
 DEB_HOST_GNU_TYPE   ?= $(shell dpkg-architecture -qDEB_HOST_GNU_TYPE)
 DEB_BUILD_GNU_TYPE  ?= $(shell dpkg-architecture -qDEB_BUILD_GNU_TYPE)
 
@@ -32,10 +30,11 @@ else
 endif
 
 build: build-stamp
-build-stamp: patch-stamp
+build-stamp:
 	dh_testdir
 
 	# Build static lib
+	QUILT_PATCHES=debian/patches quilt push -a || test $$? = 2
 
 #	$(MAKE) clean
 	CFLAGS="$(CFLAGS)" ./configure $(confflags)
@@ -61,13 +60,11 @@ clean:
 	dh_testroot
 	rm -f build-stamp
 
-	-$(MAKE) distclean
+	[ ! -f Makefile ] || $(MAKE) distclean
 
 	rm -f libx264.a.bak
 
-	debian/rules unpatch
-
-	rm -rf .pc
+	QUILT_PATCHES=debian/patches quilt pop -a -R || test $$? = 2
 
 	dh_clean
 
