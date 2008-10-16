@@ -1,9 +1,9 @@
 Source: x264
 Section: sound
 Priority: optional
-Maintainer: Ubuntu MOTU Media Team <motumedia@tauware.de>
+Maintainer: Christian Marillat <marillat@debian.org>
 Standards-Version: 3.7.2
-Build-Depends: debhelper (>= 4.0.0), nasm (>= 0.98.34) [i386], yasm [amd64]
+Build-Depends: debhelper (>= 4), nasm (>= 0.98.34) [i386], yasm [amd64], libgtk2.0-dev
 
 Package: libx264-dev
 Architecture: any

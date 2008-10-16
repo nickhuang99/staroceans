@@ -1,9 +1,21 @@
-x264 (1:0.cvs20060720-0.0ubuntu1) edgy; urgency=low
+x264 (1:0.cvs20060928-0.0) unstable; urgency=low
 
-  * Sync with Marillat:
-    + Change Maintainer field to Ubuntu MOTU Media team
+  * New svn version 569.
 
- -- Sebastian Dröge <slomo@ubuntu.com>  Sun, 23 Jul 2006 22:04:45 +0200
+ -- Christian Marillat <marillat@debian.org>  Thu, 28 Sep 2006 11:01:25 +0200
+
+x264 (1:0.cvs20060825-0.0) unstable; urgency=low
+
+  * New svn version 558.
+
+ -- Christian Marillat <marillat@debian.org>  Fri, 25 Aug 2006 11:09:32 +0200
+
+x264 (1:0.cvs20060813-0.0) unstable; urgency=low
+
+  * New svn version.
+  * Enable en package the GTK2 front-end.
+
+ -- Christian Marillat <marillat@debian.org>  Mon, 14 Aug 2006 10:25:04 +0200
 
 x264 (1:0.cvs20060720-0.0) unstable; urgency=low
 

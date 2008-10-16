@@ -322,6 +322,115 @@ SAD_X( 8x16_vis )
 SAD_X( 8x8_vis )
 #endif
 
+static void ssim_4x4x2_core( const uint8_t *pix1, int stride1,
+                             const uint8_t *pix2, int stride2,
+                             int sums[2][4])
+{
+    int x, y, z;
+    for(z=0; z<2; z++)
+    {
+        uint32_t s1=0, s2=0, ss=0, s12=0;
+        for(y=0; y<4; y++)
+            for(x=0; x<4; x++)
+            {
+                int a = pix1[x+y*stride1];
+                int b = pix2[x+y*stride2];
+                s1  += a;
+                s2  += b;
+                ss  += a*a;
+                ss  += b*b;
+                s12 += a*b;
+            }
+        sums[z][0] = s1;
+        sums[z][1] = s2;
+        sums[z][2] = ss;
+        sums[z][3] = s12;
+        pix1 += 4;
+        pix2 += 4;
+    }
+}
+
+static float ssim_end1( int s1, int s2, int ss, int s12 )
+{
+    static const int ssim_c1 = (int)(.01*.01*255*255*64 + .5);
+    static const int ssim_c2 = (int)(.03*.03*255*255*64*63 + .5);
+    int vars = ss*64 - s1*s1 - s2*s2;
+    int covar = s12*64 - s1*s2;
+    return (float)(2*s1*s2 + ssim_c1) * (float)(2*covar + ssim_c2)\
+           / ((float)(s1*s1 + s2*s2 + ssim_c1) * (float)(vars + ssim_c2));
+}
+
+static float ssim_end4( int sum0[5][4], int sum1[5][4], int width )
+{
+    int i;
+    float ssim = 0.0;
+    for( i = 0; i < width; i++ )
+        ssim += ssim_end1( sum0[i][0] + sum0[i+1][0] + sum1[i][0] + sum1[i+1][0],
+                           sum0[i][1] + sum0[i+1][1] + sum1[i][1] + sum1[i+1][1],
+                           sum0[i][2] + sum0[i+1][2] + sum1[i][2] + sum1[i+1][2],
+                           sum0[i][3] + sum0[i+1][3] + sum1[i][3] + sum1[i+1][3] );
+    return ssim;
+}
+
+float x264_pixel_ssim_wxh( x264_pixel_function_t *pf,
+                           uint8_t *pix1, int stride1,
+                           uint8_t *pix2, int stride2,
+                           int width, int height )
+{
+    int x, y, z;
+    float ssim = 0.0;
+    int (*sum0)[4] = x264_alloca(4 * (width/4+3) * sizeof(int));
+    int (*sum1)[4] = x264_alloca(4 * (width/4+3) * sizeof(int));
+    width >>= 2;
+    height >>= 2;
+    z = 0;
+    for( y = 1; y < height; y++ )
+    {
+        for( ; z <= y; z++ )
+        {
+            XCHG( void*, sum0, sum1 );
+            for( x = 0; x < width; x+=2 )
+                pf->ssim_4x4x2_core( &pix1[4*(x+z*stride1)], stride1, &pix2[4*(x+z*stride2)], stride2, &sum0[x] );
+        }
+        for( x = 0; x < width-1; x += 4 )
+            ssim += pf->ssim_end4( sum0+x, sum1+x, X264_MIN(4,width-x-1) );
+    }
+    return ssim / ((width-1) * (height-1));
+}
+
+
+/****************************************************************************
+ * successive elimination
+ ****************************************************************************/
+static void pixel_ads4( int enc_dc[4], uint16_t *sums, int delta,
+                        uint16_t *res, int width )
+{
+    int i;
+    for( i=0; i<width; i++, sums++ )
+        res[i] = abs( enc_dc[0] - sums[0] )
+               + abs( enc_dc[1] - sums[8] )
+               + abs( enc_dc[2] - sums[delta] )
+               + abs( enc_dc[3] - sums[delta+8] );
+}
+
+static void pixel_ads2( int enc_dc[2], uint16_t *sums, int delta,
+                        uint16_t *res, int width )
+{
+    int i;
+    for( i=0; i<width; i++, sums++ )
+        res[i] = abs( enc_dc[0] - sums[0] )
+               + abs( enc_dc[1] - sums[delta] );
+}
+
+static void pixel_ads1( int enc_dc[1], uint16_t *sums, int delta,
+                        uint16_t *res, int width )
+{
+    int i;
+    for( i=0; i<width; i++, sums++ )
+        res[i] = abs( enc_dc[0] - sums[0] );
+}
+
+
 /****************************************************************************
  * x264_pixel_init:
  ****************************************************************************/
@@ -348,6 +457,12 @@ void x264_pixel_init( int cpu, x264_pixel_function_t *pixf )
     pixf->sa8d[PIXEL_16x8] = x264_pixel_sa8d_16x8;
     pixf->sa8d[PIXEL_8x16] = x264_pixel_sa8d_8x16;
     pixf->sa8d[PIXEL_8x8]  = x264_pixel_sa8d_8x8;
+    pixf->ssim_4x4x2_core = ssim_4x4x2_core;
+    pixf->ssim_end4 = ssim_end4;
+
+    pixf->ads[PIXEL_16x16] = pixel_ads4;
+    pixf->ads[PIXEL_16x8] = pixel_ads2;
+    pixf->ads[PIXEL_8x8] = pixel_ads1;
 
 #ifdef HAVE_MMXEXT
     if( cpu&X264_CPU_MMX )
@@ -366,10 +481,15 @@ void x264_pixel_init( int cpu, x264_pixel_function_t *pixf )
         pixf->sad_pde[PIXEL_16x8 ] = x264_pixel_sad_pde_16x8_mmxext;
         pixf->sad_pde[PIXEL_8x16 ] = x264_pixel_sad_pde_8x16_mmxext;
 
+        pixf->ads[PIXEL_16x16] = x264_pixel_ads4_mmxext;
+        pixf->ads[PIXEL_16x8 ] = x264_pixel_ads2_mmxext;
+        pixf->ads[PIXEL_8x8  ] = x264_pixel_ads1_mmxext;
+
 #ifdef ARCH_X86
         pixf->sa8d[PIXEL_16x16] = x264_pixel_sa8d_16x16_mmxext;
         pixf->sa8d[PIXEL_8x8]   = x264_pixel_sa8d_8x8_mmxext;
         pixf->intra_sa8d_x3_8x8 = x264_intra_sa8d_x3_8x8_mmxext;
+        pixf->ssim_4x4x2_core  = x264_pixel_ssim_4x4x2_core_mmxext;
 #endif
         pixf->intra_satd_x3_16x16 = x264_intra_satd_x3_16x16_mmxext;
         pixf->intra_satd_x3_8x8c  = x264_intra_satd_x3_8x8c_mmxext;
@@ -403,6 +523,8 @@ void x264_pixel_init( int cpu, x264_pixel_function_t *pixf )
     {
         pixf->ssd[PIXEL_16x16] = x264_pixel_ssd_16x16_sse2;
         pixf->ssd[PIXEL_16x8]  = x264_pixel_ssd_16x8_sse2;
+        pixf->ssim_4x4x2_core  = x264_pixel_ssim_4x4x2_core_sse2;
+        pixf->ssim_end4        = x264_pixel_ssim_end4_sse2;
 
 #ifdef ARCH_X86_64
         pixf->sa8d[PIXEL_16x16] = x264_pixel_sa8d_16x16_sse2;
@@ -434,5 +556,10 @@ void x264_pixel_init( int cpu, x264_pixel_function_t *pixf )
     pixf->sad_x4[PIXEL_16x8]  = x264_pixel_sad_x4_16x8_vis;
     pixf->sad_x4[PIXEL_16x16] = x264_pixel_sad_x4_16x16_vis;
 #endif
+
+    pixf->ads[PIXEL_8x16] =
+    pixf->ads[PIXEL_8x4] =
+    pixf->ads[PIXEL_4x8] = pixf->ads[PIXEL_16x8];
+    pixf->ads[PIXEL_4x4] = pixf->ads[PIXEL_8x8];
 }
 

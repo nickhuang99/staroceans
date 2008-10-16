@@ -35,21 +35,13 @@
 #include "common/cpu.h"
 #include "ratecontrol.h"
 
-#if defined(SYS_FREEBSD) || defined(SYS_BEOS) || defined(SYS_NETBSD) || defined(SYS_OPENBSD)
-#define exp2f(x) powf( 2, (x) )
-#endif
-#if defined(SYS_MACOSX)
-#define exp2f(x) (float)pow( 2, (x) )
-#define sqrtf sqrt
-#endif
 #if defined(SYS_OPENBSD)
 #define isfinite finite
 #endif
 #if defined(_MSC_VER)
 #define isfinite _finite
 #endif
-#if defined(_MSC_VER) || defined(SYS_SunOS)
-#define exp2f(x) pow( 2, (x) )
+#if defined(_MSC_VER) || defined(SYS_SunOS) || defined(SYS_MACOSX)
 #define sqrtf sqrt
 #endif
 #ifdef WIN32 // POSIX says that rename() removes the destination, but win32 doesn't.
@@ -259,13 +251,14 @@ int x264_ratecontrol_new( x264_t *h )
 
     if( rc->b_abr )
     {
-        /* FIXME shouldn't need to arbitrarily specify a QP,
-         * but this is more robust than BPP measures */
+        /* FIXME ABR_INIT_QP is actually used only in CRF */
 #define ABR_INIT_QP ( h->param.rc.i_rc_method == X264_RC_CRF ? h->param.rc.i_rf_constant : 24 )
         rc->accum_p_norm = .01;
         rc->accum_p_qp = ABR_INIT_QP * rc->accum_p_norm;
-        rc->cplxr_sum = .01;
-        rc->wanted_bits_window = .01;
+        /* estimated ratio that produces a reasonable QP for the first I-frame */
+        rc->cplxr_sum = .01 * pow( 7.0e5, h->param.rc.f_qcompress ) * pow( h->mb.i_mb_count, 0.5 );
+        rc->wanted_bits_window = 1.0 * rc->bitrate / rc->fps;
+        rc->last_non_b_pict_type = SLICE_TYPE_I;
     }
 
     if( h->param.rc.i_rc_method == X264_RC_CRF )
@@ -282,11 +275,11 @@ int x264_ratecontrol_new( x264_t *h )
     rc->qp_constant[SLICE_TYPE_I] = x264_clip3( h->param.rc.i_qp_constant - rc->ip_offset + 0.5, 0, 51 );
     rc->qp_constant[SLICE_TYPE_B] = x264_clip3( h->param.rc.i_qp_constant + rc->pb_offset + 0.5, 0, 51 );
 
-    rc->lstep = exp2f(h->param.rc.i_qp_step / 6.0);
+    rc->lstep = pow( 2, h->param.rc.i_qp_step / 6.0 );
     rc->last_qscale = qp2qscale(26);
     for( i = 0; i < 5; i++ )
     {
-        rc->last_qscale_for[i] = qp2qscale(26);
+        rc->last_qscale_for[i] = qp2qscale( ABR_INIT_QP );
         rc->lmin[i] = qp2qscale( h->param.rc.i_qp_min );
         rc->lmax[i] = qp2qscale( h->param.rc.i_qp_max );
         rc->pred[i].coeff= 2.0;
@@ -523,6 +516,18 @@ static int parse_zones( x264_t *h )
     return 0;
 }
 
+x264_zone_t *get_zone( x264_t *h, int frame_num )
+{
+    int i;
+    for( i = h->rc->i_zones-1; i >= 0; i-- )
+    {
+        x264_zone_t *z = &h->rc->zones[i];
+        if( frame_num >= z->i_start && frame_num <= z->i_end )
+            return z;
+    }
+    return NULL;
+}
+
 void x264_ratecontrol_summary( x264_t *h )
 {
     x264_ratecontrol_t *rc = h->rc;
@@ -612,12 +617,22 @@ void x264_ratecontrol_start( x264_t *h, int i_slice_type, int i_force_qp )
     }
     else /* CQP */
     {
-        int q;
+        x264_zone_t *zone = get_zone( h, h->fenc->i_frame );
+        float q;
         if( i_slice_type == SLICE_TYPE_B && h->fdec->b_kept_as_ref )
             q = ( rc->qp_constant[ SLICE_TYPE_B ] + rc->qp_constant[ SLICE_TYPE_P ] ) / 2;
         else
             q = rc->qp_constant[ i_slice_type ];
-        rc->qpm = rc->qp = q;
+
+        if( zone )
+        {
+            if( zone->b_force_qp )
+                q += zone->i_qp - rc->qp_constant[SLICE_TYPE_P];
+            else
+                q -= 6*log(zone->f_bitrate_factor)/log(2);
+        }
+
+        rc->qpm = rc->qp = (int)(q + 0.5);
     }
 }
 
@@ -884,7 +899,7 @@ static double get_qscale(x264_t *h, ratecontrol_entry_t *rce, double rate_factor
     x264_ratecontrol_t *rcc= h->rc;
     const int pict_type = rce->pict_type;
     double q;
-    int i;
+    x264_zone_t *zone = get_zone( h, frame_num );
 
     double const_values[]={
         rce->i_tex_bits * rce->qscale,
@@ -948,17 +963,12 @@ static double get_qscale(x264_t *h, ratecontrol_entry_t *rce, double rate_factor
         rcc->last_qscale = q;
     }
 
-    for( i = rcc->i_zones-1; i >= 0; i-- )
+    if( zone )
     {
-        x264_zone_t *z = &rcc->zones[i];
-        if( frame_num >= z->i_start && frame_num <= z->i_end )
-        {
-            if( z->b_force_qp )
-                q = qp2qscale(z->i_qp);
-            else
-                q /= z->f_bitrate_factor;
-            break;
-        }
+        if( zone->b_force_qp )
+            q = qp2qscale(zone->i_qp);
+        else
+            q /= zone->f_bitrate_factor;
     }
 
     return q;
@@ -1038,6 +1048,8 @@ static double predict_size( predictor_t *p, double q, double var )
 
 static void update_predictor( predictor_t *p, double q, double var, double bits )
 {
+    if( var < 10 )
+        return;
     p->count *= p->decay;
     p->coeff *= p->decay;
     p->count ++;
@@ -1258,34 +1270,34 @@ static float rate_estimate_qscale(x264_t *h, int pict_type)
             {
                 q = qp2qscale( rcc->accum_p_qp / rcc->accum_p_norm );
                 q /= fabs( h->param.rc.f_ip_factor );
-                q = clip_qscale( h, pict_type, q );
             }
-            else
+            else if( h->i_frame > 0 )
             {
-                if( h->stat.i_slice_count[SLICE_TYPE_P] + h->stat.i_slice_count[SLICE_TYPE_I] < 6 )
-                {
-                    float w = h->stat.i_slice_count[SLICE_TYPE_P] / 5.;
-                    float q2 = qp2qscale(ABR_INIT_QP);
-                    q = q*w + q2*(1-w);
-                }
-
                 /* Asymmetric clipping, because symmetric would prevent
                  * overflow control in areas of rapidly oscillating complexity */
                 lmin = rcc->last_qscale_for[pict_type] / rcc->lstep;
                 lmax = rcc->last_qscale_for[pict_type] * rcc->lstep;
-                if( overflow > 1.1 )
+                if( overflow > 1.1 && h->i_frame > 3 )
                     lmax *= rcc->lstep;
                 else if( overflow < 0.9 )
                     lmin /= rcc->lstep;
 
                 q = x264_clip3f(q, lmin, lmax);
-                q = clip_qscale(h, pict_type, q);
-                //FIXME use get_diff_limited_q() ?
             }
+            else if( h->param.rc.i_rc_method == X264_RC_CRF )
+            {
+                q = qp2qscale( ABR_INIT_QP ) / fabs( h->param.rc.f_ip_factor );
+            }
+
+            //FIXME use get_diff_limited_q() ?
+            q = clip_qscale( h, pict_type, q );
         }
 
         rcc->last_qscale_for[pict_type] =
         rcc->last_qscale = q;
+
+        if( !rcc->b_2pass && h->fenc->i_frame == 0 )
+            rcc->last_qscale_for[SLICE_TYPE_P] = q;
 
         rcc->frame_size_planned = predict_size( &rcc->pred[rcc->slice_type], q, rcc->last_satd );
 

@@ -1,0 +1,11 @@
+prefix=/usr
+exec_prefix=/usr
+libdir=/usr/lib
+includedir=/usr/include
+
+Name: Gtk+ interface for X264
+Description: Gtk+ interface to configure X264
+Requires: x264
+Version: 0.1
+Libs: -L/usr/lib -lx264gtk
+Cflags: -I/usr/include

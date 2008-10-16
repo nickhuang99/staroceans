@@ -37,6 +37,13 @@
 #define X264_VERSION "" // no configure script for msvc
 #endif
 
+/* alloca: force 16byte alignment */
+#ifdef _MSC_VER
+#define x264_alloca(x) (void*)(((intptr_t)_alloca((x)+15)+15)&~15)
+#else
+#define x264_alloca(x) (void*)(((intptr_t) alloca((x)+15)+15)&~15)
+#endif
+
 /* threads */
 #ifdef __WIN32__
 #include <windows.h>
@@ -295,12 +302,12 @@ struct x264_t
     x264_pps_t      *pps;
     int             i_idr_pic_id;
 
-    int             dequant4_mf[4][6][4][4];
-    int             dequant8_mf[2][6][8][8];
-    int             quant4_mf[4][6][4][4];
-    int             quant8_mf[2][6][8][8];
-    int             unquant4_mf[4][52][16];
-    int             unquant8_mf[2][52][64];
+    int             (*dequant4_mf[4])[4][4]; /* [4][6][4][4] */
+    int             (*dequant8_mf[2])[8][8]; /* [2][6][8][8] */
+    int             (*quant4_mf[4])[4][4];   /* [4][6][4][4] */
+    int             (*quant8_mf[2])[8][8];   /* [2][6][8][8] */
+    int             (*unquant4_mf[4])[16];   /* [4][52][16] */
+    int             (*unquant8_mf[2])[64];   /* [2][52][64] */
 
     uint32_t        nr_residual_sum[2][64];
     uint32_t        nr_offset[2][64];
@@ -447,7 +454,7 @@ struct x264_t
             /* pointer over mb of the frame to be compressed */
             uint8_t *p_fenc[3];
 
-            /* pointer over mb of the frame to be reconstrucated  */
+            /* pointer over mb of the frame to be reconstructed  */
             uint8_t *p_fdec[3];
 
             /* pointer over mb of the references */
@@ -464,13 +471,13 @@ struct x264_t
             /* real intra4x4_pred_mode if I_4X4 or I_8X8, I_PRED_4x4_DC if mb available, -1 if not */
             int     intra4x4_pred_mode[X264_SCAN8_SIZE];
 
-            /* i_non_zero_count if availble else 0x80 */
+            /* i_non_zero_count if available else 0x80 */
             int     non_zero_count[X264_SCAN8_SIZE];
 
-            /* -1 if unused, -2 if unavaible */
+            /* -1 if unused, -2 if unavailable */
             int8_t  ref[2][X264_SCAN8_SIZE];
 
-            /* 0 if non avaible */
+            /* 0 if not available */
             int16_t mv[2][X264_SCAN8_SIZE][2];
             int16_t mvd[2][X264_SCAN8_SIZE][2];
 
@@ -534,7 +541,7 @@ struct x264_t
             int i_direct_score[2];
         } frame;
 
-        /* Cummulated stats */
+        /* Cumulated stats */
 
         /* per slice info */
         int     i_slice_count[5];
@@ -546,6 +553,7 @@ struct x264_t
         float   f_psnr_mean_y[5];
         float   f_psnr_mean_u[5];
         float   f_psnr_mean_v[5];
+        float   f_ssim_mean_y[5];
         /* */
         int64_t i_mb_count[5][19];
         int64_t i_mb_count_8x8dct[2];
@@ -557,7 +565,7 @@ struct x264_t
 
     } stat;
 
-    /* CPU functions dependants */
+    /* CPU functions dependents */
     x264_predict_t      predict_16x16[4+3];
     x264_predict_t      predict_8x8c[4+3];
     x264_predict8x8_t   predict_8x8[9+3];

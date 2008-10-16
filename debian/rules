@@ -27,7 +27,7 @@ build-stamp: configure-stamp
 	dh_testdir
 
 	$(MAKE) && mv libx264.a debian/libx264_pic.a && $(MAKE) clean
-	./configure --enable-pthread --prefix=/usr && $(MAKE)
+	./configure --enable-pthread --prefix=/usr --enable-gtk && $(MAKE)
 
 	touch build-stamp
 
@@ -49,7 +49,15 @@ install: build
 	$(MAKE) install DESTDIR=$(CURDIR)/debian/${version}
 
 	mv debian/libx264_pic.a debian/${version}/usr/lib
+
+	rm debian/${version}/usr/include/x264_gtk*
+	rm debian/${version}/usr/lib/libx264gtk.a
+	rm debian/${version}/usr/lib/pkgconfig/x264gtk.pc
+
 	dh_movefiles --sourcedir=debian/${version}
+
+# Prune empty directories
+	find debian -type d | xargs rmdir -p --ignore-fail-on-non-empty
 
 # Build architecture-independent files here.
 binary-indep: build install

@@ -26,16 +26,6 @@
 
 #include "common.h"
 
-static const int dequant_mf[6][4][4] =
-{
-    { {10, 13, 10, 13}, {13, 16, 13, 16}, {10, 13, 10, 13}, {13, 16, 13, 16} },
-    { {11, 14, 11, 14}, {14, 18, 14, 18}, {11, 14, 11, 14}, {14, 18, 14, 18} },
-    { {13, 16, 13, 16}, {16, 20, 16, 20}, {13, 16, 13, 16}, {16, 20, 16, 20} },
-    { {14, 18, 14, 18}, {18, 23, 18, 23}, {14, 18, 14, 18}, {18, 23, 18, 23} },
-    { {16, 20, 16, 20}, {20, 25, 20, 25}, {16, 20, 16, 20}, {20, 25, 20, 25} },
-    { {18, 23, 18, 23}, {23, 29, 23, 29}, {18, 23, 18, 23}, {23, 29, 23, 29} }
-};
-
 int x264_mb_predict_intra4x4_mode( x264_t *h, int idx )
 {
     const int ma = h->mb.cache.intra4x4_pred_mode[x264_scan8[idx] - 1];
@@ -309,7 +299,7 @@ static int x264_mb_predict_mv_direct16x16_temporal( x264_t *h )
         }
         else
         {
-            /* the colocated ref isn't in the current list0 */
+            /* the collocated ref isn't in the current list0 */
             /* FIXME: we might still be able to use direct_8x8 on some partitions */
             /* FIXME: with B-pyramid + extensive ref list reordering
              *   (not currently used), we would also have to check
@@ -858,7 +848,7 @@ int x264_macroblock_cache_init( x264_t *h )
             CHECKED_MALLOC( h->mb.mvr[i][j], 2 * i_mb_count * sizeof(int16_t) );
     }
 
-    /* init with not avaiable (for top right idx=7,15) */
+    /* init with not available (for top right idx=7,15) */
     memset( h->mb.cache.ref[0], -2, X264_SCAN8_SIZE * sizeof( int8_t ) );
     memset( h->mb.cache.ref[1], -2, X264_SCAN8_SIZE * sizeof( int8_t ) );
 
@@ -1108,7 +1098,7 @@ void x264_macroblock_cache_load( x264_t *h, int i_mb_x, int i_mb_y )
     else
         h->mb.i_mb_type_topleft = -1;
 
-    if( h->param.analyse.b_transform_8x8 )
+    if( h->pps->b_transform_8x8_mode )
     {
         h->mb.cache.i_neighbour_transform_size =
             ( i_left_type >= 0 && h->mb.mb_transform_size[i_left_xy] )
