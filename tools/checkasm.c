@@ -32,12 +32,22 @@ static int check_pixel( int cpu_ref, int cpu_new )
     x264_pixel_function_t pixel_c;
     x264_pixel_function_t pixel_ref;
     x264_pixel_function_t pixel_asm;
+    x264_predict_t predict_16x16[4+3];
+    x264_predict_t predict_8x8c[4+3];
+    x264_predict_t predict_4x4[9+3];
+    x264_predict8x8_t predict_8x8[9+3];
+    DECLARE_ALIGNED( uint8_t, edge[33], 8 );
     int ret = 0, ok, used_asm;
     int i;
 
     x264_pixel_init( 0, &pixel_c );
     x264_pixel_init( cpu_ref, &pixel_ref );
     x264_pixel_init( cpu_new, &pixel_asm );
+    x264_predict_16x16_init( 0, predict_16x16 );
+    x264_predict_8x8c_init( 0, predict_8x8c );
+    x264_predict_8x8_init( 0, predict_8x8 );
+    x264_predict_4x4_init( 0, predict_4x4 );
+    x264_predict_8x8_filter( buf2+40, edge, ALL_NEIGHBORS, ALL_NEIGHBORS );
 
 #define TEST_PIXEL( name ) \
     for( i = 0, ok = 1, used_asm = 0; i < 7; i++ ) \
@@ -60,6 +70,66 @@ static int check_pixel( int cpu_ref, int cpu_new )
     TEST_PIXEL( sad );
     TEST_PIXEL( ssd );
     TEST_PIXEL( satd );
+    TEST_PIXEL( sa8d );
+
+#define TEST_PIXEL_X( N ) \
+    for( i = 0, ok = 1, used_asm = 0; i < 7; i++ ) \
+    { \
+        int res_c[4]={0}, res_asm[4]={0}; \
+        if( pixel_asm.sad_x##N[i] && pixel_asm.sad_x##N[i] != pixel_ref.sad_x##N[i] ) \
+        { \
+            used_asm = 1; \
+            res_c[0] = pixel_c.sad[i]( buf1, 16, buf2, 24 ); \
+            res_c[1] = pixel_c.sad[i]( buf1, 16, buf2+30, 24 ); \
+            res_c[2] = pixel_c.sad[i]( buf1, 16, buf2+1, 24 ); \
+            if(N==4) \
+            { \
+                res_c[3] = pixel_c.sad[i]( buf1, 16, buf2+99, 24 ); \
+                pixel_asm.sad_x4[i]( buf1, buf2, buf2+30, buf2+1, buf2+99, 24, res_asm ); \
+            } \
+            else \
+                pixel_asm.sad_x3[i]( buf1, buf2, buf2+30, buf2+1, 24, res_asm ); \
+            if( memcmp(res_c, res_asm, sizeof(res_c)) ) \
+            { \
+                ok = 0; \
+                fprintf( stderr, "sad_x"#N"[%d]: %d,%d,%d,%d != %d,%d,%d,%d [FAILED]\n", \
+                         i, res_c[0], res_c[1], res_c[2], res_c[3], \
+                         res_asm[0], res_asm[1], res_asm[2], res_asm[3] ); \
+            } \
+        } \
+    } \
+    report( "pixel sad_x"#N" :" );
+
+    TEST_PIXEL_X(3);
+    TEST_PIXEL_X(4);
+
+#define TEST_INTRA_SATD( name, pred, satd, i8x8, ... ) \
+    if( pixel_asm.name && pixel_asm.name != pixel_ref.name ) \
+    { \
+        int res_c[3], res_asm[3]; \
+        used_asm = 1; \
+        memcpy( buf3, buf2, 1024 ); \
+        for( i=0; i<3; i++ ) \
+        { \
+            pred[i]( buf3+40, ##__VA_ARGS__ ); \
+            res_c[i] = pixel_c.satd( buf1+40, 16, buf3+40, 32 ); \
+        } \
+        pixel_asm.name( buf1+40, i8x8 ? edge : buf3+40, res_asm ); \
+        if( memcmp(res_c, res_asm, sizeof(res_c)) ) \
+        { \
+            ok = 0; \
+            fprintf( stderr, #name": %d,%d,%d != %d,%d,%d [FAILED]\n", \
+                     res_c[0], res_c[1], res_c[2], \
+                     res_asm[0], res_asm[1], res_asm[2] ); \
+        } \
+    }
+
+    ok = 1; used_asm = 0;
+    TEST_INTRA_SATD( intra_satd_x3_16x16, predict_16x16, satd[PIXEL_16x16], 0 );
+    TEST_INTRA_SATD( intra_satd_x3_8x8c, predict_8x8c, satd[PIXEL_8x8], 0 );
+    TEST_INTRA_SATD( intra_satd_x3_4x4, predict_4x4, satd[PIXEL_4x4], 0 );
+    TEST_INTRA_SATD( intra_sa8d_x3_8x8, predict_8x8, sa8d[PIXEL_8x8], 1, edge );
+    report( "intra satd_x3 :" );
 
     return ret;
 }
@@ -80,8 +150,8 @@ static int check_dct( int cpu_ref, int cpu_new )
     if( dct_asm.name != dct_ref.name ) \
     { \
         used_asm = 1; \
-        dct_c.name( t1, buf1, 32, buf2, 24 ); \
-        dct_asm.name( t2, buf1, 32, buf2, 24 ); \
+        dct_c.name( t1, buf1, buf2 ); \
+        dct_asm.name( t2, buf1, buf2 ); \
         if( memcmp( t1, t2, size ) ) \
         { \
             ok = 0; \
@@ -111,8 +181,8 @@ static int check_dct( int cpu_ref, int cpu_new )
         memcpy( buf4, buf1, 32*32 ); \
         memcpy( dct1, buf5, 512 ); \
         memcpy( dct2, buf5, 512 ); \
-        dct_c.name( buf3, 32, (void*)dct1 ); \
-        dct_asm.name( buf4, 32, (void*)dct2 ); \
+        dct_c.name( buf3, (void*)dct1 ); \
+        dct_asm.name( buf4, (void*)dct2 ); \
         if( memcmp( buf3, buf4, 32*32 ) ) \
         { \
             ok = 0; \
@@ -204,7 +274,7 @@ static int check_mc( int cpu_ref, int cpu_new )
     uint8_t *dst1    = &buf3[2*32+2];
     uint8_t *dst2    = &buf4[2*32+2];
 
-    int dx, dy, i, w;
+    int dx, dy, i, j, w;
     int ret = 0, ok, used_asm;
 
     x264_mc_init( 0, &mc_c );
@@ -234,6 +304,10 @@ static int check_mc( int cpu_ref, int cpu_new )
             memset(buf4, 0xCD, 1024); \
             mc_c.mc_chroma( src, 32, dst1, 16, dx, dy, w, h );     \
             mc_a.mc_chroma( src, 32, dst2, 16, dx, dy, w, h );   \
+            /* mc_chroma width=2 may write garbage to the right of dst. ignore that. */\
+            for( j=0; j<h; j++ ) \
+                for( i=w; i<4; i++ ) \
+                    dst2[i+j*16] = dst1[i+j*16]; \
             if( memcmp( buf3, buf4, 1024 ) )               \
             { \
                 fprintf( stderr, "mc_chroma[mv(%d,%d) %2dx%-2d]     [FAILED]\n", dx, dy, w, h );   \
@@ -255,8 +329,8 @@ static int check_mc( int cpu_ref, int cpu_new )
     report( "mc luma :" );
 
     ok = 1; used_asm = 0;
-    for( dy = 0; dy < 9; dy++ )
-        for( dx = 0; dx < 9; dx++ )
+    for( dy = -1; dy < 9; dy++ )
+        for( dx = -1; dx < 9; dx++ )
         {
             MC_TEST_CHROMA( 8, 8 );
             MC_TEST_CHROMA( 8, 4 );
@@ -398,6 +472,30 @@ static int check_quant( int cpu_ref, int cpu_new )
         x264_quant_init( h, cpu_ref, &qf_ref );
         x264_quant_init( h, cpu_new, &qf_a );
 
+#define INIT_QUANT8() \
+        { \
+            static const int scale1d[8] = {32,31,24,31,32,31,24,31}; \
+            int x, y; \
+            for( y = 0; y < 8; y++ ) \
+                for( x = 0; x < 8; x++ ) \
+                { \
+                    unsigned int scale = (255*scale1d[y]*scale1d[x])/16; \
+                    dct1[y*8+x] = dct2[y*8+x] = (rand()%(2*scale+1))-scale; \
+                } \
+        }
+
+#define INIT_QUANT4() \
+        { \
+            static const int scale1d[4] = {4,6,4,6}; \
+            int x, y; \
+            for( y = 0; y < 4; y++ ) \
+                for( x = 0; x < 4; x++ ) \
+                { \
+                    unsigned int scale = 255*scale1d[y]*scale1d[x]; \
+                    dct1[y*4+x] = dct2[y*4+x] = (rand()%(2*scale+1))-scale; \
+                } \
+        }
+
 #define TEST_QUANT( name, cqm ) \
         if( qf_a.name != qf_ref.name ) \
         { \
@@ -413,37 +511,97 @@ static int check_quant( int cpu_ref, int cpu_new )
             } \
         }
 
-        TEST_QUANT( quant_8x8_core, *h->quant8_mf[CQM_8IY] );
-        TEST_QUANT( quant_8x8_core, *h->quant8_mf[CQM_8PY] );
-        TEST_QUANT( quant_4x4_core, *h->quant4_mf[CQM_4IY] );
-        TEST_QUANT( quant_4x4_core, *h->quant4_mf[CQM_4PY] );
-        TEST_QUANT( quant_4x4_dc_core, ***h->quant4_mf[CQM_4IY] );
-        TEST_QUANT( quant_2x2_dc_core, ***h->quant4_mf[CQM_4IC] );
-
-#define TEST_DEQUANT( name, quant, dqm, cqm, shift ) \
-        if( qf_a.name != qf_ref.name ) \
+#define TEST_QUANT8( qname, cqm, shift, divider ) \
+        if( qf_a.qname != qf_ref.qname ) \
         { \
             int qp; \
-            used_asms[1] = 1; \
+            used_asms[0] = 1; \
             for( qp = 51; qp > 0; qp-- ) \
             { \
-                for( i = 0; i < 64; i++ ) \
-                    dct1[i] = dct2[i] = (rand() & 0x1fff) - 0xfff; \
-                qf_c.quant( (void*)dct1, cqm[qp%6], shift+qp/6, 0 ); \
-                memcpy( dct2, dct1, sizeof(dct2) ); \
-                qf_c.name( (void*)dct1, dqm, qp ); \
-                qf_a.name( (void*)dct2, dqm, qp ); \
+                INIT_QUANT8() \
+                qf_c.qname( (void*)dct1, cqm[qp%6], shift+qp/6, (1<<(shift+qp/6))/divider ); \
+                qf_a.qname( (void*)dct2, cqm[qp%6], shift+qp/6, (1<<(shift+qp/6))/divider ); \
                 if( memcmp( dct1, dct2, 64*2 ) ) \
                 { \
-                    oks[1] = 0; \
-                    fprintf( stderr, #name "(qp=%d, cqm=%d): [FAILED]\n", qp, i_cqm ); \
+                    oks[0] = 0; \
+                    fprintf( stderr, #qname "(qp=%d, cqm=%d, intra=%d): [FAILED]\n", qp, i_cqm, divider==3 ); \
                     break; \
                 } \
             } \
         }
 
-        TEST_DEQUANT( dequant_8x8, quant_8x8_core, h->dequant8_mf[CQM_8PY], h->quant8_mf[CQM_8PY], 16 );
-        TEST_DEQUANT( dequant_4x4, quant_4x4_core, h->dequant4_mf[CQM_4PY], h->quant4_mf[CQM_4PY], 15 );
+#define TEST_QUANT4( qname, cqm, shift, divider ) \
+        if( qf_a.qname != qf_ref.qname ) \
+        { \
+            int qp; \
+            used_asms[0] = 1; \
+            for( qp = 51; qp > 0; qp-- ) \
+            { \
+                INIT_QUANT4() \
+                qf_c.qname( (void*)dct1, cqm[qp%6], shift+qp/6, (1<<(shift+qp/6))/divider ); \
+                qf_a.qname( (void*)dct2, cqm[qp%6], shift+qp/6, (1<<(shift+qp/6))/divider ); \
+                if( memcmp( dct1, dct2, 16*2 ) ) \
+                { \
+                    oks[0] = 0; \
+                    fprintf( stderr, #qname "(qp=%d, cqm=%d, intra=%d): [FAILED]\n", qp, i_cqm, divider==3 ); \
+                    break; \
+                } \
+            } \
+        }
+
+        TEST_QUANT8( quant_8x8_core, h->quant8_mf[CQM_8IY], 16, 3 );
+        TEST_QUANT8( quant_8x8_core, h->quant8_mf[CQM_8PY], 16, 6 );
+        TEST_QUANT4( quant_4x4_core, h->quant4_mf[CQM_4IY], 15, 3 );
+        TEST_QUANT4( quant_4x4_core, h->quant4_mf[CQM_4PY], 15, 6 );
+        TEST_QUANT( quant_4x4_dc_core, ***h->quant4_mf[CQM_4IY] );
+        TEST_QUANT( quant_2x2_dc_core, ***h->quant4_mf[CQM_4IC] );
+
+#define TEST_DEQUANT8( qname, dqname, cqm, dqm, shift, divider ) \
+        if( qf_a.dqname != qf_ref.dqname ) \
+        { \
+            int qp; \
+            used_asms[1] = 1; \
+            for( qp = 51; qp > 0; qp-- ) \
+            { \
+                INIT_QUANT8() \
+                qf_c.qname( (void*)dct1, cqm[qp%6], shift+qp/6, (1<<(shift+qp/6))/divider ); \
+                memcpy( dct2, dct1, 64*2 ); \
+                qf_c.dqname( (void*)dct1, dqm, qp ); \
+                qf_a.dqname( (void*)dct2, dqm, qp ); \
+                if( memcmp( dct1, dct2, 64*2 ) ) \
+                { \
+                    oks[1] = 0; \
+                    fprintf( stderr, #dqname "(qp=%d, cqm=%d, intra=%d): [FAILED]\n", qp, i_cqm, divider==3 ); \
+                    break; \
+                } \
+            } \
+        }
+
+#define TEST_DEQUANT4( qname, dqname, cqm, dqm, shift, divider ) \
+        if( qf_a.dqname != qf_ref.dqname ) \
+        { \
+            int qp; \
+            used_asms[1] = 1; \
+            for( qp = 51; qp > 0; qp-- ) \
+            { \
+                INIT_QUANT4() \
+                qf_c.qname( (void*)dct1, cqm[qp%6], shift+qp/6, (1<<(shift+qp/6))/divider ); \
+                memcpy( dct2, dct1, 16*2 ); \
+                qf_c.dqname( (void*)dct1, dqm, qp ); \
+                qf_a.dqname( (void*)dct2, dqm, qp ); \
+                if( memcmp( dct1, dct2, 16*2 ) ) \
+                { \
+                    oks[1] = 0; \
+                    fprintf( stderr, #dqname "(qp=%d, cqm=%d, intra=%d): [FAILED]\n", qp, i_cqm, divider==3 ); \
+                    break; \
+                } \
+            } \
+        }
+
+        TEST_DEQUANT8( quant_8x8_core, dequant_8x8, h->quant8_mf[CQM_8IY], h->dequant8_mf[CQM_8IY], 16, 3 );
+        TEST_DEQUANT8( quant_8x8_core, dequant_8x8, h->quant8_mf[CQM_8PY], h->dequant8_mf[CQM_8PY], 16, 6 );
+        TEST_DEQUANT4( quant_4x4_core, dequant_4x4, h->quant4_mf[CQM_4IY], h->dequant4_mf[CQM_4IY], 15, 3 );
+        TEST_DEQUANT4( quant_4x4_core, dequant_4x4, h->quant4_mf[CQM_4PY], h->dequant4_mf[CQM_4PY], 15, 6 );
     }
 
     ok = oks[0]; used_asm = used_asms[0];
@@ -459,6 +617,7 @@ static int check_intra( int cpu_ref, int cpu_new )
 {
     int ret = 0, ok = 1, used_asm = 0;
     int i;
+    DECLARE_ALIGNED( uint8_t, edge[33], 8 );
     struct
     {
         x264_predict_t      predict_16x16[4+3];
@@ -482,18 +641,37 @@ static int check_intra( int cpu_ref, int cpu_new )
     x264_predict_8x8_init( cpu_new, ip_a.predict_8x8 );
     x264_predict_4x4_init( cpu_new, ip_a.predict_4x4 );
 
+    x264_predict_8x8_filter( buf1+48, edge, ALL_NEIGHBORS, ALL_NEIGHBORS );
+
 #define INTRA_TEST( name, dir, ... ) \
     if( ip_a.name[dir] != ip_ref.name[dir] )\
     { \
         used_asm = 1; \
         memcpy( buf3, buf1, 32*20 );\
         memcpy( buf4, buf1, 32*20 );\
-        ip_c.name[dir]( buf3+48, 32, ##__VA_ARGS__ );\
-        ip_a.name[dir]( buf4+48, 32, ##__VA_ARGS__ );\
+        ip_c.name[dir]( buf3+48, ##__VA_ARGS__ );\
+        ip_a.name[dir]( buf4+48, ##__VA_ARGS__ );\
         if( memcmp( buf3, buf4, 32*20 ) )\
         {\
             fprintf( stderr, #name "[%d] :  [FAILED]\n", dir );\
             ok = 0;\
+            int j,k;\
+            for(k=-1; k<16; k++)\
+                printf("%2x ", edge[16+k]);\
+            printf("\n");\
+            for(j=0; j<8; j++){\
+                printf("%2x ", edge[j]);\
+                for(k=0; k<8; k++)\
+                    printf("%2x ", buf4[48+k+j*32]);\
+                printf("\n");\
+            }\
+            printf("\n");\
+            for(j=0; j<8; j++){\
+                printf("   ");\
+                for(k=0; k<8; k++)\
+                    printf("%2x ", buf3[48+k+j*32]);\
+                printf("\n");\
+            }\
         }\
     }
 
@@ -504,13 +682,7 @@ static int check_intra( int cpu_ref, int cpu_new )
     for( i = 0; i < 7; i++ )
         INTRA_TEST( predict_16x16, i );
     for( i = 0; i < 12; i++ )
-        INTRA_TEST( predict_8x8, i, 0xf );
-    INTRA_TEST( predict_8x8, I_PRED_8x8_V,  MB_LEFT|MB_TOP );
-    INTRA_TEST( predict_8x8, I_PRED_8x8_DC, MB_LEFT|MB_TOP );
-    INTRA_TEST( predict_8x8, I_PRED_8x8_V,  MB_LEFT|MB_TOP|MB_TOPLEFT );
-    INTRA_TEST( predict_8x8, I_PRED_8x8_DC, MB_LEFT|MB_TOP|MB_TOPLEFT );
-    INTRA_TEST( predict_8x8, I_PRED_8x8_V,  MB_LEFT|MB_TOP|MB_TOPRIGHT );
-    INTRA_TEST( predict_8x8, I_PRED_8x8_DC, MB_LEFT|MB_TOP|MB_TOPRIGHT );
+        INTRA_TEST( predict_8x8, i, edge );
 
     report( "intra pred :" );
     return ret;

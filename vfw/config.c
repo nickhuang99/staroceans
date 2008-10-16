@@ -72,6 +72,7 @@ typedef struct
 } reg_str_t;
 
 CONFIG reg;
+HWND hTooltip;
 HWND hTabs[8];
 static const reg_int_t reg_int_table[] =
 {
@@ -83,46 +84,50 @@ static const reg_int_t reg_int_table[] =
     { "pass_number",    &reg.i_pass,            1 },
     { "fast1pass",      &reg.b_fast1pass,       1 },
     { "updatestats",    &reg.b_updatestats,     1 },
-    { "threads",        &reg.i_threads,         1 },
 
-    /* Advance dialog */
-    { "cabac",          &reg.b_cabac,           1 },
-    { "loop_filter",    &reg.b_filter,          1 },
-    { "keyint_max",     &reg.i_keyint_max,    250 },
-    { "keyint_min",     &reg.i_keyint_min,     25 },
-    { "scenecut",       &reg.i_scenecut_threshold, 40 },
-    { "qp_min",         &reg.i_qp_min,         10 },
-    { "qp_max",         &reg.i_qp_max,         51 },
-    { "qp_step",        &reg.i_qp_step,         4 },
-    { "refmax",         &reg.i_refmax,          1 },
-    { "bmax",           &reg.i_bframe,          2 },
-    { "direct_pred",    &reg.i_direct_mv_pred,  1 },
-    { "b_refs",         &reg.b_b_refs,          0 },
-    { "b_bias",         &reg.i_bframe_bias,     0 },
-    { "b_adapt",        &reg.b_bframe_adaptive, 1 },
-    { "b_wpred",        &reg.b_b_wpred,         1 },
-    { "inloop_a",       &reg.i_inloop_a,        0 },
-    { "inloop_b",       &reg.i_inloop_b,        0 },
+    /* Rate Control */
     { "key_boost",      &reg.i_key_boost,      40 },
     { "b_red",          &reg.i_b_red,          30 },
     { "curve_comp",     &reg.i_curve_comp,     60 },
-    { "sar_width",      &reg.i_sar_width,       1 },
-    { "sar_height",     &reg.i_sar_height,      1 },
+    { "qp_min",         &reg.i_qp_min,         10 },
+    { "qp_max",         &reg.i_qp_max,         51 },
+    { "qp_step",        &reg.i_qp_step,         4 },
+    { "scenecut",       &reg.i_scenecut_threshold, 40 },
+    { "keyint_min",     &reg.i_keyint_min,     25 },
+    { "keyint_max",     &reg.i_keyint_max,    250 },
 
-    { "log_level",      &reg.i_log_level,       1 },
+    /* MBs&Frames */
+    { "dct8x8",         &reg.b_dct8x8,          1 },
+    { "psub16x16",      &reg.b_psub16x16,       1 },
+    { "bsub16x16",      &reg.b_bsub16x16,       1 },
+    { "psub8x8",        &reg.b_psub8x8,         0 },
+    { "i8x8",           &reg.b_i8x8,            1 },
+    { "i4x4",           &reg.b_i4x4,            1 },
+    { "bmax",           &reg.i_bframe,          2 },
+    { "b_bias",         &reg.i_bframe_bias,     0 },
+    { "b_refs",         &reg.b_b_refs,          0 },
+    { "b_adapt",        &reg.b_bframe_adaptive, 1 },
+    { "b_bidir_me",     &reg.b_bidir_me,        0 },
+    { "b_wpred",        &reg.b_b_wpred,         1 },
+    { "direct_pred",    &reg.i_direct_mv_pred,  1 },
 
     /* analysis */
-    { "i4x4",           &reg.b_i4x4,            1 },
-    { "i8x8",           &reg.b_i8x8,            1 },
-    { "dct8x8",         &reg.b_dct8x8,          0 },
-    { "psub16x16",      &reg.b_psub16x16,       1 },
-    { "psub8x8",        &reg.b_psub8x8,         1 },
-    { "bsub16x16",      &reg.b_bsub16x16,       1 },
+    { "subpel",         &reg.i_subpel_refine,   4 },
     { "me_method",      &reg.i_me_method,       1 },
     { "me_range",       &reg.i_me_range,       16 },
     { "chroma_me",      &reg.b_chroma_me,       1 },
-    { "subpel",         &reg.i_subpel_refine,   4 },
-    { "mixedref",       &reg.b_mixedref,        0 }
+    { "refmax",         &reg.i_refmax,          1 },
+    { "mixedref",       &reg.b_mixedref,        0 },
+    { "sar_width",      &reg.i_sar_width,       1 },
+    { "sar_height",     &reg.i_sar_height,      1 },
+    { "threads",        &reg.i_threads,         1 },
+    { "cabac",          &reg.b_cabac,           1 },
+    { "trellis",        &reg.i_trellis,         1 },
+    { "noise_reduction",&reg.i_noise_reduction, 0 },
+    { "loop_filter",    &reg.b_filter,          1 },
+    { "inloop_a",       &reg.i_inloop_a,        0 },
+    { "inloop_b",       &reg.i_inloop_b,        0 },
+    { "log_level",      &reg.i_log_level,       1 }
 
 };
 
@@ -232,6 +237,30 @@ void config_reg_defaults( CONFIG *config )
 }
 
 
+/* assigns tooltips */
+
+BOOL CALLBACK enum_tooltips(HWND hWnd, LPARAM lParam)
+{
+    char help[500];
+
+	/* The tooltip for a control is named the same as the control itself */
+    if (LoadString(g_hInst, GetDlgCtrlID(hWnd), help, 500))
+    {
+        TOOLINFO ti;
+
+        ti.cbSize = sizeof(TOOLINFO);
+        ti.uFlags = TTF_SUBCLASS | TTF_IDISHWND;
+        ti.hwnd = GetParent(hWnd);
+        ti.uId  = (LPARAM)hWnd;
+        ti.lpszText = help;
+
+        SendMessage(hTooltip, TTM_ADDTOOL, 0, (LPARAM)&ti);
+    }
+
+    return TRUE;
+}
+
+
 /* Main window */
 
 BOOL CALLBACK callback_main( HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam )
@@ -265,6 +294,15 @@ BOOL CALLBACK callback_main( HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam 
             MoveWindow(hTabs[1], rect.left, rect.top, rect.right-rect.left, rect.bottom-rect.top-40, TRUE);
             MoveWindow(hTabs[2], rect.left, rect.top, rect.right-rect.left, rect.bottom-rect.top-40, TRUE);
             MoveWindow(hTabs[3], rect.left, rect.top, rect.right-rect.left, rect.bottom-rect.top-40, TRUE);
+
+            if ((hTooltip = CreateWindow(TOOLTIPS_CLASS, NULL, TTS_ALWAYSTIP,
+                CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT,
+                NULL, NULL, g_hInst, NULL)))
+            {
+                SetWindowPos(hTooltip, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE);
+                SendMessage(hTooltip, TTM_SETMAXTIPWIDTH, 0, 400);
+                EnumChildWindows(hDlg, enum_tooltips, 0);
+            }
 
             tabs_enable_items( hDlg, config );
             tabs_update_items( hDlg, config );
@@ -336,7 +374,7 @@ void tabs_enable_items( HWND hDlg, CONFIG * config )
 {
     char szTmp[1024];
     sprintf( szTmp, "Core %d%s, build %s %s", X264_BUILD, X264_VERSION, __DATE__, __TIME__ );
-    SetDlgItemText( hTabs[3], IDC_BUILDREV,  szTmp );
+    SetDlgItemText( hTabs[0], IDC_BUILDREV,  szTmp );
 
     switch( config->i_encoding_type )
     {
@@ -350,6 +388,10 @@ void tabs_enable_items( HWND hDlg, CONFIG * config )
         EnableWindow( GetDlgItem( hTabs[0], IDC_UPDATESTATS ), FALSE );
         EnableWindow( GetDlgItem( hTabs[0], IDC_STATSFILE ), FALSE );
         EnableWindow( GetDlgItem( hTabs[0], IDC_STATSFILE_BROWSE ), FALSE );
+        EnableWindow( GetDlgItem( hTabs[1], IDC_CURVECOMP ), TRUE );
+        EnableWindow( GetDlgItem( hTabs[1], IDC_QPMIN ), TRUE );
+        EnableWindow( GetDlgItem( hTabs[1], IDC_QPMAX ), TRUE );
+        EnableWindow( GetDlgItem( hTabs[1], IDC_QPSTEP ), TRUE );
         break;
 
     case 1 : /* 1 Pass, Quantizer Based */
@@ -362,6 +404,10 @@ void tabs_enable_items( HWND hDlg, CONFIG * config )
         EnableWindow( GetDlgItem( hTabs[0], IDC_UPDATESTATS ), FALSE );
         EnableWindow( GetDlgItem( hTabs[0], IDC_STATSFILE ), FALSE );
         EnableWindow( GetDlgItem( hTabs[0], IDC_STATSFILE_BROWSE ), FALSE );
+        EnableWindow( GetDlgItem( hTabs[1], IDC_CURVECOMP ), FALSE );
+        EnableWindow( GetDlgItem( hTabs[1], IDC_QPMIN ), FALSE );
+        EnableWindow( GetDlgItem( hTabs[1], IDC_QPMAX ), FALSE );
+        EnableWindow( GetDlgItem( hTabs[1], IDC_QPSTEP ), FALSE );
         break;
 
     case 2 : /* 2 Pass */
@@ -374,21 +420,30 @@ void tabs_enable_items( HWND hDlg, CONFIG * config )
         EnableWindow( GetDlgItem( hTabs[0], IDC_UPDATESTATS ), TRUE );
         EnableWindow( GetDlgItem( hTabs[0], IDC_STATSFILE ), TRUE );
         EnableWindow( GetDlgItem( hTabs[0], IDC_STATSFILE_BROWSE ), TRUE );
+        EnableWindow( GetDlgItem( hTabs[1], IDC_CURVECOMP ), TRUE );
+        EnableWindow( GetDlgItem( hTabs[1], IDC_QPMIN ), TRUE );
+        EnableWindow( GetDlgItem( hTabs[1], IDC_QPMAX ), TRUE );
+        EnableWindow( GetDlgItem( hTabs[1], IDC_QPSTEP ), TRUE );
         break;
     }
 
-    EnableWindow( GetDlgItem( hTabs[1], IDC_DIRECTPRED  ), config->i_bframe > 0 );
+    EnableWindow( GetDlgItem( hTabs[2], IDC_DIRECTPRED  ), config->i_bframe > 0 );
     EnableWindow( GetDlgItem( hTabs[3], IDC_INLOOP_A    ), config->b_filter );
     EnableWindow( GetDlgItem( hTabs[3], IDC_INLOOP_B    ), config->b_filter );
-    EnableWindow( GetDlgItem( hTabs[2], IDC_P8X8        ), config->b_psub16x16 );
+    EnableWindow( GetDlgItem( hTabs[2], IDC_P4X4        ), config->b_psub16x16 );
     EnableWindow( GetDlgItem( hTabs[2], IDC_I8X8        ), config->b_dct8x8 );
+    EnableWindow( GetDlgItem( hTabs[2], IDC_B8X8        ), config->i_bframe > 0 );
     EnableWindow( GetDlgItem( hTabs[2], IDC_BREFS       ), config->i_bframe > 1 );
     EnableWindow( GetDlgItem( hTabs[2], IDC_WBPRED      ), config->i_bframe > 1 );
     EnableWindow( GetDlgItem( hTabs[2], IDC_BADAPT      ), config->i_bframe > 0 );
-    EnableWindow( GetDlgItem( hTabs[2], IDC_BBIAS       ), config->i_bframe > 0 );
-    EnableWindow( GetDlgItem( hTabs[2], IDC_BBIASSLIDER ), config->i_bframe > 0 );
+    EnableWindow( GetDlgItem( hTabs[2], IDC_BIDIR_ME    ), config->i_bframe > 0 );
+    EnableWindow( GetDlgItem( hTabs[2], IDC_BBIAS       ), config->i_bframe > 0 && config->b_bframe_adaptive );
+    EnableWindow( GetDlgItem( hTabs[2], IDC_BBIASSLIDER ), config->i_bframe > 0 && config->b_bframe_adaptive );
+    EnableWindow( GetDlgItem( hTabs[1], IDC_PBRATIO     ), config->i_bframe > 0 );
     EnableWindow( GetDlgItem( hTabs[3], IDC_MERANGE     ), config->i_me_method > 1 );
     EnableWindow( GetDlgItem( hTabs[3], IDC_CHROMAME    ), config->i_subpel_refine >= 4 );
+    EnableWindow( GetDlgItem( hTabs[3], IDC_TRELLIS     ), config->b_cabac );
+    EnableWindow( GetDlgItem( hTabs[3], IDC_MIXEDREF    ), config->i_refmax > 1 );
 }
 
 void tabs_update_items( HWND hDlg, CONFIG * config )
@@ -436,10 +491,10 @@ void tabs_update_items( HWND hDlg, CONFIG * config )
     SetDlgItemText( hTabs[0], IDC_STATSFILE, config->stats );
 
     /* update rate control tab */
-    if (SendMessage( GetDlgItem(hTabs[1],IDC_DIRECTPRED), CB_GETCOUNT, 0, 0 ) == 0)
+    if (SendMessage( GetDlgItem(hTabs[2],IDC_DIRECTPRED), CB_GETCOUNT, 0, 0 ) == 0)
     {
-        SendDlgItemMessage(hTabs[1], IDC_DIRECTPRED, CB_ADDSTRING, 0, (LPARAM)"Spatial");
-        SendDlgItemMessage(hTabs[1], IDC_DIRECTPRED, CB_ADDSTRING, 0, (LPARAM)"Temporal");
+        SendDlgItemMessage(hTabs[2], IDC_DIRECTPRED, CB_ADDSTRING, 0, (LPARAM)"Spatial");
+        SendDlgItemMessage(hTabs[2], IDC_DIRECTPRED, CB_ADDSTRING, 0, (LPARAM)"Temporal");
     }
     SetDlgItemInt( hTabs[1], IDC_QPMIN, config->i_qp_min, FALSE );
     SetDlgItemInt( hTabs[1], IDC_QPMAX, config->i_qp_max, FALSE );
@@ -447,7 +502,6 @@ void tabs_update_items( HWND hDlg, CONFIG * config )
     SetDlgItemInt( hTabs[1], IDC_IPRATIO, config->i_key_boost, FALSE );
     SetDlgItemInt( hTabs[1], IDC_PBRATIO, config->i_b_red, FALSE );
     SetDlgItemInt( hTabs[1], IDC_CURVECOMP, config->i_curve_comp, FALSE );
-    SendDlgItemMessage(hTabs[1], IDC_DIRECTPRED, CB_SETCURSEL, (config->i_direct_mv_pred), 0);
 
     /* update debug tab */
     if (SendMessage( GetDlgItem(hTabs[3],IDC_LOG), CB_GETCOUNT, 0, 0 ) == 0)
@@ -466,8 +520,11 @@ void tabs_update_items( HWND hDlg, CONFIG * config )
 
     /* update misc. tab */
     SetDlgItemInt( hTabs[3], IDC_THREADEDIT, config->i_threads, FALSE );
+    SetDlgItemInt( hTabs[3], IDC_NR, config->i_noise_reduction, FALSE );
     CheckDlgButton( hTabs[3],IDC_CABAC,
                     config->b_cabac ? BST_CHECKED : BST_UNCHECKED );
+    CheckDlgButton( hTabs[3],IDC_TRELLIS,
+                    config->i_trellis ? BST_CHECKED: BST_UNCHECKED );
     CheckDlgButton( hTabs[3],IDC_LOOPFILTER,
                     config->b_filter ? BST_CHECKED: BST_UNCHECKED );
 
@@ -486,9 +543,9 @@ void tabs_update_items( HWND hDlg, CONFIG * config )
     set_dlgitem_int( hTabs[3], IDC_LOOPB_TXT, config->i_inloop_b);
 
     /* update i/p-frames tab */
-    CheckDlgButton( hTabs[2],IDC_P16X16,
-                    config->b_psub16x16 ? BST_CHECKED: BST_UNCHECKED );
     CheckDlgButton( hTabs[2],IDC_P8X8,
+                    config->b_psub16x16 ? BST_CHECKED: BST_UNCHECKED );
+    CheckDlgButton( hTabs[2],IDC_P4X4,
                     config->b_psub8x8 ? BST_CHECKED: BST_UNCHECKED );
     CheckDlgButton( hTabs[2],IDC_I4X4,
                     config->b_i4x4 ? BST_CHECKED: BST_UNCHECKED );
@@ -496,18 +553,17 @@ void tabs_update_items( HWND hDlg, CONFIG * config )
                     config->b_i8x8 ? BST_CHECKED: BST_UNCHECKED );
     CheckDlgButton( hTabs[2],IDC_DCT8X8,
                     config->b_dct8x8 ? BST_CHECKED: BST_UNCHECKED );
-    CheckDlgButton( hTabs[2],IDC_MIXEDREF,
-                    config->b_mixedref ? BST_CHECKED: BST_UNCHECKED );
-    SetDlgItemInt( hTabs[2], IDC_REFFRAMES, config->i_refmax, FALSE );
 
     /* update b-frames tab */
     CheckDlgButton( hTabs[2],IDC_WBPRED,
                     config->b_b_wpred ? BST_CHECKED: BST_UNCHECKED );
     CheckDlgButton( hTabs[2],IDC_BADAPT,
                     config->b_bframe_adaptive ? BST_CHECKED: BST_UNCHECKED );
+    CheckDlgButton( hTabs[2],IDC_BIDIR_ME,
+                    config->b_bidir_me ? BST_CHECKED: BST_UNCHECKED );
     CheckDlgButton( hTabs[2],IDC_BREFS,
                     config->b_b_refs ? BST_CHECKED: BST_UNCHECKED );
-    CheckDlgButton( hTabs[2],IDC_B16X16,
+    CheckDlgButton( hTabs[2],IDC_B8X8,
                     config->b_bsub16x16 ? BST_CHECKED: BST_UNCHECKED );
     SetDlgItemInt( hTabs[2], IDC_BFRAME, config->i_bframe, FALSE );
     SetDlgItemInt( hTabs[2], IDC_BBIAS, config->i_bframe_bias, TRUE );
@@ -515,6 +571,7 @@ void tabs_update_items( HWND hDlg, CONFIG * config )
                         (LPARAM) MAKELONG( -100, 100 ) );
     SendDlgItemMessage( hTabs[2], IDC_BBIASSLIDER, TBM_SETPOS, TRUE,
                         config->i_bframe_bias );
+    SendDlgItemMessage(hTabs[2], IDC_DIRECTPRED, CB_SETCURSEL, (config->i_direct_mv_pred), 0);
 
     /* update scene-cuts tab */
     SetDlgItemInt( hTabs[1], IDC_KEYINTMIN, config->i_keyint_min, FALSE );
@@ -533,7 +590,8 @@ void tabs_update_items( HWND hDlg, CONFIG * config )
         SendDlgItemMessage(hTabs[3], IDC_SUBPEL, CB_ADDSTRING, 0, (LPARAM)"3");
         SendDlgItemMessage(hTabs[3], IDC_SUBPEL, CB_ADDSTRING, 0, (LPARAM)"4");
         SendDlgItemMessage(hTabs[3], IDC_SUBPEL, CB_ADDSTRING, 0, (LPARAM)"5 (High Quality)");
-        SendDlgItemMessage(hTabs[3], IDC_SUBPEL, CB_ADDSTRING, 0, (LPARAM)"6 (RDO - Slowest)");
+        SendDlgItemMessage(hTabs[3], IDC_SUBPEL, CB_ADDSTRING, 0, (LPARAM)"6 (RDO)");
+        SendDlgItemMessage(hTabs[3], IDC_SUBPEL, CB_ADDSTRING, 0, (LPARAM)"6b (RDO on B-frames)");
     }
 
     SendDlgItemMessage(hTabs[3], IDC_ME_METHOD, CB_SETCURSEL, (config->i_me_method), 0);
@@ -541,6 +599,9 @@ void tabs_update_items( HWND hDlg, CONFIG * config )
     SetDlgItemInt( hTabs[3], IDC_MERANGE, config->i_me_range, FALSE );
     CheckDlgButton( hTabs[3],IDC_CHROMAME,
                     config->b_chroma_me ? BST_CHECKED: BST_UNCHECKED );
+    SetDlgItemInt( hTabs[3], IDC_REFFRAMES, config->i_refmax, FALSE );
+    CheckDlgButton( hTabs[3],IDC_MIXEDREF,
+                    config->b_mixedref ? BST_CHECKED: BST_UNCHECKED );
 }
 
 BOOL CALLBACK callback_tabs( HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam )
@@ -565,10 +626,11 @@ BOOL CALLBACK callback_tabs( HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam 
             case IDC_CABAC :
                 config->b_cabac = ( IsDlgButtonChecked( hTabs[3], IDC_CABAC ) == BST_CHECKED );
                 break;
+            case IDC_TRELLIS :
+                config->i_trellis = ( IsDlgButtonChecked( hTabs[3], IDC_TRELLIS ) == BST_CHECKED );
+                break;
             case IDC_LOOPFILTER :
                 config->b_filter = ( IsDlgButtonChecked( hTabs[3], IDC_LOOPFILTER ) == BST_CHECKED );
-                EnableWindow( GetDlgItem( hTabs[3], IDC_INLOOP_A ), config->b_filter );
-                EnableWindow( GetDlgItem( hTabs[3], IDC_INLOOP_B ), config->b_filter );
                 break;
             case IDC_BREFS :
                 config->b_b_refs = ( IsDlgButtonChecked( hTabs[2], IDC_BREFS ) == BST_CHECKED );
@@ -579,15 +641,17 @@ BOOL CALLBACK callback_tabs( HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam 
             case IDC_BADAPT :
                 config->b_bframe_adaptive = ( IsDlgButtonChecked( hTabs[2], IDC_BADAPT ) == BST_CHECKED );
                 break;
-            case IDC_P16X16 :
-                config->b_psub16x16 = ( IsDlgButtonChecked( hTabs[2], IDC_P16X16 ) == BST_CHECKED );
-                EnableWindow( GetDlgItem( hTabs[2], IDC_P8X8 ), config->b_psub16x16 );
+            case IDC_BIDIR_ME :
+                config->b_bidir_me = ( IsDlgButtonChecked( hTabs[2], IDC_BIDIR_ME ) == BST_CHECKED );
                 break;
             case IDC_P8X8 :
-                config->b_psub8x8 = ( IsDlgButtonChecked( hTabs[2], IDC_P8X8 ) == BST_CHECKED );
+                config->b_psub16x16 = ( IsDlgButtonChecked( hTabs[2], IDC_P8X8 ) == BST_CHECKED );
                 break;
-            case IDC_B16X16 :
-                config->b_bsub16x16 = ( IsDlgButtonChecked( hTabs[2], IDC_B16X16 ) == BST_CHECKED );
+            case IDC_P4X4 :
+                config->b_psub8x8 = ( IsDlgButtonChecked( hTabs[2], IDC_P4X4 ) == BST_CHECKED );
+                break;
+            case IDC_B8X8 :
+                config->b_bsub16x16 = ( IsDlgButtonChecked( hTabs[2], IDC_B8X8 ) == BST_CHECKED );
                 break;
             case IDC_I4X4 :
                 config->b_i4x4 = ( IsDlgButtonChecked( hTabs[2], IDC_I4X4 ) == BST_CHECKED );
@@ -597,10 +661,9 @@ BOOL CALLBACK callback_tabs( HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam 
                 break;
             case IDC_DCT8X8 :
                 config->b_dct8x8 = ( IsDlgButtonChecked( hTabs[2], IDC_DCT8X8 ) == BST_CHECKED );
-                EnableWindow( GetDlgItem( hTabs[2], IDC_I8X8 ), config->b_dct8x8 );
                 break;
             case IDC_MIXEDREF :
-                config->b_mixedref = ( IsDlgButtonChecked( hTabs[2], IDC_MIXEDREF ) == BST_CHECKED );
+                config->b_mixedref = ( IsDlgButtonChecked( hTabs[3], IDC_MIXEDREF ) == BST_CHECKED );
                 break;
             case IDC_CHROMAME :
                 config->b_chroma_me = ( IsDlgButtonChecked( hTabs[3], IDC_CHROMAME ) == BST_CHECKED );
@@ -643,6 +706,8 @@ BOOL CALLBACK callback_tabs( HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam 
             case IDC_FOURCC :
                 GetDlgItemText( hTabs[3], IDC_FOURCC, config->fcc, 5 );
                 break;
+            case IDC_NR :
+                config->i_noise_reduction = GetDlgItemInt( hTabs[3], IDC_NR, FALSE, FALSE );
             case IDC_THREADEDIT :
                 config->i_threads = GetDlgItemInt( hTabs[3], IDC_THREADEDIT, FALSE, FALSE );
                 if (config->i_threads < 1)
@@ -738,11 +803,11 @@ BOOL CALLBACK callback_tabs( HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam 
                 config->i_sar_height = GetDlgItemInt( hTabs[3], IDC_SAR_H, FALSE, FALSE );
                 break;
             case IDC_REFFRAMES :
-                config->i_refmax = GetDlgItemInt( hTabs[2], IDC_REFFRAMES, FALSE, FALSE );
+                config->i_refmax = GetDlgItemInt( hTabs[3], IDC_REFFRAMES, FALSE, FALSE );
                 if( config->i_refmax > 16 )
                 {
                     config->i_refmax = 16;
-                    SetDlgItemInt( hTabs[2], IDC_REFFRAMES, config->i_refmax, FALSE );
+                    SetDlgItemInt( hTabs[3], IDC_REFFRAMES, config->i_refmax, FALSE );
                 }
                 break;
             case IDC_MERANGE :
@@ -761,12 +826,6 @@ BOOL CALLBACK callback_tabs( HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam 
                     config->i_bframe = 5;
                     SetDlgItemInt( hTabs[2], IDC_BFRAME, config->i_bframe, FALSE );
                 }
-                EnableWindow( GetDlgItem( hTabs[2], IDC_BREFS ), config->i_bframe > 1 );
-                EnableWindow( GetDlgItem( hTabs[2], IDC_WBPRED ), config->i_bframe > 1 );
-                EnableWindow( GetDlgItem( hTabs[1], IDC_DIRECTPRED ), config->i_bframe > 0 );
-                EnableWindow( GetDlgItem( hTabs[2], IDC_BADAPT ), config->i_bframe > 0 );
-                EnableWindow( GetDlgItem( hTabs[2], IDC_BBIAS ), config->i_bframe > 0 );
-                EnableWindow( GetDlgItem( hTabs[2], IDC_BBIASSLIDER ), config->i_bframe > 0 );
                 break;
             case IDC_BBIAS :
                 config->i_bframe_bias = GetDlgItemInt( hTabs[2], IDC_BBIAS, FALSE, TRUE );
@@ -829,15 +888,13 @@ BOOL CALLBACK callback_tabs( HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam 
             switch ( LOWORD( wParam ) )
             {
             case IDC_DIRECTPRED:
-                config->i_direct_mv_pred = SendDlgItemMessage(hTabs[1], IDC_DIRECTPRED, CB_GETCURSEL, 0, 0);
+                config->i_direct_mv_pred = SendDlgItemMessage(hTabs[2], IDC_DIRECTPRED, CB_GETCURSEL, 0, 0);
                 break;
             case IDC_SUBPEL:
                 config->i_subpel_refine = SendDlgItemMessage(hTabs[3], IDC_SUBPEL, CB_GETCURSEL, 0, 0);
-                EnableWindow( GetDlgItem( hTabs[3], IDC_CHROMAME ), config->i_subpel_refine >= 4 );
                 break;
             case IDC_ME_METHOD:
                 config->i_me_method = SendDlgItemMessage(hTabs[3], IDC_ME_METHOD, CB_GETCURSEL, 0, 0);
-                EnableWindow( GetDlgItem( hTabs[3], IDC_MERANGE ), config->i_me_method > 1 );
                 break;
             case IDC_LOG:
                 config->i_log_level = SendDlgItemMessage(hTabs[3], IDC_LOG, CB_GETCURSEL, 0, 0);
@@ -866,7 +923,6 @@ BOOL CALLBACK callback_tabs( HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam 
                     config->i_pass = 2;
                     break;
                 }
-                tabs_enable_items( hDlg, config );
                 tabs_update_items( hDlg, config );
                 break;
             }
@@ -931,6 +987,7 @@ BOOL CALLBACK callback_tabs( HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam 
         return 0;
     }
 
+    tabs_enable_items( hDlg, config );
     return 1;
 }
 

@@ -30,6 +30,14 @@
 #include "config.h"
 #endif
 
+static void transpose( uint8_t *buf, int w )
+{
+    int i, j;
+    for( i = 0; i < w; i++ )
+        for( j = 0; j < i; j++ )
+            XCHG( uint8_t, buf[w*i+j], buf[w*j+i] );
+}
+
 static void scaling_list_write( bs_t *s, x264_pps_t *pps, int idx )
 {
     const int len = idx<4 ? 16 : 64;
@@ -69,7 +77,7 @@ void x264_sps_init( x264_sps_t *sps, int i_id, x264_param_t *param )
 {
     sps->i_id = i_id;
 
-    sps->b_qpprime_y_zero_transform_bypass = !param->rc.b_cbr && param->rc.i_qp_constant == 0;
+    sps->b_qpprime_y_zero_transform_bypass = param->rc.i_rc_method == X264_RC_CQP && param->rc.i_qp_constant == 0;
     if( sps->b_qpprime_y_zero_transform_bypass )
         sps->i_profile_idc  = PROFILE_HIGH444;
     else if( param->analyse.b_transform_8x8 || param->i_cqm_preset != X264_CQM_FLAT )
@@ -80,8 +88,11 @@ void x264_sps_init( x264_sps_t *sps, int i_id, x264_param_t *param )
         sps->i_profile_idc  = PROFILE_BASELINE;
     sps->i_level_idc = param->i_level_idc;
 
-    sps->b_constraint_set0  = 0;
-    sps->b_constraint_set1  = 0;
+    sps->b_constraint_set0  = sps->i_profile_idc == PROFILE_BASELINE;
+    /* x264 doesn't support the features that are in Baseline and not in Main,
+     * namely arbitrary_slice_order and slice_groups. */
+    sps->b_constraint_set1  = sps->i_profile_idc <= PROFILE_MAIN;
+    /* Never set constraint_set2, it is not necessary and not used in real world. */
     sps->b_constraint_set2  = 0;
 
     sps->i_log2_max_frame_num = 4;  /* at least 4 */
@@ -365,7 +376,7 @@ void x264_pps_init( x264_pps_t *pps, int i_id, x264_param_t *param, x264_sps_t *
     pps->b_weighted_pred = 0;
     pps->b_weighted_bipred = param->analyse.b_weighted_bipred ? 2 : 0;
 
-    pps->i_pic_init_qp = param->rc.b_cbr ? 26 : param->rc.i_qp_constant;
+    pps->i_pic_init_qp = param->rc.i_rc_method == X264_RC_ABR ? 26 : param->rc.i_qp_constant;
     pps->i_pic_init_qs = 26;
 
     pps->i_chroma_qp_index_offset = param->analyse.i_chroma_qp_offset;
@@ -387,6 +398,13 @@ void x264_pps_init( x264_pps_t *pps, int i_id, x264_param_t *param, x264_sps_t *
             pps->scaling_list[i] = x264_cqm_jvt[i];
         break;
     case X264_CQM_CUSTOM:
+        /* match the transposed DCT & zigzag */
+        transpose( param->cqm_4iy, 4 );
+        transpose( param->cqm_4ic, 4 );
+        transpose( param->cqm_4py, 4 );
+        transpose( param->cqm_4pc, 4 );
+        transpose( param->cqm_8iy, 8 );
+        transpose( param->cqm_8py, 8 );
         pps->scaling_list[CQM_4IY] = param->cqm_4iy;
         pps->scaling_list[CQM_4IC] = param->cqm_4ic;
         pps->scaling_list[CQM_4PY] = param->cqm_4py;

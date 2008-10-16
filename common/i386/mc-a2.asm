@@ -30,7 +30,7 @@ BITS 32
 ; Read only data
 ;=============================================================================
 
-SECTION .rodata data align=16
+SECTION_RODATA
 
 ALIGN 16
 mmx_dw_one:
@@ -180,7 +180,7 @@ loopcy:
     mov         edi,    [picesp + tdst1]
     lea         ebp,    [picesp + tbuffer]
     mov         esi,    [picesp + tsrc]
-    movq        mm7,    [mmx_dw_one GLOBAL]
+    movq        mm7,    [mmx_dw_one GOT_ebx]
 
     picpop      ebx
 
@@ -249,15 +249,15 @@ loopcx2:
     paddw       mm3,    mm4
     paddw       mm1,    mm6
 
-    movq        mm5,    [mmx_dw_20 GLOBAL]
-    movq        mm4,    [mmx_dw_5 GLOBAL]
+    movq        mm5,    [mmx_dw_20 GOT_ebx]
+    movq        mm4,    [mmx_dw_5 GOT_ebx]
     movq        mm6,    mm1
     pxor        mm7,    mm7
 
     punpckhwd   mm5,    mm2
     punpcklwd   mm4,    mm3
-    punpcklwd   mm2,    [mmx_dw_20 GLOBAL]
-    punpckhwd   mm3,    [mmx_dw_5 GLOBAL]
+    punpcklwd   mm2,    [mmx_dw_20 GOT_ebx]
+    punpckhwd   mm3,    [mmx_dw_5 GOT_ebx]
 
     pcmpgtw     mm7,    mm1
 
@@ -270,8 +270,8 @@ loopcx2:
     paddd       mm2,    mm1
     paddd       mm3,    mm6
 
-    paddd       mm2,    [mmx_dd_one GLOBAL]
-    paddd       mm3,    [mmx_dd_one GLOBAL]
+    paddd       mm2,    [mmx_dd_one GOT_ebx]
+    paddd       mm3,    [mmx_dd_one GOT_ebx]
 
     psrad       mm2,    10
     psrad       mm3,    10
@@ -287,10 +287,7 @@ loopcx2:
     add         edi,    [picesp + tdstp2]
     mov         [picesp + tdst2], edi
 
-    mov         ebp,    [picesp + theight]
-    dec         ebp
-    test        ebp,    ebp
-    mov         [picesp + theight], ebp
+    dec         dword [picesp + theight]
     jnz         loopcy
 
     picpop      ebx
@@ -323,7 +320,7 @@ x264_horizontal_filter_mmxext :
     pxor        mm0,    mm0
     picpush     ebx
     picgetgot   ebx
-    movq        mm7,    [mmx_dw_one GLOBAL]
+    movq        mm7,    [mmx_dw_one GOT_ebx]
     picpop      ebx
 
     mov         ecx,    [esp + 32]           ; height
@@ -332,7 +329,6 @@ x264_horizontal_filter_mmxext :
 
 loophy:
 
-    dec         ecx
     xor         eax,    eax
 
 loophx:
@@ -371,7 +367,7 @@ loophx:
     add         esi,    [esp + 24]           ; src_pitch
     add         edi,    [esp + 16]           ; dst_pitch
 
-    test        ecx,    ecx
+    dec         ecx
     jnz         loophy
 
     pop         esi

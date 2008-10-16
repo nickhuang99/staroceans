@@ -42,11 +42,7 @@ BITS 32
 ; Constants
 ;=============================================================================
 
-%ifdef FORMAT_COFF
-SECTION .rodata data
-%else
-SECTION .rodata data align=16
-%endif
+SECTION_RODATA
 
 ALIGN 16
 pw_4:  times 4 dw  4
@@ -69,9 +65,9 @@ cglobal x264_pixel_avg_weight_4x4_mmxext
 cglobal x264_pixel_avg_weight_w8_mmxext
 cglobal x264_pixel_avg_weight_w16_mmxext
 
-cglobal x264_mc_copy_w4_mmxext
-cglobal x264_mc_copy_w8_mmxext
-cglobal x264_mc_copy_w16_mmxext
+cglobal x264_mc_copy_w4_mmx
+cglobal x264_mc_copy_w8_mmx
+cglobal x264_mc_copy_w16_mmx
 cglobal x264_mc_copy_w16_sse2
 
 cglobal x264_mc_chroma_mmxext
@@ -272,10 +268,10 @@ ALIGN 4
     mov     edx, [picesp+20]    ; src
     mov     ecx, [picesp+24]    ; i_src
 
-    pshufw  mm4, [picesp+28], 0 ; weight_dst
-    movq    mm5, [pw_64 GLOBAL]
-    psubw   mm5, mm4            ; weight_src
-    movq    mm6, [pw_32 GLOBAL] ; rounding
+    pshufw  mm4, [picesp+28], 0  ; weight_dst
+    movq    mm5, [pw_64 GOT_ebx]
+    psubw   mm5, mm4             ; weight_src
+    movq    mm6, [pw_32 GOT_ebx] ; rounding
     pxor    mm7, mm7
 %endmacro
 %macro BIWEIGHT_END_MMX 0
@@ -349,18 +345,18 @@ x264_pixel_avg_weight_4x4_mmxext:
 
 ALIGN 16
 ;-----------------------------------------------------------------------------
-;  void x264_mc_copy_w4_mmxext( uint8_t *src, int i_src_stride,
-;                               uint8_t *dst, int i_dst_stride, int i_height )
+;  void x264_mc_copy_w4_mmx( uint8_t *src, int i_src_stride,
+;                            uint8_t *dst, int i_dst_stride, int i_height )
 ;-----------------------------------------------------------------------------
-x264_mc_copy_w4_mmxext:
+x264_mc_copy_w4_mmx:
     push    ebx
     push    esi
     push    edi
 
-    mov     esi, [esp+16]       ; src
-    mov     edi, [esp+24]       ; dst
-    mov     ebx, [esp+20]       ; i_src_stride
-    mov     edx, [esp+28]       ; i_dst_stride
+    mov     esi, [esp+24]       ; src
+    mov     edi, [esp+16]       ; dst
+    mov     ebx, [esp+28]       ; i_src_stride
+    mov     edx, [esp+20]       ; i_dst_stride
     mov     ecx, [esp+32]       ; i_height
 ALIGN 4
 .height_loop
@@ -381,18 +377,18 @@ ALIGN 4
 
 ALIGN 16
 ;-----------------------------------------------------------------------------
-;   void x264_mc_copy_w8_mmxext( uint8_t *src, int i_src_stride,
-;                                uint8_t *dst, int i_dst_stride, int i_height )
+;   void x264_mc_copy_w8_mmx( uint8_t *src, int i_src_stride,
+;                             uint8_t *dst, int i_dst_stride, int i_height )
 ;-----------------------------------------------------------------------------
-x264_mc_copy_w8_mmxext:
+x264_mc_copy_w8_mmx:
     push    ebx
     push    esi
     push    edi
 
-    mov     esi, [esp+16]       ; src
-    mov     edi, [esp+24]       ; dst
-    mov     ebx, [esp+20]       ; i_src_stride
-    mov     edx, [esp+28]       ; i_dst_stride
+    mov     esi, [esp+24]       ; src
+    mov     edi, [esp+16]       ; dst
+    mov     ebx, [esp+28]       ; i_src_stride
+    mov     edx, [esp+20]       ; i_dst_stride
     mov     ecx, [esp+32]       ; i_height
 ALIGN 4
 .height_loop
@@ -419,18 +415,18 @@ ALIGN 4
 
 ALIGN 16
 ;-----------------------------------------------------------------------------
-;   void x264_mc_copy_w16_mmxext( uint8_t *src, int i_src_stride,
-;                                 uint8_t *dst, int i_dst_stride, int i_height )
+;   void x264_mc_copy_w16_mmx( uint8_t *src, int i_src_stride,
+;                              uint8_t *dst, int i_dst_stride, int i_height )
 ;-----------------------------------------------------------------------------
-x264_mc_copy_w16_mmxext:
+x264_mc_copy_w16_mmx:
     push    ebx
     push    esi
     push    edi
 
-    mov     esi, [esp+16]       ; src
-    mov     edi, [esp+24]       ; dst
-    mov     ebx, [esp+20]       ; i_src_stride
-    mov     edx, [esp+28]       ; i_dst_stride
+    mov     esi, [esp+24]       ; src
+    mov     edi, [esp+16]       ; dst
+    mov     ebx, [esp+28]       ; i_src_stride
+    mov     edx, [esp+20]       ; i_dst_stride
     mov     ecx, [esp+32]       ; i_height
 
 ALIGN 4
@@ -473,10 +469,10 @@ x264_mc_copy_w16_sse2:
     push    esi
     push    edi
 
-    mov     esi, [esp+16]       ; src
-    mov     edi, [esp+24]       ; dst
-    mov     ebx, [esp+20]       ; i_src_stride
-    mov     edx, [esp+28]       ; i_dst_stride
+    mov     esi, [esp+24]       ; src
+    mov     edi, [esp+16]       ; dst
+    mov     ebx, [esp+28]       ; i_src_stride
+    mov     edx, [esp+20]       ; i_dst_stride
     mov     ecx, [esp+32]       ; i_height
 
 ALIGN 4
@@ -511,16 +507,30 @@ ALIGN 16
 ;-----------------------------------------------------------------------------
 
 x264_mc_chroma_mmxext:
-
     picpush ebx
     picgetgot ebx
+    push    edi
+
+    mov     ecx, [picesp+4+24]
+    mov     edx, [picesp+4+20]
+    mov     eax, ecx
+    mov     edi, edx
+    sar     ecx, 3
+    sar     edx, 3
+    imul    ecx, [picesp+4+8]
+    add     ecx, edx
+    add     [picesp+4+4], ecx     ; src += (dx>>3) + (dy>>3) * src_stride
 
     pxor    mm3, mm3
 
-    pshufw  mm5, [picesp+20], 0    ; mm5 = dx
-    pshufw  mm6, [picesp+24], 0    ; mm6 = dy
+    and     edi, 7
+    and     eax, 7
+    movd    mm5, edi
+    movd    mm6, eax
+    pshufw  mm5, mm5, 0         ; mm5 = dx&7
+    pshufw  mm6, mm6, 0         ; mm6 = dy&7
 
-    movq    mm4, [pw_8 GLOBAL]
+    movq    mm4, [pw_8 GOT_ebx]
     movq    mm0, mm4
 
     psubw   mm4, mm5            ; mm4 = 8-dx
@@ -531,8 +541,6 @@ x264_mc_chroma_mmxext:
     pmullw  mm7, mm6            ; mm7 = dx*dy =         cD
     pmullw  mm6, mm4            ; mm6 = (8-dx)*dy =     cC
     pmullw  mm4, mm0            ; mm4 = (8-dx)*(8-dy) = cA
-
-    push    edi
 
     mov     eax, [picesp+4+4]   ; src
     mov     edi, [picesp+4+12]  ; dst
@@ -556,7 +564,7 @@ ALIGN 4
     punpcklbw mm2, mm3
     punpcklbw mm1, mm3
 
-    paddw   mm0, [pw_32 GLOBAL]
+    paddw   mm0, [pw_32 GOT_ebx]
 
     pmullw  mm2, mm5            ; line * cB
     pmullw  mm1, mm7            ; line * cD

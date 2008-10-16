@@ -223,28 +223,22 @@ static inline void mc_hc( uint8_t *src, int i_src_stride, uint8_t *dst, int i_ds
     }
 }
 
+static const int hpel_ref0[16] = {0,1,1,1,0,1,1,1,2,3,3,3,0,1,1,1};
+static const int hpel_ref1[16] = {0,0,0,0,2,2,3,2,2,2,3,2,2,2,3,2};
+
 static void mc_luma( uint8_t *src[4], int i_src_stride,
                      uint8_t *dst,    int i_dst_stride,
                      int mvx,int mvy,
                      int i_width, int i_height )
 {
-    uint8_t *src1, *src2;
+    int qpel_idx = ((mvy&3)<<2) + (mvx&3);
+    int offset = (mvy>>2)*i_src_stride + (mvx>>2);
+    uint8_t *src1 = src[hpel_ref0[qpel_idx]] + offset + ((mvy&3) == 3) * i_src_stride;
 
-    int correction = (mvx&1) && (mvy&1) && ((mvx&2) ^ (mvy&2));
-    int hpel1x = mvx>>1;
-    int hpel1y = (mvy+1-correction)>>1;
-    int filter1 = (hpel1x & 1) + ( (hpel1y & 1) << 1 );
-
-    src1 = src[filter1] + (hpel1y >> 1) * i_src_stride + (hpel1x >> 1);
-
-    if ( (mvx|mvy) & 1 ) /* qpel interpolation needed */
+    if( qpel_idx & 5 ) /* qpel interpolation needed */
     {
-        int hpel2x = (mvx+1)>>1;
-        int hpel2y = (mvy+correction)>>1;
-        int filter2 = (hpel2x & 1) + ( (hpel2y & 1) <<1 );
+        uint8_t *src2 = src[hpel_ref1[qpel_idx]] + offset + ((mvx&3) == 3);
 
-        src2 = src[filter2] + (hpel2y >> 1) * i_src_stride + (hpel2x >> 1);
-    
         pixel_avg( dst, i_dst_stride, src1, i_src_stride,
                    src2, i_src_stride, i_width, i_height );
     }
@@ -259,23 +253,14 @@ static uint8_t *get_ref( uint8_t *src[4], int i_src_stride,
                          int mvx,int mvy,
                          int i_width, int i_height )
 {
-    uint8_t *src1, *src2;
+    int qpel_idx = ((mvy&3)<<2) + (mvx&3);
+    int offset = (mvy>>2)*i_src_stride + (mvx>>2);
+    uint8_t *src1 = src[hpel_ref0[qpel_idx]] + offset + ((mvy&3) == 3) * i_src_stride;
 
-    int correction = (mvx&1) && (mvy&1) && ((mvx&2) ^ (mvy&2));
-    int hpel1x = mvx>>1;
-    int hpel1y = (mvy+1-correction)>>1;
-    int filter1 = (hpel1x & 1) + ( (hpel1y & 1) << 1 );
-
-    src1 = src[filter1] + (hpel1y >> 1) * i_src_stride + (hpel1x >> 1);
-
-    if ( (mvx|mvy) & 1 ) /* qpel interpolation needed */
+    if( qpel_idx & 5 ) /* qpel interpolation needed */
     {
-        int hpel2x = (mvx+1)>>1;
-        int hpel2y = (mvy+correction)>>1;
-        int filter2 = (hpel2x & 1) + ( (hpel2y & 1) <<1 );
+        uint8_t *src2 = src[hpel_ref1[qpel_idx]] + offset + ((mvx&3) == 3);
 
-        src2 = src[filter2] + (hpel2y >> 1) * i_src_stride + (hpel2x >> 1);
-    
         pixel_avg( dst, *i_dst_stride, src1, i_src_stride,
                    src2, i_src_stride, i_width, i_height );
 
@@ -322,26 +307,14 @@ static void motion_compensation_chroma( uint8_t *src, int i_src_stride,
     }
 }
 
-#ifdef HAVE_MMXEXT
-static void motion_compensation_chroma_mmxext( uint8_t *src, int i_src_stride,
-                                        uint8_t *dst, int i_dst_stride,
-                                        int mvx, int mvy,
-                                        int i_width, int i_height )
-{
-    if (i_width == 2) {
-        motion_compensation_chroma(src, i_src_stride, dst, i_dst_stride,
-                                   mvx, mvy, i_width, i_height);
-    } else {
-        const int d8x = mvx&0x07;
-        const int d8y = mvy&0x07;
-        
-        src  += (mvy >> 3) * i_src_stride + (mvx >> 3);
-        
-        x264_mc_chroma_mmxext( src, i_src_stride, dst, i_dst_stride,
-                               d8x, d8y, i_width, i_height );
-    }
+#define MC_COPY(W) \
+static void mc_copy_w##W( uint8_t *dst, int i_dst, uint8_t *src, int i_src, int i_height ) \
+{ \
+    mc_copy( src, i_src, dst, i_dst, W, i_height ); \
 }
-#endif
+MC_COPY( 16 )
+MC_COPY( 8 )
+MC_COPY( 4 )
 
 void x264_mc_init( int cpu, x264_mc_functions_t *pf )
 {
@@ -371,10 +344,14 @@ void x264_mc_init( int cpu, x264_mc_functions_t *pf )
     pf->avg_weight[PIXEL_2x4]  = pixel_avg_weight_2x4;
     pf->avg_weight[PIXEL_2x2]  = pixel_avg_weight_2x2;
 
+    pf->copy[PIXEL_16x16] = mc_copy_w16;
+    pf->copy[PIXEL_8x8]   = mc_copy_w8;
+    pf->copy[PIXEL_4x4]   = mc_copy_w4;
+
 #ifdef HAVE_MMXEXT
     if( cpu&X264_CPU_MMXEXT ) {
         x264_mc_mmxext_init( pf );
-        pf->mc_chroma = motion_compensation_chroma_mmxext;
+        pf->mc_chroma = x264_mc_chroma_mmxext;
     }
 #endif
 #ifdef HAVE_SSE2
