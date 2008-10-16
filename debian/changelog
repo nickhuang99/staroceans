@@ -1,0 +1,126 @@
+x264 (1:0.cvs20060210-0.0ubuntu1) dapper; urgency=low
+
+  * rebuild for dapper
+  * Changed Maintainer field
+
+ -- Reinhard Tartler <siretart@tauware.de>  Tue, 14 Feb 2006 12:51:13 +0100
+
+x264 (1:0.cvs20060210-0.0) unstable; urgency=low
+
+  * New svn version.
+
+ -- Christian Marillat <marillat@debian.org>  Fri, 10 Feb 2006 13:14:44 +0100
+
+x264 (1:0.cvs20060129-0.0) unstable; urgency=low
+
+  * New svn version.
+
+ -- Christian Marillat <marillat@debian.org>  Sun, 29 Jan 2006 09:30:36 +0100
+
+x264 (1:0.cvs20060118-0.0) unstable; urgency=low
+
+  * New svn version.
+
+ -- Christian Marillat <marillat@debian.org>  Wed, 18 Jan 2006 18:32:07 +0100
+
+x264 (1:0.cvs20060102-0.0) unstable; urgency=low
+
+  * New svn version.
+
+ -- Christian Marillat <marillat@debian.org>  Mon,  2 Jan 2006 23:08:32 +0100
+
+x264 (1:0.cvs20051227-0.0) unstable; urgency=low
+
+  * New svn version.
+  * Build with --extra-asflags="-D__PIC__" to enable x264 in ffmpeg. Thanks
+    to Harald Welte.
+
+ -- Christian Marillat <marillat@debian.org>  Tue, 27 Dec 2005 09:33:46 +0100
+
+x264 (1:0.cvs20051220-0.0) unstable; urgency=low
+
+  * New svn version.
+
+ -- Christian Marillat <marillat@debian.org>  Tue, 20 Dec 2005 14:36:06 +0100
+
+x264 (1:0.cvs20051201-0.0) unstable; urgency=low
+
+  * New svn version.
+  * Build with --enable-pthread.
+
+ -- Christian Marillat <marillat@debian.org>  Thu,  1 Dec 2005 16:53:40 +0100
+
+x264 (1:0.cvs20051119-0.0) unstable; urgency=low
+
+  * New svn version.
+
+ -- Christian Marillat <marillat@debian.org>  Sat, 19 Nov 2005 09:37:06 +0100
+
+x264 (1:0.cvs20051031-0.0) unstable; urgency=low
+
+  * New svn version.
+
+ -- Christian Marillat <marillat@debian.org>  Mon, 31 Oct 2005 08:34:28 +0100
+
+x264 (1:0.cvs20050925-0.1) unstable; urgency=low
+
+  * Need to build-depends on yasm for amd64.
+  * Provides a pic library.
+  * 1:0.cvs20051031-0.0 New svn version.
+
+ -- Christian Marillat <marillat@debian.org>  Mon, 31 Oct 2005 08:29:13 +0100
+
+x264 (1:0.cvs20050925-0.0) unstable; urgency=low
+
+  * New svn version.
+
+ -- Christian Marillat <marillat@debian.org>  Sun, 25 Sep 2005 14:13:04 +0200
+
+x264 (1:0.cvs20050716-0.1) unstable; urgency=low
+
+  * debian/rules Added ppc changes from Guido.
+
+ -- Christian Marillat <marillat@debian.org>  Sun, 31 Jul 2005 18:25:22 +0200
+
+x264 (1:0.cvs20050716-0.0) unstable; urgency=low
+
+  * New svn version.
+
+ -- Christian Marillat <marillat@debian.org>  Sat, 16 Jul 2005 17:19:31 +0200
+
+x264 (1:0.cvs20050701-0.0) unstable; urgency=low
+
+  * New svn version.
+
+ -- Christian Marillat <marillat@debian.org>  Fri,  1 Jul 2005 15:17:59 +0200
+
+x264 (1:0.cvs20050419-0.1) unstable; urgency=low
+
+  * Rebuild for stable.
+
+ -- Christian Marillat <marillat@debian.org>  Thu,  9 Jun 2005 17:19:47 +0200
+
+x264 (0.cvs20050419-0.0) unstable; urgency=low
+
+  * New cvs version.
+
+ -- Christian Marillat <marillat@debian.org>  Sun, 24 Apr 2005 14:22:10 +0200
+
+x264 (0.cvs20050331-3) unstable; urgency=low
+
+  * Add nasm [i386] in Build-depends
+
+ -- Christian Marillat <marillat@debian.org>  Sun, 10 Apr 2005 00:09:01 +0200
+
+x264 (0.cvs20050331-2) unstable; urgency=low
+
+  * Add Guido's changes for ppc.
+
+ -- Christian Marillat <marillat@debian.org>  Fri,  1 Apr 2005 21:06:52 +0200
+
+x264 (0.cvs20050331-1) unstable; urgency=low
+
+  * Initial Release.
+
+ -- Christian Marillat <marillat@debian.org>  Thu, 31 Mar 2005 13:53:48 +0200
+

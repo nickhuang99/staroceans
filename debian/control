@@ -1,0 +1,48 @@
+Source: x264
+Section: sound
+Priority: optional
+Maintainer: Ubuntu MOTU Media Team <motumedia@tauware.de>
+Uploaders: Reinhard Tartler <siretart@tauware.de>
+Standards-Version: 3.6.2
+Build-Depends: debhelper (>= 3.4.4), nasm [i386], yasm [amd64]
+
+Package: libx264-dev
+Architecture: any
+Section: libdevel
+Depends: libc6-dev
+Description: a free library for encoding H264/AVC video streams
+ Encoder features
+ .
+  o CAVLC/CABAC
+  o Multi-references
+  o Intra: all macroblock types (16x16 and 4x4 with all predictions)
+  o Inter P: all partitions (from 16x16 down to 4x4)
+  o Inter B: partitions from 16x16 down to 8x8 (including SKIP/DIRECT)
+  o Ratecontrol: constant quantizer, constant bitrate, or multipass ABR
+  o Scene cut detection
+  o Adaptive B-frame placement
+  o B-frames as references / arbitrary frame order
+ .
+ Encoder limitations
+ .
+  o No real RD
+
+Package: x264-bin
+Architecture: any
+Depends: ${shlibs:Depends}
+Description: a free library for encoding H264/AVC video streams
+ Encoder features
+ .
+  o CAVLC/CABAC
+  o Multi-references
+  o Intra: all macroblock types (16x16 and 4x4 with all predictions)
+  o Inter P: all partitions (from 16x16 down to 4x4)
+  o Inter B: partitions from 16x16 down to 8x8 (including SKIP/DIRECT)
+  o Ratecontrol: constant quantizer, constant bitrate, or multipass ABR
+  o Scene cut detection
+  o Adaptive B-frame placement
+  o B-frames as references / arbitrary frame order
+ .
+ Encoder limitations
+ .
+  o No real RD

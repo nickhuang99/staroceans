@@ -1,0 +1,18 @@
+This package was debianized by Christian Marillat <marillat@debian.org> on
+Thu, 31 Mar 2005 13:53:48 +0200.
+
+It was downloaded from http://www.videolan.org/x264.html
+
+Copyright Holder:  Laurent Aimar <fenrir@videolan.org>
+		   Eric Petit <titer@videolan.org>
+		   Min Chen <chenm001@163.com>
+		   Justin Clay
+		   Måns Rullgård <mru@mru.ath.cx>
+		   Loren Merritt <pengvado@users.sourceforge.net>
+
+License: 2004
+
+  You should have received a copy of the GNU General Public License with the
+  Debian GNU/Linux distribution in file /usr/share/common-licenses/GPL; if
+  not, write to the Free Software Foundation, Inc., 51 Franklin St, Fifth
+  Floor, Boston, MA 02110-1301, USA.

@@ -1,0 +1,76 @@
+#!/usr/bin/make -f
+
+#export DH_VERBOSE=1
+
+version := $(shell sed -n 's/Package: \(.*\)/\1/p' debian/control | head -n 1)
+
+DEB_BUILD_GNU_TYPE ?= $(shell dpkg-architecture -qDEB_BUILD_GNU_TYPE)
+
+CFLAGS = -Wall -g
+
+ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
+	CFLAGS += -O0
+else
+	CFLAGS += -O2
+endif
+
+configure: configure-stamp
+configure-stamp:
+	dh_testdir
+
+	./configure --prefix=/usr --enable-pthread --enable-pic
+
+	touch configure-stamp
+
+build: build-stamp
+build-stamp: configure-stamp 
+	dh_testdir
+
+	$(MAKE) && mv libx264.a debian/libx264_pic.a && $(MAKE) clean
+	./configure --enable-pthread --prefix=/usr && $(MAKE)
+
+	touch build-stamp
+
+clean:
+	dh_testdir
+	dh_testroot
+	rm -f build-stamp configure-stamp
+
+	-$(MAKE) clean
+
+	dh_clean x264.pc config.mak config.h
+
+install: build
+	dh_testdir
+	dh_testroot
+	dh_clean -k 
+	dh_installdirs usr/include usr/lib usr/bin
+
+	$(MAKE) install DESTDIR=$(CURDIR)/debian/${version}
+
+	mv debian/libx264_pic.a debian/${version}/usr/lib
+	dh_movefiles --sourcedir=debian/${version}
+
+# Build architecture-independent files here.
+binary-indep: build install
+# We have nothing to do by default.
+
+# Build architecture-dependent files here.
+binary-arch: build install
+	dh_testdir
+	dh_testroot
+	dh_installchangelogs 
+	dh_installdocs AUTHORS
+	dh_link
+	dh_strip
+	dh_compress
+	dh_fixperms
+#	dh_makeshlibs
+	dh_installdeb
+	dh_shlibdeps
+	dh_gencontrol
+	dh_md5sums
+	dh_builddeb
+
+binary: binary-indep binary-arch
+.PHONY: build clean binary-indep binary-arch binary install configure
