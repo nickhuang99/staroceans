@@ -1,10 +1,10 @@
 /*****************************************************************************
  * x264.h: h264 encoder library
  *****************************************************************************
- * Copyright (C) 2003 Laurent Aimar
- * $Id: x264.h,v 1.1 2004/06/03 19:24:12 fenrir Exp $
+ * Copyright (C) 2003-2008 x264 Project
  *
  * Authors: Laurent Aimar <fenrir@via.ecp.fr>
+ *          Loren Merritt <lorenm@u.washington.edu>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,11 +18,11 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111, USA.
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02111, USA.
  *****************************************************************************/
 
-#ifndef _X264_H
-#define _X264_H 1
+#ifndef X264_X264_H
+#define X264_X264_H
 
 #if !defined(_STDINT_H) && !defined(_STDINT_H_) && \
     !defined(_INTTYPES_H) && !defined(_INTTYPES_H_)
@@ -35,7 +35,7 @@
 
 #include <stdarg.h>
 
-#define X264_BUILD 59
+#define X264_BUILD 65
 
 /* x264_t:
  *      opaque handler for encoder */
@@ -46,18 +46,22 @@ typedef struct x264_t x264_t;
  ****************************************************************************/
 /* CPU flags
  */
-#define X264_CPU_MMX        0x000001    /* mmx */
-#define X264_CPU_MMXEXT     0x000002    /* mmx-ext*/
-#define X264_CPU_SSE        0x000004    /* sse */
-#define X264_CPU_SSE2       0x000008    /* sse 2 */
-#define X264_CPU_3DNOW      0x000010    /* 3dnow! */
-#define X264_CPU_3DNOWEXT   0x000020    /* 3dnow! ext */
-#define X264_CPU_ALTIVEC    0x000040    /* altivec */
-#define X264_CPU_SSE3       0x000080    /* sse 3 */
-#define X264_CPU_SSSE3      0x000100    /* ssse 3 */
-#define X264_CPU_CACHELINE_SPLIT 0x200  /* avoid memory loads that span the boder between two cachelines */
-#define X264_CPU_CACHELINE_32 0x0400    /* size of a cacheline in bytes */
-#define X264_CPU_CACHELINE_64 0x0800
+#define X264_CPU_CACHELINE_32   0x000001  /* avoid memory loads that span the border between two cachelines */
+#define X264_CPU_CACHELINE_64   0x000002  /* 32/64 is the size of a cacheline in bytes */
+#define X264_CPU_ALTIVEC        0x000004
+#define X264_CPU_MMX            0x000008
+#define X264_CPU_MMXEXT         0x000010  /* MMX2 aka MMXEXT aka ISSE */
+#define X264_CPU_SSE            0x000020
+#define X264_CPU_SSE2           0x000040
+#define X264_CPU_SSE2_IS_SLOW   0x000080  /* avoid most SSE2 functions on Athlon64 */
+#define X264_CPU_SSE2_IS_FAST   0x000100  /* a few functions are only faster on Core2 and Phenom */
+#define X264_CPU_SSE3           0x000200
+#define X264_CPU_SSSE3          0x000400
+#define X264_CPU_PHADD_IS_FAST  0x000800  /* pre-Penryn Core2 have a uselessly slow PHADD instruction */
+#define X264_CPU_STACK_MOD4     0x001000  /* if stack is only mod4 and not mod16 */
+#define X264_CPU_SSE4           0x002000  /* SSE4.1 */
+#define X264_CPU_SSE42          0x004000  /* SSE4.2 */
+#define X264_CPU_SSE_MISALIGN   0x008000  /* Phenom support for misaligned SSE instruction arguments */
 
 /* Analyse flags
  */
@@ -83,8 +87,10 @@ typedef struct x264_t x264_t;
 #define X264_RC_CRF                  1
 #define X264_RC_ABR                  2
 #define X264_AQ_NONE                 0
-#define X264_AQ_LOCAL                1
-#define X264_AQ_GLOBAL               2
+#define X264_AQ_VARIANCE             1
+#define X264_B_ADAPT_NONE            0
+#define X264_B_ADAPT_FAST            1
+#define X264_B_ADAPT_TRELLIS         2
 
 static const char * const x264_direct_pred_names[] = { "none", "spatial", "temporal", "auto", 0 };
 static const char * const x264_motion_est_names[] = { "dia", "hex", "umh", "esa", "tesa", 0 };
@@ -153,7 +159,7 @@ typedef struct x264_param_t
     int         i_width;
     int         i_height;
     int         i_csp;  /* CSP of encoded bitstream, only i420 supported */
-    int         i_level_idc; 
+    int         i_level_idc;
     int         i_frame_total; /* number of frames to encode if known, else 0 */
 
     struct
@@ -163,7 +169,7 @@ typedef struct x264_param_t
         int         i_sar_width;
 
         int         i_overscan;    /* 0=undef, 1=no overscan, 2=overscan */
-        
+
         /* see h264 annex E for the values of the following */
         int         i_vidformat;
         int         b_fullrange;
@@ -183,7 +189,7 @@ typedef struct x264_param_t
     int         i_scenecut_threshold; /* how aggressively to insert extra I frames */
     int         b_pre_scenecut;     /* compute scenecut on lowres frames */
     int         i_bframe;   /* how many b-frame between 2 references pictures */
-    int         b_bframe_adaptive;
+    int         i_bframe_adaptive;
     int         i_bframe_bias;
     int         b_bframe_pyramid;   /* Keep some B-frames as references */
 
@@ -210,6 +216,7 @@ typedef struct x264_param_t
     void        *p_log_private;
     int         i_log_level;
     int         b_visualize;
+    char        *psz_dump_yuv;  /* filename for reconstructed frames */
 
     /* Encoder analyser parameters */
     struct
@@ -228,14 +235,14 @@ typedef struct x264_param_t
         int          i_mv_range; /* maximum length of a mv (in pixels). -1 = auto, based on level */
         int          i_mv_range_thread; /* minimum space between threads. -1 = auto, based on number of threads. */
         int          i_subpel_refine; /* subpixel motion estimation quality */
-        int          b_bidir_me; /* jointly optimize both MVs in B-frames */
         int          b_chroma_me; /* chroma ME for subpel and mode decision in P-frames */
-        int          b_bframe_rdo; /* RD based mode decision for B-frames */
         int          b_mixed_references; /* allow each mb partition in P-frames to have it's own reference number */
         int          i_trellis;  /* trellis RD quantization */
         int          b_fast_pskip; /* early SKIP detection on P-frames */
         int          b_dct_decimate; /* transform coefficient thresholding on P-frames */
         int          i_noise_reduction; /* adaptive pseudo-deadzone */
+        float        f_psy_rd; /* Psy RD strength */
+        float        f_psy_trellis; /* Psy trellis strength */
 
         /* the deadzone size that will be used in luma quantization */
         int          i_luma_deadzone[2]; /* {inter, intra} */
@@ -273,7 +280,6 @@ typedef struct x264_param_t
         char        *psz_stat_in;
 
         /* 2pass params (same as ffmpeg ones) */
-        char        *psz_rc_eq;     /* 2 pass rate control equation */
         float       f_qcompress;    /* 0.0 => cbr, 1.0 => constant qp */
         float       f_qblur;        /* temporally blur quants */
         float       f_complexity_blur; /* temporally blur complexity */

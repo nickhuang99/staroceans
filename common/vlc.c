@@ -1,10 +1,7 @@
 /*****************************************************************************
- * vlc.h : vlc table
+ * vlc.c : vlc table
  *****************************************************************************
- * Copyright (C) 2003 Laurent Aimar
- * $Id: vlc.h,v 1.1 2004/06/03 19:27:07 fenrir Exp $
- *
- * Authors: Laurent Aimar <fenrir@via.ecp.fr>
+ * Copyright (C) 2003 Laurent Aimar <fenrir@via.ecp.fr>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,26 +15,25 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111, USA.
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02111, USA.
  *****************************************************************************/
 
-typedef struct
-{
-    uint16_t i_bits;
-    uint16_t i_size;
-} vlc_t;
+#include "common.h"
 
-/* XXX: don't forget to change it if you change vlc_t */
 #define MKVLC( a, b ) { a, b }
-static const vlc_t x264_coeff_token[5][17*4] =
+const vlc_t x264_coeff0_token[5] =
+{
+    MKVLC( 0x1, 1 ), /* str=1 */
+    MKVLC( 0x3, 2 ), /* str=11 */
+    MKVLC( 0xf, 4 ), /* str=1111 */
+    MKVLC( 0x3, 6 ), /* str=000011 */
+    MKVLC( 0x1, 2 )  /* str=01 */
+};
+
+const vlc_t x264_coeff_token[5][16*4] =
 {
     /* table 0 */
     {
-        MKVLC( 0x1, 1 ), /* str=1 */
-        MKVLC( 0x0, 0 ), /* str= */
-        MKVLC( 0x0, 0 ), /* str= */
-        MKVLC( 0x0, 0 ), /* str= */
-
         MKVLC( 0x5, 6 ), /* str=000101 */
         MKVLC( 0x1, 2 ), /* str=01 */
         MKVLC( 0x0, 0 ), /* str= */
@@ -121,11 +117,6 @@ static const vlc_t x264_coeff_token[5][17*4] =
 
     /* table 1 */
     {
-        MKVLC( 0x3, 2 ), /* str=11 */
-        MKVLC( 0x0, 0 ), /* str= */
-        MKVLC( 0x0, 0 ), /* str= */
-        MKVLC( 0x0, 0 ), /* str= */
-
         MKVLC( 0xb, 6 ), /* str=001011 */
         MKVLC( 0x2, 2 ), /* str=10 */
         MKVLC( 0x0, 0 ), /* str= */
@@ -208,11 +199,6 @@ static const vlc_t x264_coeff_token[5][17*4] =
     },
     /* table 2 */
     {
-        MKVLC( 0xf, 4 ), /* str=1111 */
-        MKVLC( 0x0, 0 ), /* str= */
-        MKVLC( 0x0, 0 ), /* str= */
-        MKVLC( 0x0, 0 ), /* str= */
-
         MKVLC( 0xf, 6 ), /* str=001111 */
         MKVLC( 0xe, 4 ), /* str=1110 */
         MKVLC( 0x0, 0 ), /* str= */
@@ -296,11 +282,6 @@ static const vlc_t x264_coeff_token[5][17*4] =
 
     /* table 3 */
     {
-        MKVLC( 0x3, 6 ), /* str=000011 */
-        MKVLC( 0x0, 0 ), /* str= */
-        MKVLC( 0x0, 0 ), /* str= */
-        MKVLC( 0x0, 0 ), /* str= */
-
         MKVLC( 0x0, 6 ), /* str=000000 */
         MKVLC( 0x1, 6 ), /* str=000001 */
         MKVLC( 0x0, 0 ), /* str= */
@@ -384,11 +365,6 @@ static const vlc_t x264_coeff_token[5][17*4] =
 
     /* table 4 */
     {
-        MKVLC( 0x1, 2 ), /* str=01 */
-        MKVLC( 0x0, 0 ), /* str= */
-        MKVLC( 0x0, 0 ), /* str= */
-        MKVLC( 0x0, 0 ), /* str= */
-
         MKVLC( 0x7, 6 ), /* str=000111 */
         MKVLC( 0x1, 1 ), /* str=1 */
         MKVLC( 0x0, 0 ), /* str= */
@@ -471,28 +447,8 @@ static const vlc_t x264_coeff_token[5][17*4] =
     }
 };
 
-static const vlc_t x264_level_prefix[16] =
-{
-    MKVLC( 0x01,  1 ),
-    MKVLC( 0x01,  2 ),
-    MKVLC( 0x01,  3 ),
-    MKVLC( 0x01,  4 ),
-    MKVLC( 0x01,  5 ),
-    MKVLC( 0x01,  6 ),
-    MKVLC( 0x01,  7 ),
-    MKVLC( 0x01,  8 ),
-    MKVLC( 0x01,  9 ),
-    MKVLC( 0x01, 10 ),
-    MKVLC( 0x01, 11 ),
-    MKVLC( 0x01, 12 ),
-    MKVLC( 0x01, 13 ),
-    MKVLC( 0x01, 14 ),
-    MKVLC( 0x01, 15 ),
-    MKVLC( 0x01, 16 )
-};
-
 /* [i_total_coeff-1][i_total_zeros] */
-static const vlc_t x264_total_zeros[15][16] =
+const vlc_t x264_total_zeros[15][16] =
 {
     { /* i_total 1 */
         MKVLC( 0x1, 1 ), /* str=1 */
@@ -767,7 +723,7 @@ static const vlc_t x264_total_zeros[15][16] =
 };
 
 /* [i_total_coeff-1][i_total_zeros] */
-static const vlc_t x264_total_zeros_dc[3][4] =
+const vlc_t x264_total_zeros_dc[3][4] =
 {
     {
         MKVLC( 0x01, 1 ), /* 1  */
@@ -790,7 +746,7 @@ static const vlc_t x264_total_zeros_dc[3][4] =
 };
 
 /* x264_run_before[__MIN( i_zero_left -1, 6 )][run_before] */
-static const vlc_t x264_run_before[7][15] =
+const vlc_t x264_run_before[7][16] =
 {
     { /* i_zero_left 1 */
         MKVLC( 0x1, 1 ), /* str=1 */
@@ -912,3 +868,49 @@ static const vlc_t x264_run_before[7][15] =
         MKVLC( 0x1, 11 ), /* str=00000000001 */
     },
 };
+
+vlc_large_t x264_level_token[7][LEVEL_TABLE_SIZE];
+
+void x264_init_vlc_tables()
+{
+    int16_t level;
+    int i_suffix;
+    for( i_suffix = 0; i_suffix < 7; i_suffix++ )
+        for( level = -LEVEL_TABLE_SIZE/2; level < LEVEL_TABLE_SIZE/2; level++ )
+        {
+            int mask = level >> 15;
+            int abs_level = (level^mask)-mask;
+            int i_level_code = abs_level*2-mask-2;
+            int i_next = i_suffix;
+            vlc_large_t *vlc = &x264_level_token[i_suffix][level+LEVEL_TABLE_SIZE/2];
+
+            if( ( i_level_code >> i_suffix ) < 14 )
+            {
+                vlc->i_size = (i_level_code >> i_suffix) + 1 + i_suffix;
+                vlc->i_bits = (1<<i_suffix) + (i_level_code & ((1<<i_suffix)-1));
+            }
+            else if( i_suffix == 0 && i_level_code < 30 )
+            {
+                vlc->i_size = 19;
+                vlc->i_bits = (1<<4) + (i_level_code - 14);
+            }
+            else if( i_suffix > 0 && ( i_level_code >> i_suffix ) == 14 )
+            {
+                vlc->i_size = 15 + i_suffix;
+                vlc->i_bits = (1<<i_suffix) + (i_level_code & ((1<<i_suffix)-1));
+            }
+            else
+            {
+                i_level_code -= 15 << i_suffix;
+                if( i_suffix == 0 )
+                    i_level_code -= 15;
+                vlc->i_size = 28;
+                vlc->i_bits = (1<<12) + i_level_code;
+            }
+            if( i_next == 0 )
+                i_next++;
+            if( abs_level > (3 << (i_next-1)) && i_next < 6 )
+                i_next++;
+            vlc->i_next = i_next;
+        }
+}

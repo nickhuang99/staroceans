@@ -1,10 +1,10 @@
 /*****************************************************************************
  * x264: h264 encoder testing program.
  *****************************************************************************
- * Copyright (C) 2003 Laurent Aimar
- * $Id: x264.c,v 1.1 2004/06/03 19:24:12 fenrir Exp $
+ * Copyright (C) 2003-2008 x264 project
  *
- * Authors: Laurent Aimar <fenrir@via.ecp.fr>
+ * Authors: Loren Merritt <lorenm@u.washington.edu>
+ *          Laurent Aimar <fenrir@via.ecp.fr>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,7 +18,7 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111, USA.
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02111, USA.
  *****************************************************************************/
 
 #include <stdlib.h>
@@ -29,11 +29,18 @@
 #include <getopt.h>
 
 #include "common/common.h"
+#include "common/cpu.h"
 #include "x264.h"
 #include "muxers.h"
 
 #ifndef _MSC_VER
 #include "config.h"
+#endif
+
+#ifdef _WIN32
+#include <windows.h>
+#else
+#define SetConsoleTitle(t)
 #endif
 
 uint8_t *mux_buffer = NULL;
@@ -89,7 +96,7 @@ int main( int argc, char **argv )
     pthread_win32_thread_attach_np();
 #endif
 
-#ifdef _MSC_VER
+#ifdef _WIN32
     _setmode(_fileno(stdin), _O_BINARY);
     _setmode(_fileno(stdout), _O_BINARY);
 #endif
@@ -162,7 +169,11 @@ static void Help( x264_param_t *defaults, int b_longhelp )
     H1( "      --pre-scenecut          Faster, less precise scenecut detection.\n"
         "                                  Required and implied by multi-threading.\n" );
     H0( "  -b, --bframes <integer>     Number of B-frames between I and P [%d]\n", defaults->i_bframe );
-    H1( "      --no-b-adapt            Disable adaptive B-frame decision\n" );
+    H1( "      --b-adapt               Adaptive B-frame decision method [%d]\n"
+        "                                  Higher values may lower threading efficiency.\n"
+        "                                  - 0: Disabled\n"
+        "                                  - 1: Fast\n"
+        "                                  - 2: Optimal (slow with high --bframes)\n", defaults->i_bframe_adaptive );
     H1( "      --b-bias <integer>      Influences how often B-frames are used [%d]\n", defaults->i_bframe_bias );
     H0( "      --b-pyramid             Keep some B-frames as references\n" );
     H0( "      --no-cabac              Disable CABAC\n" );
@@ -187,10 +198,9 @@ static void Help( x264_param_t *defaults, int b_longhelp )
     H0( "      --ipratio <float>       QP factor between I and P [%.2f]\n", defaults->rc.f_ip_factor );
     H0( "      --pbratio <float>       QP factor between P and B [%.2f]\n", defaults->rc.f_pb_factor );
     H1( "      --chroma-qp-offset <integer>  QP difference between chroma and luma [%d]\n", defaults->analyse.i_chroma_qp_offset );
-    H0( "      --aq-mode <integer>     How AQ distributes bits [%d]\n"
+    H1( "      --aq-mode <integer>     AQ method [%d]\n"
         "                                  - 0: Disabled\n"
-        "                                  - 1: Avoid moving bits between frames\n"
-        "                                  - 2: Move bits between frames\n", defaults->rc.i_aq_mode );
+        "                                  - 1: Variance AQ (complexity mask)\n", defaults->rc.i_aq_mode );
     H0( "      --aq-strength <float>   Reduces blocking and blurring in flat and\n"
         "                              textured areas. [%.1f]\n"
         "                                  - 0.5: weak AQ\n"
@@ -201,7 +211,6 @@ static void Help( x264_param_t *defaults, int b_longhelp )
         "                                  - 2: Last pass, does not overwrite stats file\n"
         "                                  - 3: Nth pass, overwrites stats file\n" );
     H0( "      --stats <string>        Filename for 2 pass stats [\"%s\"]\n", defaults->rc.psz_stat_out );
-    H1( "      --rceq <string>         Ratecontrol equation [\"%s\"]\n", defaults->rc.psz_rc_eq );
     H0( "      --qcomp <float>         QP curve compression: 0.0 => CBR, 1.0 => CQP [%.2f]\n", defaults->rc.f_qcompress );
     H1( "      --cplxblur <float>      Reduce fluctuations in QP (before curve compression) [%.1f]\n", defaults->rc.f_complexity_blur );
     H1( "      --qblur <float>         Reduce fluctuations in QP (after curve compression) [%.1f]\n", defaults->rc.f_qblur );
@@ -239,12 +248,22 @@ static void Help( x264_param_t *defaults, int b_longhelp )
     H0( "      --merange <integer>     Maximum motion vector search range [%d]\n", defaults->analyse.i_me_range );
     H1( "      --mvrange <integer>     Maximum motion vector length [-1 (auto)]\n" );
     H1( "      --mvrange-thread <int>  Minimum buffer between threads [-1 (auto)]\n" );
-    H0( "  -m, --subme <integer>       Subpixel motion estimation and partition\n"
-        "                                  decision quality: 1=fast, 7=best. [%d]\n", defaults->analyse.i_subpel_refine );
-    H0( "      --b-rdo                 RD based mode decision for B-frames. Requires subme 6.\n" );
+    H0( "  -m, --subme <integer>       Subpixel motion estimation and mode decision [%d]\n", defaults->analyse.i_subpel_refine );
+    H1( "                                  - 0: fullpel only (not recommended)\n"
+        "                                  - 1: SAD mode decision, one qpel iteration\n"
+        "                                  - 2: SATD mode decision\n"
+        "                                  - 3-5: Progressively more qpel\n"
+        "                                  - 6: RD mode decision for I/P-frames\n"
+        "                                  - 7: RD mode decision for all frames\n"
+        "                                  - 8: RD refinement for I/P-frames\n"
+        "                                  - 9: RD refinement for all frames\n" );
+    else H0( "                                  decision quality: 1=fast, 9=best.\n"  );
+    H0( "      --psy-rd                Strength of psychovisual optimization [\"%.1f:%.1f\"]\n"
+        "                                  #1: RD (requires subme>=6)\n"
+        "                                  #2: Trellis (requires trellis, experimental)\n",
+                                       defaults->analyse.f_psy_rd, defaults->analyse.f_psy_trellis );
     H0( "      --mixed-refs            Decide references on a per partition basis\n" );
     H1( "      --no-chroma-me          Ignore chroma in motion estimation\n" );
-    H1( "      --bime                  Jointly optimize both MVs in B-frames\n" );
     H0( "  -8, --8x8dct                Adaptive spatial transform size\n" );
     H0( "  -t, --trellis <integer>     Trellis RD quantization. Requires CABAC. [%d]\n"
         "                                  - 0: disabled\n"
@@ -315,8 +334,10 @@ static void Help( x264_param_t *defaults, int b_longhelp )
     H0( "      --threads <integer>     Parallel encoding\n" );
     H0( "      --thread-input          Run Avisynth in its own thread\n" );
     H1( "      --non-deterministic     Slightly improve quality of SMP, at the cost of repeatability\n" );
+    H1( "      --asm <integer>         Override CPU detection\n" );
     H1( "      --no-asm                Disable all CPU optimizations\n" );
     H1( "      --visualize             Show MB types overlayed on the encoded video\n" );
+    H1( "      --dump-yuv <string>     Save reconstructed frames\n" );
     H1( "      --sps-id <integer>      Set SPS and PPS id numbers [%d]\n", defaults->i_sps_id );
     H1( "      --aud                   Use access unit delimiters\n" );
     H0( "\n" );
@@ -372,6 +393,7 @@ static int  Parse( int argc, char **argv,
             { "version", no_argument,       NULL, 'V' },
             { "bitrate", required_argument, NULL, 'B' },
             { "bframes", required_argument, NULL, 'b' },
+            { "b-adapt", required_argument, NULL, 0 },
             { "no-b-adapt", no_argument,    NULL, 0 },
             { "b-bias",  required_argument, NULL, 0 },
             { "b-pyramid", no_argument,     NULL, 0 },
@@ -391,6 +413,7 @@ static int  Parse( int argc, char **argv,
             { "qpstep",  required_argument, NULL, 0 },
             { "crf",     required_argument, NULL, 0 },
             { "ref",     required_argument, NULL, 'r' },
+            { "asm",     required_argument, NULL, 0 },
             { "no-asm",  no_argument,       NULL, 0 },
             { "sar",     required_argument, NULL, 0 },
             { "fps",     required_argument, NULL, 0 },
@@ -407,10 +430,9 @@ static int  Parse( int argc, char **argv,
             { "mvrange", required_argument, NULL, 0 },
             { "mvrange-thread", required_argument, NULL, 0 },
             { "subme",   required_argument, NULL, 'm' },
-            { "b-rdo",   no_argument,       NULL, 0 },
+            { "psy-rd",  required_argument, NULL, 0 },
             { "mixed-refs", no_argument,    NULL, 0 },
             { "no-chroma-me", no_argument,  NULL, 0 },
-            { "bime",    no_argument,       NULL, 0 },
             { "8x8dct",  no_argument,       NULL, '8' },
             { "trellis", required_argument, NULL, 't' },
             { "no-fast-pskip", no_argument, NULL, 0 },
@@ -429,7 +451,6 @@ static int  Parse( int argc, char **argv,
             { "chroma-qp-offset", required_argument, NULL, 0 },
             { "pass",    required_argument, NULL, 'p' },
             { "stats",   required_argument, NULL, 0 },
-            { "rceq",    required_argument, NULL, 0 },
             { "qcomp",   required_argument, NULL, 0 },
             { "qblur",   required_argument, NULL, 0 },
             { "cplxblur",required_argument, NULL, 0 },
@@ -444,6 +465,7 @@ static int  Parse( int argc, char **argv,
             { "verbose", no_argument,       NULL, 'v' },
             { "progress",no_argument,       NULL, OPT_PROGRESS },
             { "visualize",no_argument,      NULL, OPT_VISUALIZE },
+            { "dump-yuv",required_argument, NULL, 0 },
             { "sps-id",  required_argument, NULL, 0 },
             { "aud",     no_argument,       NULL, 0 },
             { "nr",      required_argument, NULL, 0 },
@@ -491,6 +513,12 @@ static int  Parse( int argc, char **argv,
 #else
                 printf( "x264 0.%d.X\n", X264_BUILD );
 #endif
+                printf( "built on " __DATE__ ", " );
+#ifdef __GNUC__
+                printf( "gcc: " __VERSION__ "\n" );
+#else
+                printf( "using a non-gcc compiler\n" );
+#endif
                 exit(0);
             case OPT_FRAMES:
                 param->i_frame_total = atoi( optarg );
@@ -536,7 +564,7 @@ static int  Parse( int argc, char **argv,
                     return -1;
                 }
                 param->i_scenecut_threshold = -1;
-                param->b_bframe_adaptive = 0;
+                param->i_bframe_adaptive = X264_B_ADAPT_NONE;
                 break;
             case OPT_THREAD_INPUT:
                 b_thread_input = 1;
@@ -627,7 +655,7 @@ static int  Parse( int argc, char **argv,
             sscanf( argv[optind++], "%ux%u", &param->i_width, &param->i_height );
         }
     }
-        
+
     if( !(b_avis || b_y4m) && ( !param->i_width || !param->i_height ) )
     {
         fprintf( stderr, "x264 [error]: Rawyuv input requires a resolution.\n" );
@@ -664,7 +692,8 @@ static int  Parse( int argc, char **argv,
     }
 
 #ifdef HAVE_PTHREAD
-    if( b_thread_input || param->i_threads > 1 )
+    if( b_thread_input || param->i_threads > 1
+        || (param->i_threads == 0 && x264_cpu_num_processors() > 1) )
     {
         if( open_file_thread( NULL, &opt->hin, param ) )
         {
@@ -685,11 +714,20 @@ static int  Parse( int argc, char **argv,
 
 static void parse_qpfile( cli_opt_t *opt, x264_picture_t *pic, int i_frame )
 {
-    int num = -1, qp;
+    int num = -1, qp, ret;
     char type;
+    uint64_t file_pos;
     while( num < i_frame )
     {
-        int ret = fscanf( opt->qpfile, "%d %c %d\n", &num, &type, &qp );
+        file_pos = ftell( opt->qpfile );
+        ret = fscanf( opt->qpfile, "%d %c %d\n", &num, &type, &qp );
+		if( num > i_frame || ret == EOF )
+		{
+			pic->i_type = X264_TYPE_AUTO;
+			pic->i_qpplus1 = 0;
+			fseek( opt->qpfile , file_pos , SEEK_SET );
+			break;
+		}
         if( num < i_frame )
             continue;
         pic->i_qpplus1 = qp+1;
@@ -699,7 +737,7 @@ static void parse_qpfile( cli_opt_t *opt, x264_picture_t *pic, int i_frame )
         else if( type == 'B' ) pic->i_type = X264_TYPE_BREF;
         else if( type == 'b' ) pic->i_type = X264_TYPE_B;
         else ret = 0;
-        if( ret != 3 || qp < 0 || qp > 51 || num > i_frame )
+        if( ret != 3 || qp < -1 || qp > 51 )
         {
             fprintf( stderr, "x264 [error]: can't parse qpfile for frame %d\n", i_frame );
             fclose( opt->qpfile );
@@ -757,14 +795,17 @@ static int  Encode( x264_param_t *param, cli_opt_t *opt )
     int64_t i_start, i_end;
     int64_t i_file;
     int     i_frame_size;
-    int     i_progress;
+    int     i_update_interval;
+    char    buf[200];
 
+    opt->b_progress &= param->i_log_level < X264_LOG_DEBUG;
     i_frame_total = p_get_frame_total( opt->hin );
     i_frame_total -= opt->i_seek;
     if( ( i_frame_total == 0 || param->i_frame_total < i_frame_total )
         && param->i_frame_total > 0 )
         i_frame_total = param->i_frame_total;
     param->i_frame_total = i_frame_total;
+    i_update_interval = i_frame_total ? x264_clip3( i_frame_total / 1000, 1, 10 ) : 10;
 
     if( ( h = x264_encoder_open( param ) ) == NULL )
     {
@@ -787,8 +828,7 @@ static int  Encode( x264_param_t *param, cli_opt_t *opt )
     i_start = x264_mdate();
 
     /* Encode frames */
-    for( i_frame = 0, i_file = 0, i_progress = 0;
-         b_ctrl_c == 0 && (i_frame < i_frame_total || i_frame_total == 0); )
+    for( i_frame = 0, i_file = 0; b_ctrl_c == 0 && (i_frame < i_frame_total || i_frame_total == 0); )
     {
         if( p_read_frame( &pic, opt->hin, i_frame + opt->i_seek ) )
             break;
@@ -809,22 +849,24 @@ static int  Encode( x264_param_t *param, cli_opt_t *opt )
         i_frame++;
 
         /* update status line (up to 1000 times per input file) */
-        if( opt->b_progress && param->i_log_level < X264_LOG_DEBUG && 
-            ( i_frame_total ? i_frame * 1000 / i_frame_total > i_progress
-                            : i_frame % 10 == 0 ) )
+        if( opt->b_progress && i_frame % i_update_interval == 0 )
         {
             int64_t i_elapsed = x264_mdate() - i_start;
             double fps = i_elapsed > 0 ? i_frame * 1000000. / i_elapsed : 0;
+            double bitrate = (double) i_file * 8 * param->i_fps_num / ( (double) param->i_fps_den * i_frame * 1000 );
             if( i_frame_total )
             {
                 int eta = i_elapsed * (i_frame_total - i_frame) / ((int64_t)i_frame * 1000000);
-                i_progress = i_frame * 1000 / i_frame_total;
-                fprintf( stderr, "encoded frames: %d/%d (%.1f%%), %.2f fps, eta %d:%02d:%02d  \r",
-                         i_frame, i_frame_total, (float)i_progress / 10, fps,
+                sprintf( buf, "x264 [%.1f%%] %d/%d frames, %.2f fps, %.2f kb/s, eta %d:%02d:%02d",
+                         100. * i_frame / i_frame_total, i_frame, i_frame_total, fps, bitrate,
                          eta/3600, (eta/60)%60, eta%60 );
             }
             else
-                fprintf( stderr, "encoded frames: %d, %.2f fps   \r", i_frame, fps );
+            {
+                sprintf( buf, "x264 %d frames: %.2f fps, %.2f kb/s", i_frame, fps, bitrate );
+            }
+            fprintf( stderr, "%s  \r", buf+5 );
+            SetConsoleTitle( buf );
             fflush( stderr ); // needed in windows
         }
     }
@@ -836,7 +878,11 @@ static int  Encode( x264_param_t *param, cli_opt_t *opt )
 
     i_end = x264_mdate();
     x264_picture_clean( &pic );
+    /* Erase progress indicator before printing encoding stats. */
+    if( opt->b_progress )
+        fprintf( stderr, "                                                                               \r" );
     x264_encoder_close( h );
+    x264_free( mux_buffer );
     fprintf( stderr, "\n" );
 
     if( b_ctrl_c )

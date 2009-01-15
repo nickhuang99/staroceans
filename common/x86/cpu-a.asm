@@ -1,9 +1,11 @@
 ;*****************************************************************************
-;* cpu-32.asm: h264 encoder library
+;* cpu-a.asm: h264 encoder library
 ;*****************************************************************************
 ;* Copyright (C) 2003-2008 x264 project
 ;*
 ;* Authors: Laurent Aimar <fenrir@via.ecp.fr>
+;*          Loren Merritt <lorenm@u.washington.edu>
+;*          Jason Garrett-Glaser <darkshikari@gmail.com>
 ;*
 ;* This program is free software; you can redistribute it and/or modify
 ;* it under the terms of the GNU General Public License as published by
@@ -17,12 +19,32 @@
 ;*
 ;* You should have received a copy of the GNU General Public License
 ;* along with this program; if not, write to the Free Software
-;* Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111, USA.
+;* Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02111, USA.
 ;*****************************************************************************
 
 %include "x86inc.asm"
 
 SECTION .text
+
+%ifdef ARCH_X86_64
+;-----------------------------------------------------------------------------
+; int x264_cpu_cpuid( int op, int *eax, int *ebx, int *ecx, int *edx )
+;-----------------------------------------------------------------------------
+cglobal x264_cpu_cpuid
+    push    rbx
+    mov     r10,   r3
+    mov     r11,   r2
+    mov     r9,    r1
+    mov     eax,   r0d
+    cpuid
+    mov     [r9],  eax
+    mov     [r11], ebx
+    mov     [r10], ecx
+    mov     [r8],  edx
+    pop     rbx
+    ret
+
+%else
 
 ;-----------------------------------------------------------------------------
 ; int x264_cpu_cpuid_test( void )
@@ -67,13 +89,6 @@ cglobal x264_cpu_cpuid, 0,6
     RET
 
 ;-----------------------------------------------------------------------------
-; void x264_emms( void )
-;-----------------------------------------------------------------------------
-cglobal x264_emms
-    emms
-    ret
-
-;-----------------------------------------------------------------------------
 ; void x264_stack_align( void (*func)(void*), void *arg );
 ;-----------------------------------------------------------------------------
 cglobal x264_stack_align
@@ -87,4 +102,22 @@ cglobal x264_stack_align
     call ecx
     leave
     ret
+%endif
 
+;-----------------------------------------------------------------------------
+; void x264_emms( void )
+;-----------------------------------------------------------------------------
+cglobal x264_emms
+    emms
+    ret
+
+;-----------------------------------------------------------------------------
+; void x264_cpu_mask_misalign_sse(void)
+;-----------------------------------------------------------------------------
+cglobal x264_cpu_mask_misalign_sse
+    sub   rsp, 4
+    stmxcsr [rsp]
+    or dword [rsp], 1<<17
+    ldmxcsr [rsp]
+    add   rsp, 4
+    ret

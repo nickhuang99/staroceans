@@ -1,9 +1,10 @@
 /*****************************************************************************
  * predict.h: h264 encoder library
  *****************************************************************************
- * Copyright (C) 2003 Laurent Aimar
+ * Copyright (C) 2003-2008 x264 project
  *
  * Authors: Laurent Aimar <fenrir@via.ecp.fr>
+ *          Loren Merritt <lorenm@u.washington.edu>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,11 +18,11 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111, USA.
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02111, USA.
  *****************************************************************************/
 
-#ifndef _I386_PREDICT_H
-#define _I386_PREDICT_H 1
+#ifndef X264_I386_PREDICT_H
+#define X264_I386_PREDICT_H
 
 void x264_predict_16x16_init_mmx ( int cpu, x264_predict_t pf[7] );
 void x264_predict_8x8c_init_mmx  ( int cpu, x264_predict_t pf[7] );

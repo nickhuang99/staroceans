@@ -1,10 +1,10 @@
 /*****************************************************************************
  * cabac.h: h264 encoder library
  *****************************************************************************
- * Copyright (C) 2003 Laurent Aimar
- * $Id: cabac.h,v 1.1 2004/06/03 19:27:06 fenrir Exp $
+ * Copyright (C) 2003-2008 x264 project
  *
- * Authors: Laurent Aimar <fenrir@via.ecp.fr>
+ * Authors: Loren Merritt <lorenm@u.washington.edu>
+ *          Laurent Aimar <fenrir@via.ecp.fr>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,11 +18,11 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111, USA.
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02111, USA.
  *****************************************************************************/
 
-#ifndef _CABAC_H
-#define _CABAC_H 1
+#ifndef X264_CABAC_H
+#define X264_CABAC_H
 
 typedef struct
 {
@@ -38,9 +38,9 @@ typedef struct
     uint8_t *p;
     uint8_t *p_end;
 
-    /* aligned for aligned_memcpy starting here */
+    /* aligned for memcpy_aligned starting here */
     DECLARE_ALIGNED_16( int f8_bits_encoded ); // only if using x264_cabac_size_decision()
-    
+
     /* context */
     uint8_t state[460];
 } x264_cabac_t;
@@ -53,11 +53,19 @@ void x264_cabac_context_init( x264_cabac_t *cb, int i_slice_type, int i_qp, int 
 
 /* encoder only: */
 void x264_cabac_encode_init ( x264_cabac_t *cb, uint8_t *p_data, uint8_t *p_end );
-void x264_cabac_encode_decision( x264_cabac_t *cb, int i_ctx, int b );
+void x264_cabac_encode_decision_c( x264_cabac_t *cb, int i_ctx, int b );
+void x264_cabac_encode_decision_asm( x264_cabac_t *cb, int i_ctx, int b );
 void x264_cabac_encode_bypass( x264_cabac_t *cb, int b );
 void x264_cabac_encode_ue_bypass( x264_cabac_t *cb, int exp_bits, int val );
 void x264_cabac_encode_terminal( x264_cabac_t *cb );
 void x264_cabac_encode_flush( x264_t *h, x264_cabac_t *cb );
+
+#ifdef HAVE_MMX
+#define x264_cabac_encode_decision x264_cabac_encode_decision_asm
+#else
+#define x264_cabac_encode_decision x264_cabac_encode_decision_c
+#endif
+#define x264_cabac_encode_decision_noup x264_cabac_encode_decision
 
 static inline int x264_cabac_pos( x264_cabac_t *cb )
 {
@@ -80,7 +88,13 @@ static inline int x264_cabac_size_decision2( uint8_t *state, long b )
     return x264_cabac_entropy[i_state][b];
 }
 
-static inline int x264_cabac_size_decision_noup( uint8_t *state, long b )
+static inline void x264_cabac_size_decision_noup( x264_cabac_t *cb, long i_ctx, long b )
+{
+    int i_state = cb->state[i_ctx];
+    cb->f8_bits_encoded += x264_cabac_entropy[i_state][b];
+}
+
+static inline int x264_cabac_size_decision_noup2( uint8_t *state, long b )
 {
     return x264_cabac_entropy[*state][b];
 }

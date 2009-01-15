@@ -1,11 +1,11 @@
 /*****************************************************************************
  * predict.c: h264 encoder
  *****************************************************************************
- * Copyright (C) 2003 Laurent Aimar
- * $Id: predict.c,v 1.1 2004/06/03 19:27:07 fenrir Exp $
+ * Copyright (C) 2003-2008 x264 project
  *
  * Authors: Laurent Aimar <fenrir@via.ecp.fr>
  *          Loren Merritt <lorenm@u.washington.edu>
+ *          Jason Garrett-Glaser <darkshikari@gmail.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,7 +19,7 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111, USA.
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02111, USA.
  *****************************************************************************/
 
 /* predict4x4 are inspired from ffmpeg h264 decoder */
@@ -27,33 +27,12 @@
 
 #include "common.h"
 
-#ifdef _MSC_VER
-#undef HAVE_MMX  /* not finished now */
-#endif
 #ifdef HAVE_MMX
 #   include "x86/predict.h"
 #endif
 #ifdef ARCH_PPC
 #   include "ppc/predict.h"
 #endif
-
-static ALWAYS_INLINE uint32_t pack16to32( int a, int b )
-{
-#ifdef WORDS_BIGENDIAN
-   return b + (a<<16);
-#else
-   return a + (b<<16);
-#endif
-}
-
-static ALWAYS_INLINE uint32_t pack8to16( int a, int b )
-{
-#ifdef WORDS_BIGENDIAN
-   return b + (a<<8);
-#else
-   return a + (b<<8);
-#endif
-}
 
 /****************************************************************************
  * 16x16 prediction for intra luma block
@@ -664,7 +643,7 @@ static void predict_8x8_ddr( uint8_t *src, uint8_t edge[33] )
     SRC(5,0)=SRC(6,1)=SRC(7,2)= F2(t3,t4,t5);
     SRC(6,0)=SRC(7,1)= F2(t4,t5,t6);
     SRC(7,0)= F2(t5,t6,t7);
-  
+
 }
 static void predict_8x8_vr( uint8_t *src, uint8_t edge[33] )
 {
@@ -707,9 +686,9 @@ static void predict_8x8_hd( uint8_t *src, uint8_t edge[33] )
     int p6 = pack8to16(F1(l1,l2), F2(l0,l1,l2));
     int p7 = pack8to16(F1(l0,l1), F2(lt,l0,l1));
     int p8 = pack8to16(F1(lt,l0), F2(l0,lt,t0));
-    int p9 = pack8to16(F2(t1,t0,lt), F2(t2,t1,t0 ));
-    int p10 = pack8to16(F2(t3,t2,t1), F2(t4,t3,t2 ));
-    int p11 = pack8to16(F2(t5,t4,t3), F2(t6,t5,t4 ));
+    int p9 = pack8to16(F2(t1,t0,lt), F2(t2,t1,t0));
+    int p10 = pack8to16(F2(t3,t2,t1), F2(t4,t3,t2));
+    int p11 = pack8to16(F2(t5,t4,t3), F2(t6,t5,t4));
     SRC32(0,7)= pack16to32(p1,p2);
     SRC32(0,6)= pack16to32(p2,p3);
     SRC32(4,7)=SRC32(0,5)= pack16to32(p3,p4);

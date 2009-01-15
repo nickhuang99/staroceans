@@ -1,10 +1,10 @@
 /*****************************************************************************
  * predict.c: h264 encoder
  *****************************************************************************
- * Copyright (C) 2003 Laurent Aimar
- * $Id: predict.c,v 1.1 2004/06/03 19:27:07 fenrir Exp $
+ * Copyright (C) 2003-2008 x264 project
  *
  * Authors: Laurent Aimar <fenrir@via.ecp.fr>
+ *          Loren Merritt <lorenm@u.washington.edu>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,7 +18,7 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111, USA.
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02111, USA.
  *****************************************************************************/
 
 #include "common/common.h"
@@ -26,13 +26,18 @@
 #include "pixel.h"
 
 extern void predict_16x16_v_mmx( uint8_t *src );
+extern void predict_16x16_h_mmxext( uint8_t *src );
+extern void predict_16x16_h_ssse3( uint8_t *src );
 extern void predict_16x16_dc_core_mmxext( uint8_t *src, int i_dc_left );
 extern void predict_16x16_dc_top_mmxext( uint8_t *src );
 extern void predict_16x16_p_core_mmxext( uint8_t *src, int i00, int b, int c );
 extern void predict_8x8c_p_core_mmxext( uint8_t *src, int i00, int b, int c );
 extern void predict_8x8c_dc_core_mmxext( uint8_t *src, int s2, int s3 );
 extern void predict_8x8c_v_mmx( uint8_t *src );
+extern void predict_8x8c_h_mmxext( uint8_t *src );
+extern void predict_8x8c_h_ssse3( uint8_t *src );
 extern void predict_8x8_v_mmxext( uint8_t *src, uint8_t edge[33] );
+extern void predict_8x8_h_mmxext( uint8_t *src, uint8_t edge[33] );
 extern void predict_8x8_dc_mmxext( uint8_t *src, uint8_t edge[33] );
 extern void predict_8x8_dc_top_mmxext( uint8_t *src, uint8_t edge[33] );
 extern void predict_8x8_dc_left_mmxext( uint8_t *src, uint8_t edge[33] );
@@ -44,6 +49,7 @@ extern void predict_8x8_vl_sse2( uint8_t *src, uint8_t edge[33] );
 extern void predict_8x8_vr_core_mmxext( uint8_t *src, uint8_t edge[33] );
 extern void predict_4x4_ddl_mmxext( uint8_t *src );
 extern void predict_4x4_vl_mmxext( uint8_t *src );
+extern void predict_4x4_dc_mmxext( uint8_t *src );
 extern void predict_16x16_dc_top_sse2( uint8_t *src );
 extern void predict_16x16_dc_core_sse2( uint8_t *src, int i_dc_left );
 extern void predict_16x16_v_sse2( uint8_t *src );
@@ -126,40 +132,18 @@ static void predict_8x8c_dc_mmxext( uint8_t *src )
 }
 
 #ifdef ARCH_X86_64
-static void predict_16x16_h( uint8_t *src )
-{
-    int y;
-    for( y = 0; y < 16; y++ )
-    {
-        const uint64_t v = 0x0101010101010101ULL * src[-1];
-        uint64_t *p = (uint64_t*)src;
-        p[0] = p[1] = v;
-        src += FDEC_STRIDE;
-    }
-}
-
-static void predict_8x8c_h( uint8_t *src )
-{
-    int y;
-    for( y = 0; y < 8; y++ )
-    {
-        *(uint64_t*)src = 0x0101010101010101ULL * src[-1];
-        src += FDEC_STRIDE;
-    }
-}
-
 static void predict_16x16_dc_left( uint8_t *src )
 {
     uint32_t s = 0;
-    uint64_t dc; 
+    uint64_t dc;
     int y;
-    
+
     for( y = 0; y < 16; y++ )
     {
         s += src[-1 + y * FDEC_STRIDE];
-    }   
+    }
     dc = (( s + 8 ) >> 4) * 0x0101010101010101ULL;
-    
+
     for( y = 0; y < 16; y++ )
     {
         uint64_t *p = (uint64_t*)src;
@@ -483,9 +467,7 @@ void x264_intra_sa8d_x3_8x8_##cpu( uint8_t *fenc, uint8_t edge[33], int res[3] )
 
 #ifdef ARCH_X86_64
 INTRA_SA8D_X3(sse2)
-#ifdef HAVE_SSE3
 INTRA_SA8D_X3(ssse3)
-#endif
 #else
 INTRA_SA8D_X3(mmxext)
 #endif
@@ -498,7 +480,6 @@ void x264_predict_16x16_init_mmx( int cpu, x264_predict_t pf[7] )
     if( !(cpu&X264_CPU_MMX) )
         return;
 #ifdef ARCH_X86_64
-    pf[I_PRED_16x16_H]       = predict_16x16_h;
     pf[I_PRED_16x16_DC_LEFT] = predict_16x16_dc_left;
 #endif
     pf[I_PRED_16x16_V]       = predict_16x16_v_mmx;
@@ -507,12 +488,18 @@ void x264_predict_16x16_init_mmx( int cpu, x264_predict_t pf[7] )
     pf[I_PRED_16x16_DC]      = predict_16x16_dc_mmxext;
     pf[I_PRED_16x16_DC_TOP]  = predict_16x16_dc_top_mmxext;
     pf[I_PRED_16x16_P]       = predict_16x16_p_mmxext;
-    if( !(cpu&X264_CPU_SSE2) || (cpu&X264_CPU_3DNOW) )
+    pf[I_PRED_16x16_H]       = predict_16x16_h_mmxext;
+    if( !(cpu&X264_CPU_SSE2) )
         return;
     pf[I_PRED_16x16_DC]     = predict_16x16_dc_sse2;
-    pf[I_PRED_16x16_DC_TOP] = predict_16x16_dc_top_sse2;
     pf[I_PRED_16x16_V]      = predict_16x16_v_sse2;
+    if( cpu&X264_CPU_SSE2_IS_SLOW )
+        return;
+    pf[I_PRED_16x16_DC_TOP] = predict_16x16_dc_top_sse2;
     pf[I_PRED_16x16_P]      = predict_16x16_p_sse2;
+    if( !(cpu&X264_CPU_SSSE3) )
+        return;
+    pf[I_PRED_16x16_H]      = predict_16x16_h_ssse3;
 }
 
 void x264_predict_8x8c_init_mmx( int cpu, x264_predict_t pf[7] )
@@ -520,15 +507,18 @@ void x264_predict_8x8c_init_mmx( int cpu, x264_predict_t pf[7] )
     if( !(cpu&X264_CPU_MMX) )
         return;
 #ifdef ARCH_X86_64
-    pf[I_PRED_CHROMA_H]       = predict_8x8c_h;
     pf[I_PRED_CHROMA_DC_LEFT] = predict_8x8c_dc_left;
     pf[I_PRED_CHROMA_DC_TOP]  = predict_8x8c_dc_top;
 #endif
     pf[I_PRED_CHROMA_V]       = predict_8x8c_v_mmx;
     if( !(cpu&X264_CPU_MMXEXT) )
         return;
+    pf[I_PRED_CHROMA_H]       = predict_8x8c_h_mmxext;
     pf[I_PRED_CHROMA_P]       = predict_8x8c_p_mmxext;
     pf[I_PRED_CHROMA_DC]      = predict_8x8c_dc_mmxext;
+    if( !(cpu&X264_CPU_SSSE3) )
+        return;
+    pf[I_PRED_CHROMA_H]       = predict_8x8c_h_ssse3;
 }
 
 void x264_predict_8x8_init_mmx( int cpu, x264_predict8x8_t pf[12] )
@@ -536,6 +526,7 @@ void x264_predict_8x8_init_mmx( int cpu, x264_predict8x8_t pf[12] )
     if( !(cpu&X264_CPU_MMXEXT) )
         return;
     pf[I_PRED_8x8_V]   = predict_8x8_v_mmxext;
+    pf[I_PRED_8x8_H]   = predict_8x8_h_mmxext;
     pf[I_PRED_8x8_DC]  = predict_8x8_dc_mmxext;
     pf[I_PRED_8x8_DC_TOP] = predict_8x8_dc_top_mmxext;
     pf[I_PRED_8x8_DC_LEFT]= predict_8x8_dc_left_mmxext;
@@ -565,4 +556,5 @@ void x264_predict_4x4_init_mmx( int cpu, x264_predict_t pf[12] )
         return;
     pf[I_PRED_4x4_DDL] = predict_4x4_ddl_mmxext;
     pf[I_PRED_4x4_VL]  = predict_4x4_vl_mmxext;
+    pf[I_PRED_4x4_DC]  = predict_4x4_dc_mmxext;
 }
