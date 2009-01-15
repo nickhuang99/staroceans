@@ -3,6 +3,8 @@
 # Uncomment this to turn on verbose mode.
 #export DH_VERBOSE=1
 
+include /usr/share/quilt/quilt.make
+
 # This has to be exported to make some magic below work.
 export DH_OPTIONS
 
@@ -22,6 +24,7 @@ endif
 confflags = --enable-pthread --prefix=/usr --enable-debug 
 
 CFLAGS = -Wall -g
+LDFLAGS = -Wl,--as-needed
 
 ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
 	CFLAGS += -O0
@@ -30,12 +33,10 @@ else
 endif
 
 build: build-stamp
-build-stamp:
+build-stamp: debian/stamp-patched
 	dh_testdir
 
 	# Build static lib
-	QUILT_PATCHES=debian/patches quilt push -a || test $$? = 2
-
 #	$(MAKE) clean
 	CFLAGS="$(CFLAGS)" ./configure $(confflags)
 	$(MAKE) -j $(NCPUS) libx264.a
@@ -47,12 +48,13 @@ build-stamp:
 	$(MAKE) clean
 
 	CFLAGS="$(CFLAGS)" ./configure $(confflags) --enable-shared \
-	--enable-pic --enable-gtk --enable-visualize --enable-mp4-output
+	--enable-pic --enable-visualize --enable-mp4-output
 
 	$(MAKE) -j $(NCPUS)
 
 	# Restore static lib
 	mv libx264.a.bak libx264.a
+
 	touch $@
 
 clean:
@@ -64,21 +66,19 @@ clean:
 
 	rm -f libx264.a.bak
 
-	QUILT_PATCHES=debian/patches quilt pop -a -R || test $$? = 2
+	debian/rules unpatch
 
 	dh_clean
 
 install:
 	dh_testdir
 	dh_testroot
-	dh_clean -k
+	dh_prep
 	dh_installdirs
 
 	$(MAKE) install DESTDIR=$(CURDIR)/debian/tmp
 
-	dh_install --fail-missing --sourcedir=debian/tmp -Xx264gtk -Xx264_gtk
-
-	cp gtk/x264_gtk_encode debian/x264/usr/bin
+	dh_install --fail-missing --sourcedir=debian/tmp
 
 binary-common:
 	dh_testdir

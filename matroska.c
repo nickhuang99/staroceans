@@ -1,10 +1,7 @@
 /*****************************************************************************
  * matroska.c:
  *****************************************************************************
- * Copyright (C) 2005 x264 project
- * $Id: $
- *
- * Authors: Mike Matsnev
+ * Copyright (C) 2005 Mike Matsnev
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,7 +15,7 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111, USA.
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02111, USA.
  *****************************************************************************/
 
 #include <stdlib.h>
@@ -410,7 +407,7 @@ static int mk_closeCluster(mk_Writer *w) {
   return 0;
 }
 
-int	  mk_flushFrame(mk_Writer *w) {
+static int mk_flushFrame(mk_Writer *w) {
   int64_t	delta, ref = 0;
   unsigned	fsize, bgsize;
   unsigned char	c_delta_flags[3];

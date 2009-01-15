@@ -1,7 +1,10 @@
 /*****************************************************************************
  * muxers.c: h264 file i/o plugins
  *****************************************************************************
- * Copyright (C) 2003-2006 x264 project
+ * Copyright (C) 2003-2008 x264 project
+ *
+ * Authors: Laurent Aimar <fenrir@via.ecp.fr>
+ *          Loren Merritt <lorenm@u.washington.edu>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -15,7 +18,7 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111, USA.
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02111, USA.
  *****************************************************************************/
 
 #include "common/common.h"
@@ -213,7 +216,8 @@ int open_file_y4m( char *psz_filename, hnd_t *p_handle, x264_param_t *p_param )
             tokstart = strchr(tokstart, 0x20);
             break;
         case 'A': /* Pixel aspect - 0:0 if unknown */
-            if( sscanf(tokstart, "%d:%d", &n, &d) == 2 && n && d )
+            /* Don't override the aspect ratio if sar has been explicitly set on the commandline. */
+            if( sscanf(tokstart, "%d:%d", &n, &d) == 2 && n && d && !p_param->vui.i_sar_width && !p_param->vui.i_sar_height )
             {
                 x264_reduce_fraction( &n, &d );
                 p_param->vui.i_sar_width = n;
@@ -282,15 +286,15 @@ int read_frame_y4m( x264_picture_t *p_pic, hnd_t handle, int i_frame )
     /* Read frame header - without terminating '\n' */
     if (fread(header, 1, slen, h->fh) != slen)
         return -1;
-    
+
     header[slen] = 0;
     if (strncmp(header, Y4M_FRAME_MAGIC, slen))
     {
-        fprintf(stderr, "Bad header magic (%08X <=> %s)\n",
+        fprintf(stderr, "Bad header magic (%"PRIx32" <=> %s)\n",
                 *((uint32_t*)header), header);
         return -1;
     }
-  
+
     /* Skip most of it */
     while (i<MAX_FRAME_HEADER && fgetc(h->fh) != '\n')
         i++;
@@ -423,6 +427,7 @@ typedef struct {
     x264_pthread_t tid;
     int next_frame;
     int frame_total;
+    int in_progress;
     struct thread_input_arg_t *next_args;
 } thread_input_t;
 
@@ -440,6 +445,7 @@ int open_file_thread( char *psz_filename, hnd_t *p_handle, x264_param_t *p_param
     h->p_read_frame = p_read_frame;
     h->p_close_infile = p_close_infile;
     h->p_handle = *p_handle;
+    h->in_progress = 0;
     h->next_frame = -1;
     h->next_args = malloc(sizeof(thread_input_arg_t));
     h->next_args->h = h;
@@ -456,7 +462,7 @@ int get_frame_total_thread( hnd_t handle )
     return h->frame_total;
 }
 
-void read_frame_thread_int( thread_input_arg_t *i )
+static void read_frame_thread_int( thread_input_arg_t *i )
 {
     i->status = i->h->p_read_frame( i->pic, i->h->p_handle, i->i_frame );
 }
@@ -471,6 +477,7 @@ int read_frame_thread( x264_picture_t *p_pic, hnd_t handle, int i_frame )
     {
         x264_pthread_join( h->tid, &stuff );
         ret |= h->next_args->status;
+        h->in_progress = 0;
     }
 
     if( h->next_frame == i_frame )
@@ -488,6 +495,7 @@ int read_frame_thread( x264_picture_t *p_pic, hnd_t handle, int i_frame )
         h->next_args->i_frame = i_frame+1;
         h->next_args->pic = &h->pic;
         x264_pthread_create( &h->tid, NULL, (void*)read_frame_thread_int, h->next_args );
+        h->in_progress = 1;
     }
     else
         h->next_frame = -1;
@@ -500,6 +508,9 @@ int close_file_thread( hnd_t handle )
     thread_input_t *h = handle;
     h->p_close_infile( h->p_handle );
     x264_picture_clean( &h->pic );
+    if( h->in_progress )
+        x264_pthread_join( h->tid, NULL );
+    free( h->next_args );
     free( h );
     return 0;
 }
@@ -558,7 +569,7 @@ typedef struct
 } mp4_t;
 
 
-void recompute_bitrate_mp4(GF_ISOFile *p_file, int i_track)
+static void recompute_bitrate_mp4(GF_ISOFile *p_file, int i_track)
 {
     u32 i, count, di, timescale, time_wnd, rate;
     u64 offset;
@@ -676,6 +687,18 @@ int set_param_mp4( hnd_t handle, x264_param_t *p_param )
     gf_isom_set_visual_info(p_mp4->p_file, p_mp4->i_track, p_mp4->i_descidx,
         p_param->i_width, p_param->i_height);
 
+    if( p_param->vui.i_sar_width && p_param->vui.i_sar_height )
+    {
+        uint64_t dw = p_param->i_width << 16;
+        uint64_t dh = p_param->i_height << 16;
+        double sar = (double)p_param->vui.i_sar_width / p_param->vui.i_sar_height;
+        if( sar > 1.0 )
+            dw *= sar ;
+        else
+            dh /= sar;
+        gf_isom_set_track_layout_info( p_mp4->p_file, p_mp4->i_track, dw, dh, 0, 0, 0 );
+    }
+
     p_mp4->p_sample->data = (char *)malloc(p_param->i_width * p_param->i_height * 3 / 2);
     if (p_mp4->p_sample->data == NULL)
         return -1;
@@ -789,7 +812,7 @@ typedef struct
     char      b_writing_frame;
 } mkv_t;
 
-int write_header_mkv( mkv_t *p_mkv )
+static int write_header_mkv( mkv_t *p_mkv )
 {
     int       ret;
     uint8_t   *avcC;

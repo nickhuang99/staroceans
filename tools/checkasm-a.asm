@@ -1,5 +1,5 @@
 ;*****************************************************************************
-;* checkasm-32.asm
+;* checkasm-a.asm
 ;*****************************************************************************
 ;* Copyright (C) 2008 Loren Merritt <lorenm@u.washington.edu>
 ;*
@@ -15,7 +15,7 @@
 ;*
 ;* You should have received a copy of the GNU General Public License
 ;* along with this program; if not, write to the Free Software
-;* Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111, USA.
+;* Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02111, USA.
 ;*****************************************************************************
 
 %include "x86inc.asm"
@@ -29,7 +29,8 @@ SECTION .text
 cextern printf
 
 ; max number of args used by any x264 asm function.
-%define max_args 8
+; (max_args % 4) must equal 3 for stack alignment
+%define max_args 11
 
 ; just random numbers to reduce the chance of incidental match
 %define n3 dword 0x6549315c
@@ -37,6 +38,7 @@ cextern printf
 %define n5 dword 0xb78d0d1d
 %define n6 dword 0x33627ba7
 
+%ifndef ARCH_X86_64
 ;-----------------------------------------------------------------------------
 ; long x264_checkasm_call( long (*func)(), int *ok, ... )
 ;-----------------------------------------------------------------------------
@@ -59,7 +61,6 @@ cglobal x264_checkasm_call, 1,7
     or   r3, r5
     jz .ok
     mov  r3, eax
-    picgetgot r1
     lea  r1, [error_message GLOBAL]
     push r1
     xor  eax, eax
@@ -70,3 +71,17 @@ cglobal x264_checkasm_call, 1,7
     mov  eax, r3
 .ok:
     RET
+%endif ; ARCH_X86_64
+
+;-----------------------------------------------------------------------------
+; int x264_stack_pagealign( int (*func)(), int align )
+;-----------------------------------------------------------------------------
+cglobal x264_stack_pagealign, 2,2
+    push rbp
+    mov  rbp, rsp
+    and  rsp, ~0xfff
+    sub  rsp, r1
+    call r0
+    leave
+    RET
+

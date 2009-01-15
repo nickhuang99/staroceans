@@ -1,3 +1,49 @@
+x264 (1:0.svn20081230-0.0ubuntu1) jaunty; urgency=low
+
+  * Merge from Debian multimedia (LP: #243451), remaining Ubuntu changes:
+    - b-d on yasm on lpia.
+
+ -- Lionel Le Folgoc <mrpouit@ubuntu.com>  Thu, 15 Jan 2009 23:15:42 +0100
+
+x264 (1:0.svn20081230-0.0) unstable; urgency=low
+
+  * New git release.
+
+ -- Christian Marillat <marillat@debian.org>  Tue, 30 Dec 2008 16:11:33 +0100
+
+x264 (1:0.svn20081210-0.0) unstable; urgency=low
+
+  * Net git release.
+  * Now yasm is the default assembler.
+  * The GTK frontend is gone.
+
+ -- Christian Marillat <marillat@debian.org>  Wed, 10 Dec 2008 14:40:45 +0100
+
+x264 (1:0.svn20080712-0.1) unstable; urgency=high
+
+  * Seems to be a problem with the previous release (Segfault) that I'm
+    unable to reproduce, so back to this version for Lenny.
+
+ -- Christian Marillat <marillat@debian.org>  Sat, 13 Sep 2008 17:53:03 +0200
+
+x264 (0.svn20080828-0.0) unstable; urgency=low
+
+  * New git release.
+
+ -- Christian Marillat <marillat@debian.org>  Thu, 28 Aug 2008 12:59:18 +0200
+
+x264 (0.svn20080712-0.0) unstable; urgency=low
+
+  * New git release.
+
+ -- Christian Marillat <marillat@debian.org>  Sat, 12 Jul 2008 23:13:24 +0200
+
+x264 (0.svn20080616-0.0) unstable; urgency=low
+
+  * New git release.
+
+ -- Christian Marillat <marillat@debian.org>  Mon, 16 Jun 2008 15:26:32 +0200
+
 x264 (1:0.svn20080408-0.0ubuntu1) intrepid; urgency=low
 
   * Merge from debian-multimedia. Remaining Ubuntu changes:

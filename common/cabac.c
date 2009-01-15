@@ -1,10 +1,10 @@
 /*****************************************************************************
  * cabac.c: h264 encoder library
  *****************************************************************************
- * Copyright (C) 2003 Laurent Aimar
- * $Id: cabac.c,v 1.1 2004/06/03 19:27:06 fenrir Exp $
+ * Copyright (C) 2003-2008 x264 project
  *
  * Authors: Laurent Aimar <fenrir@via.ecp.fr>
+ *          Loren Merritt <lorenm@u.washington.edu>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,7 +18,7 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111, USA.
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02111, USA.
  *****************************************************************************/
 
 #include "common.h"
@@ -742,41 +742,6 @@ const uint8_t x264_cabac_renorm_shift[64]= {
  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 };
 
-static const uint8_t x264_cabac_probability[128] =
-{
-    FIX8(0.9812), FIX8(0.9802), FIX8(0.9792), FIX8(0.9781),
-    FIX8(0.9769), FIX8(0.9757), FIX8(0.9744), FIX8(0.9730),
-    FIX8(0.9716), FIX8(0.9700), FIX8(0.9684), FIX8(0.9667),
-    FIX8(0.9650), FIX8(0.9631), FIX8(0.9611), FIX8(0.9590),
-    FIX8(0.9568), FIX8(0.9545), FIX8(0.9521), FIX8(0.9495),
-    FIX8(0.9468), FIX8(0.9440), FIX8(0.9410), FIX8(0.9378),
-    FIX8(0.9345), FIX8(0.9310), FIX8(0.9273), FIX8(0.9234),
-    FIX8(0.9193), FIX8(0.9150), FIX8(0.9105), FIX8(0.9057),
-    FIX8(0.9006), FIX8(0.8953), FIX8(0.8897), FIX8(0.8838),
-    FIX8(0.8776), FIX8(0.8710), FIX8(0.8641), FIX8(0.8569),
-    FIX8(0.8492), FIX8(0.8411), FIX8(0.8326), FIX8(0.8237),
-    FIX8(0.8143), FIX8(0.8043), FIX8(0.7938), FIX8(0.7828),
-    FIX8(0.7712), FIX8(0.7590), FIX8(0.7461), FIX8(0.7325),
-    FIX8(0.7182), FIX8(0.7031), FIX8(0.6872), FIX8(0.6705),
-    FIX8(0.6528), FIX8(0.6343), FIX8(0.6147), FIX8(0.5941),
-    FIX8(0.5724), FIX8(0.5495), FIX8(0.5254), FIX8(0.5000),
-    FIX8(0.5000), FIX8(0.4746), FIX8(0.4505), FIX8(0.4276),
-    FIX8(0.4059), FIX8(0.3853), FIX8(0.3657), FIX8(0.3472),
-    FIX8(0.3295), FIX8(0.3128), FIX8(0.2969), FIX8(0.2818),
-    FIX8(0.2675), FIX8(0.2539), FIX8(0.2410), FIX8(0.2288),
-    FIX8(0.2172), FIX8(0.2062), FIX8(0.1957), FIX8(0.1857),
-    FIX8(0.1763), FIX8(0.1674), FIX8(0.1589), FIX8(0.1508),
-    FIX8(0.1431), FIX8(0.1359), FIX8(0.1290), FIX8(0.1224),
-    FIX8(0.1162), FIX8(0.1103), FIX8(0.1047), FIX8(0.0994),
-    FIX8(0.0943), FIX8(0.0895), FIX8(0.0850), FIX8(0.0807),
-    FIX8(0.0766), FIX8(0.0727), FIX8(0.0690), FIX8(0.0655),
-    FIX8(0.0622), FIX8(0.0590), FIX8(0.0560), FIX8(0.0532),
-    FIX8(0.0505), FIX8(0.0479), FIX8(0.0455), FIX8(0.0432),
-    FIX8(0.0410), FIX8(0.0389), FIX8(0.0369), FIX8(0.0350),
-    FIX8(0.0333), FIX8(0.0316), FIX8(0.0300), FIX8(0.0284),
-    FIX8(0.0270), FIX8(0.0256), FIX8(0.0243), FIX8(0.0231),
-    FIX8(0.0219), FIX8(0.0208), FIX8(0.0198), FIX8(0.0187)
-};
 /* -ln2(probability) */
 #define F(a,b) {FIX8(a),FIX8(b)}
 const uint16_t x264_cabac_entropy[128][2] =
@@ -866,8 +831,6 @@ static inline void x264_cabac_putbyte( x264_cabac_t *cb )
         {
             int carry = out >> 8;
             int bytes_outstanding = cb->i_bytes_outstanding;
-            if( cb->p + bytes_outstanding + 1 >= cb->p_end )
-                return;
             // this can't modify before the beginning of the stream because
             // that would correspond to a probability > 1.
             // it will write before the beginning of the stream, which is ok
@@ -895,8 +858,7 @@ static inline void x264_cabac_encode_renorm( x264_cabac_t *cb )
     x264_cabac_putbyte( cb );
 }
 
-#ifndef HAVE_MMX
-void x264_cabac_encode_decision( x264_cabac_t *cb, int i_ctx, int b )
+void x264_cabac_encode_decision_c( x264_cabac_t *cb, int i_ctx, int b )
 {
     int i_state = cb->state[i_ctx];
     int i_range_lps = x264_cabac_range_lps[i_state][(cb->i_range>>6)&0x03];
@@ -909,7 +871,6 @@ void x264_cabac_encode_decision( x264_cabac_t *cb, int i_ctx, int b )
     cb->state[i_ctx] = x264_cabac_transition[i_state][b];
     x264_cabac_encode_renorm( cb );
 }
-#endif
 
 void x264_cabac_encode_bypass( x264_cabac_t *cb, int b )
 {
@@ -956,9 +917,6 @@ void x264_cabac_encode_flush( x264_t *h, x264_cabac_t *cb )
     cb->i_low |= (0x35a4e4f5 >> (h->i_frame & 31) & 1) << 10;
     cb->i_queue = 8;
     x264_cabac_putbyte( cb );
-
-    if( cb->p + cb->i_bytes_outstanding + 1 >= cb->p_end )
-        return; //FIXME throw an error instead of silently truncating the frame
 
     while( cb->i_bytes_outstanding > 0 )
     {
