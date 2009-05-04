@@ -1,0 +1,14 @@
+Index: x264-0.svn20090115/Makefile
+===================================================================
+--- x264-0.svn20090115.orig/Makefile	2009-01-15 18:31:49.000000000 +0100
++++ x264-0.svn20090115/Makefile	2009-01-15 22:05:51.000000000 +0100
+@@ -80,7 +80,8 @@
+ $(SONAME): .depend $(OBJS) $(OBJASM)
+ 	$(CC) -shared -o $@ $(OBJS) $(OBJASM) $(SOFLAGS) $(LDFLAGS)
+ 
+-x264$(EXE): $(OBJCLI) libx264.a 
++x264$(EXE): $(SONAME)
++x264$(EXE): $(OBJCLI)
+ 	$(CC) -o $@ $+ $(LDFLAGS)
+ 
+ checkasm: tools/checkasm.o libx264.a

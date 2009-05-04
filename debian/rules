@@ -37,18 +37,17 @@ build-stamp: debian/stamp-patched
 	dh_testdir
 
 	# Build static lib
-#	$(MAKE) clean
 	CFLAGS="$(CFLAGS)" ./configure $(confflags)
 	$(MAKE) -j $(NCPUS) libx264.a
 
 	# Backup static lib
 	mv libx264.a libx264.a.bak
 
-	# Build shared lib + GTK frontend
+	# Build shared lib
 	$(MAKE) clean
 
 	CFLAGS="$(CFLAGS)" ./configure $(confflags) --enable-shared \
-	--enable-pic --enable-visualize --enable-mp4-output
+	--enable-pic --enable-visualize
 
 	$(MAKE) -j $(NCPUS)
 
@@ -83,7 +82,7 @@ install:
 binary-common:
 	dh_testdir
 	dh_testroot
-	dh_installchangelogs ChangeLog
+	dh_installchangelogs
 	dh_installdocs
 	dh_installexamples
 	dh_installman debian/x264.1

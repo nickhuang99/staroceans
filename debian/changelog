@@ -1,3 +1,50 @@
+x264 (1:0.svn20090502-0.0ubuntu1) karmic; urgency=low
+
+  * Merge from debian-multimedia, Ubuntu remaining changes:
+    - Build-Depends on yasm for lpia.
+
+ -- Alessio Treglia <quadrispro@ubuntu.com>  Mon, 04 May 2009 23:15:42 +0200
+
+x264 (1:0.svn20090502-0.0) unstable; urgency=low
+
+  * New git release.
+
+ -- Christian Marillat <marillat@debian.org>  Sat, 02 May 2009 10:34:20 +0200
+
+x264 (1:0.svn20090413-0.0) unstable; urgency=low
+
+  * New git release.
+
+ -- Christian Marillat <marillat@debian.org>  Mon, 13 Apr 2009 15:43:31 +0200
+
+x264 (1:0.svn20090327-0.1) unstable; urgency=low
+
+  * New patch to fix powerpc build.
+
+ -- Christian Marillat <marillat@debian.org>  Sat, 28 Mar 2009 14:12:38 +0100
+
+x264 (1:0.svn20090327-0.0) unstable; urgency=low
+
+  * New git release.
+  * New library soname (67).
+  * Don't Build-Depends on libgpac-dev (circulary dependency with ffmpeg,
+    gpac and x264) and remove --enable-mp4-output.
+
+ -- Christian Marillat <marillat@debian.org>  Fri, 27 Mar 2009 15:02:02 +0100
+
+x264 (1:0.svn20090222-0.0) unstable; urgency=low
+
+  * New git release.
+  * New library soname (66).
+
+ -- Christian Marillat <marillat@debian.org>  Sun, 22 Feb 2009 09:07:29 +0100
+
+x264 (1:0.svn20090115-0.0) unstable; urgency=low
+
+  * New git release.
+
+ -- Christian Marillat <marillat@debian.org>  Thu, 15 Jan 2009 18:22:50 +0100
+
 x264 (1:0.svn20081230-0.0ubuntu1) jaunty; urgency=low
 
   * Merge from Debian multimedia (LP: #243451), remaining Ubuntu changes:
