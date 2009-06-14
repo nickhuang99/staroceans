@@ -56,18 +56,12 @@ build-stamp: debian/stamp-patched
 
 	touch $@
 
-clean:
+clean: clean-real unpatch
+clean-real:
 	dh_testdir
 	dh_testroot
-	rm -f build-stamp
-
 	[ ! -f Makefile ] || $(MAKE) distclean
-
-	rm -f libx264.a.bak
-
-	debian/rules unpatch
-
-	dh_clean
+	dh_clean build-stamp libx264.a.bak
 
 install:
 	dh_testdir
