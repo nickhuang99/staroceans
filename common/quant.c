@@ -36,35 +36,41 @@
         (coef) = (f + (coef)) * (mf) >> 16; \
     else \
         (coef) = - ((f - (coef)) * (mf) >> 16); \
+    nz |= (coef); \
 }
 
-static void quant_8x8( int16_t dct[8][8], uint16_t mf[64], uint16_t bias[64] )
+static int quant_8x8( int16_t dct[8][8], uint16_t mf[64], uint16_t bias[64] )
 {
-    int i;
+    int i, nz = 0;
     for( i = 0; i < 64; i++ )
         QUANT_ONE( dct[0][i], mf[i], bias[i] );
+    return !!nz;
 }
 
-static void quant_4x4( int16_t dct[4][4], uint16_t mf[16], uint16_t bias[16] )
+static int quant_4x4( int16_t dct[4][4], uint16_t mf[16], uint16_t bias[16] )
 {
-    int i;
+    int i, nz = 0;
     for( i = 0; i < 16; i++ )
         QUANT_ONE( dct[0][i], mf[i], bias[i] );
+    return !!nz;
 }
 
-static void quant_4x4_dc( int16_t dct[4][4], int mf, int bias )
+static int quant_4x4_dc( int16_t dct[4][4], int mf, int bias )
 {
-    int i;
+    int i, nz = 0;
     for( i = 0; i < 16; i++ )
         QUANT_ONE( dct[0][i], mf, bias );
+    return !!nz;
 }
 
-static void quant_2x2_dc( int16_t dct[2][2], int mf, int bias )
+static int quant_2x2_dc( int16_t dct[2][2], int mf, int bias )
 {
+    int nz = 0;
     QUANT_ONE( dct[0][0], mf, bias );
     QUANT_ONE( dct[0][1], mf, bias );
     QUANT_ONE( dct[0][2], mf, bias );
     QUANT_ONE( dct[0][3], mf, bias );
+    return !!nz;
 }
 
 #define DEQUANT_SHL( x ) \
@@ -352,6 +358,11 @@ void x264_quant_init( x264_t *h, int cpu, x264_quant_function_t *pf )
 #endif
         pf->coeff_last[DCT_CHROMA_DC] = x264_coeff_last4_mmxext;
         pf->coeff_level_run[DCT_CHROMA_DC] = x264_coeff_level_run4_mmxext;
+        if( cpu&X264_CPU_LZCNT )
+        {
+            pf->coeff_last[DCT_CHROMA_DC] = x264_coeff_last4_mmxext_lzcnt;
+            pf->coeff_level_run[DCT_CHROMA_DC] = x264_coeff_level_run4_mmxext_lzcnt;
+        }
     }
 
     if( cpu&X264_CPU_SSE2 )
@@ -376,6 +387,14 @@ void x264_quant_init( x264_t *h, int cpu, x264_quant_function_t *pf )
         pf->coeff_last[DCT_LUMA_8x8] = x264_coeff_last64_sse2;
         pf->coeff_level_run[ DCT_LUMA_AC] = x264_coeff_level_run15_sse2;
         pf->coeff_level_run[DCT_LUMA_4x4] = x264_coeff_level_run16_sse2;
+        if( cpu&X264_CPU_LZCNT )
+        {
+            pf->coeff_last[ DCT_LUMA_AC] = x264_coeff_last15_sse2_lzcnt;
+            pf->coeff_last[DCT_LUMA_4x4] = x264_coeff_last16_sse2_lzcnt;
+            pf->coeff_last[DCT_LUMA_8x8] = x264_coeff_last64_sse2_lzcnt;
+            pf->coeff_level_run[ DCT_LUMA_AC] = x264_coeff_level_run15_sse2_lzcnt;
+            pf->coeff_level_run[DCT_LUMA_4x4] = x264_coeff_level_run16_sse2_lzcnt;
+        }
     }
 
     if( cpu&X264_CPU_SSSE3 )
@@ -388,6 +407,13 @@ void x264_quant_init( x264_t *h, int cpu, x264_quant_function_t *pf )
         pf->decimate_score15 = x264_decimate_score15_ssse3;
         pf->decimate_score16 = x264_decimate_score16_ssse3;
         pf->decimate_score64 = x264_decimate_score64_ssse3;
+    }
+
+    if( cpu&X264_CPU_SSE4 )
+    {
+        pf->quant_4x4_dc = x264_quant_4x4_dc_sse4;
+        pf->quant_4x4 = x264_quant_4x4_sse4;
+        pf->quant_8x8 = x264_quant_8x8_sse4;
     }
 #endif // HAVE_MMX
 

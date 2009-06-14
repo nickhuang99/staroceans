@@ -74,8 +74,8 @@ DEP  = depend
 default: $(DEP) x264$(EXE)
 
 libx264.a: .depend $(OBJS) $(OBJASM)
-	ar rc libx264.a $(OBJS) $(OBJASM)
-	ranlib libx264.a
+	$(AR) rc libx264.a $(OBJS) $(OBJASM)
+	$(RANLIB) libx264.a
 
 $(SONAME): .depend $(OBJS) $(OBJASM)
 	$(CC) -shared -o $@ $(OBJS) $(OBJASM) $(SOFLAGS) $(LDFLAGS)
@@ -89,15 +89,14 @@ checkasm: tools/checkasm.o libx264.a
 %.o: %.asm
 	$(AS) $(ASFLAGS) -o $@ $<
 # delete local/anonymous symbols, so they don't show up in oprofile
-	-@ strip -x $@
+	-@ $(STRIP) -x $@
 
 .depend: config.mak
 	rm -f .depend
-# Hacky - because gcc 2.9x doesn't have -MT
-	$(foreach SRC, $(SRCS) $(SRCCLI), ( $(ECHON) "`dirname $(SRC)`/" && $(CC) $(CFLAGS) $(ALTIVECFLAGS) $(SRC) -MM -g0 ) 1>> .depend;)
+	$(foreach SRC, $(SRCS) $(SRCCLI), $(CC) $(CFLAGS) $(ALTIVECFLAGS) $(SRC) -MT $(SRC:%.c=%.o) -MM -g0 1>> .depend;)
 
-config.mak: $(wildcard .svn/entries */.svn/entries */*/.svn/entries)
-	./configure $(CONFIGURE_ARGS)
+config.mak:
+	./configure
 
 depend: .depend
 ifneq ($(wildcard .depend),)
@@ -106,11 +105,11 @@ endif
 
 SRC2 = $(SRCS) $(SRCCLI)
 # These should cover most of the important codepaths
-OPT0 = --crf 30 -b1 -m1 -r1 --me dia --no-cabac --pre-scenecut --direct temporal --no-ssim --no-psnr
+OPT0 = --crf 30 -b1 -m1 -r1 --me dia --no-cabac --direct temporal --no-ssim --no-psnr
 OPT1 = --crf 16 -b2 -m3 -r3 --me hex -8 --direct spatial --no-dct-decimate
 OPT2 = --crf 26 -b2 -m5 -r2 --me hex -8 -w --cqm jvt --nr 100
 OPT3 = --crf 18 -b3 -m9 -r5 --me umh -8 -t1 -A all --mixed-refs -w --b-pyramid --direct auto --no-fast-pskip
-OPT4 = --crf 22 -b3 -m7 -r4 --me esa -8 -t2 -A all --mixed-refs
+OPT4 = --crf 22 -b3 -m7 -r4 --me esa -8 -t2 -A all --mixed-refs --psy-rd 1.0:1.0
 OPT5 = --frames 50 --crf 24 -b3 -m9 -r3 --me tesa -8 -t1 --mixed-refs
 OPT6 = --frames 50 -q0 -m9 -r2 --me hex -Aall
 OPT7 = --frames 50 -q0 -m2 -r1 --me hex --no-cabac
@@ -136,7 +135,7 @@ endif
 
 clean:
 	rm -f $(OBJS) $(OBJASM) $(OBJCLI) $(SONAME) *.a x264 x264.exe .depend TAGS
-	rm -f checkasm checkasm.exe tools/checkasm.o
+	rm -f checkasm checkasm.exe tools/checkasm.o tools/checkasm-a.o
 	rm -f $(SRC2:%.c=%.gcda) $(SRC2:%.c=%.gcno)
 	- sed -e 's/ *-fprofile-\(generate\|use\)//g' config.mak > config.mak2 && mv config.mak2 config.mak
 
@@ -151,7 +150,7 @@ install: x264$(EXE) $(SONAME)
 	install -m 644 libx264.a $(DESTDIR)$(libdir)
 	install -m 644 x264.pc $(DESTDIR)$(libdir)/pkgconfig
 	install x264$(EXE) $(DESTDIR)$(bindir)
-	ranlib $(DESTDIR)$(libdir)/libx264.a
+	$(RANLIB) $(DESTDIR)$(libdir)/libx264.a
 ifeq ($(SYS),MINGW)
 	$(if $(SONAME), install -m 755 $(SONAME) $(DESTDIR)$(bindir))
 else

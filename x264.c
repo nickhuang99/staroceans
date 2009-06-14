@@ -165,9 +165,8 @@ static void Help( x264_param_t *defaults, int b_longhelp )
     H0( "\n" );
     H0( "  -I, --keyint <integer>      Maximum GOP size [%d]\n", defaults->i_keyint_max );
     H1( "  -i, --min-keyint <integer>  Minimum GOP size [%d]\n", defaults->i_keyint_min );
+    H1( "      --no-scenecut           Disable adaptive I-frame decision\n" );
     H1( "      --scenecut <integer>    How aggressively to insert extra I-frames [%d]\n", defaults->i_scenecut_threshold );
-    H1( "      --pre-scenecut          Faster, less precise scenecut detection.\n"
-        "                                  Required and implied by multi-threading.\n" );
     H0( "  -b, --bframes <integer>     Number of B-frames between I and P [%d]\n", defaults->i_bframe );
     H1( "      --b-adapt               Adaptive B-frame decision method [%d]\n"
         "                                  Higher values may lower threading efficiency.\n"
@@ -220,7 +219,9 @@ static void Help( x264_param_t *defaults, int b_longhelp )
         "                                  where <option> is either\n"
         "                                      q=<integer> (force QP)\n"
         "                                  or  b=<float> (bitrate multiplier)\n" );
-    H1( "      --qpfile <string>       Force frametypes and QPs\n" );
+    H1( "      --qpfile <string>       Force frametypes and QPs for some or all frames\n"
+        "                              Format of each line: framenumber frametype QP\n"
+        "                              QP of -1 lets x264 choose. Frametypes: I,i,P,B,b.\n" );
     H0( "\n" );
     H0( "Analysis:\n" );
     H0( "\n" );
@@ -231,11 +232,6 @@ static void Help( x264_param_t *defaults, int b_longhelp )
     H0( "      --direct <string>       Direct MV prediction mode [\"%s\"]\n"
         "                                  - none, spatial, temporal, auto\n",
                                        strtable_lookup( x264_direct_pred_names, defaults->analyse.i_direct_mv_pred ) );
-    H1( "      --direct-8x8 <-1|0|1>   Direct prediction size [%d]\n"
-        "                                  -  0: 4x4\n"
-        "                                  -  1: 8x8\n"
-        "                                  - -1: smallest possible according to level\n",
-                                       defaults->analyse.i_direct_8x8_inference );
     H0( "  -w, --weightb               Weighted prediction for B-frames\n" );
     H0( "      --me <string>           Integer pixel motion estimation method [\"%s\"]\n",
                                        strtable_lookup( x264_motion_est_names, defaults->analyse.i_me_method ) );
@@ -400,7 +396,7 @@ static int  Parse( int argc, char **argv,
             { "min-keyint",required_argument,NULL,'i' },
             { "keyint",  required_argument, NULL, 'I' },
             { "scenecut",required_argument, NULL, 0 },
-            { "pre-scenecut", no_argument,  NULL, 0 },
+            { "no-scenecut",no_argument,    NULL, 0 },
             { "nf",      no_argument,       NULL, 0 },
             { "no-deblock", no_argument,    NULL, 0 },
             { "filter",  required_argument, NULL, 0 },
@@ -423,7 +419,6 @@ static int  Parse( int argc, char **argv,
             { "analyse", required_argument, NULL, 0 },
             { "partitions", required_argument, NULL, 'A' },
             { "direct",  required_argument, NULL, 0 },
-            { "direct-8x8", required_argument, NULL, 0 },
             { "weightb", no_argument,       NULL, 'w' },
             { "me",      required_argument, NULL, 0 },
             { "merange", required_argument, NULL, 0 },
@@ -563,8 +558,6 @@ static int  Parse( int argc, char **argv,
                     fprintf( stderr, "x264 [error]: can't open `%s'\n", optarg );
                     return -1;
                 }
-                param->i_scenecut_threshold = -1;
-                param->i_bframe_adaptive = X264_B_ADAPT_NONE;
                 break;
             case OPT_THREAD_INPUT:
                 b_thread_input = 1;
@@ -645,7 +638,7 @@ static int  Parse( int argc, char **argv,
                     && sscanf( psz, "%ux%u", &param->i_width, &param->i_height ) == 2 )
                 {
                     if( param->i_log_level >= X264_LOG_INFO )
-                        fprintf( stderr, "x264 [info]: file name gives %dx%d\n", param->i_width, param->i_height );
+                        fprintf( stderr, "x264 [info]: %dx%d (given by file name) @ %.2f fps\n", param->i_width, param->i_height, (double)param->i_fps_num / (double)param->i_fps_den);
                     break;
                 }
             }
@@ -653,6 +646,8 @@ static int  Parse( int argc, char **argv,
         else
         {
             sscanf( argv[optind++], "%ux%u", &param->i_width, &param->i_height );
+            if( param->i_log_level >= X264_LOG_INFO )
+                fprintf( stderr, "x264 [info]: %dx%d @ %.2f fps\n", param->i_width, param->i_height, (double)param->i_fps_num / (double)param->i_fps_den);
         }
     }
 
