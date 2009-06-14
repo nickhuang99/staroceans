@@ -21,10 +21,6 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02111, USA.
  *****************************************************************************/
 
-#ifdef SYS_LINUX
-#include <altivec.h>
-#endif
-
 #include "common/common.h"
 #include "ppccommon.h"
 
@@ -101,6 +97,8 @@ PIXEL_SAD_ALTIVEC( pixel_sad_8x8_altivec,   8,  8,  2s, 1 )
  **********************************************************************/
 #define VEC_ABS(a)                            \
     a = vec_max( a, vec_sub( zero_s16v, a ) );
+
+#define VEC_ABSOLUTE(a) (vec_u16_t)vec_max( a, vec_sub( zero_s16v, a ) )
 
 /***********************************************************************
  * VEC_ADD_ABS
@@ -1634,6 +1632,79 @@ static int pixel_ssd_8x8_altivec ( uint8_t *pix1, int i_stride_pix1,
     return sum;
 }
 
+
+/****************************************************************************
+ * variance
+ ****************************************************************************/
+static int x264_pixel_var_16x16_altivec( uint8_t *pix, int i_stride )
+{
+    DECLARE_ALIGNED_16(uint32_t sum_tab[4]);
+    DECLARE_ALIGNED_16(uint32_t sqr_tab[4]);
+
+    LOAD_ZERO;
+    vec_u32_t sqr_v = zero_u32v;
+    vec_u32_t sum_v = zero_u32v;
+
+    int y;
+    for( y = 0; y < 16; ++y )
+    {
+        vec_u8_t pix0_v = vec_ld(0, pix);
+        sum_v = vec_sum4s(pix0_v, sum_v);
+        sqr_v = vec_msum(pix0_v, pix0_v, sqr_v);
+
+        pix += i_stride;
+    }
+    sum_v = (vec_u32_t)vec_sums( (vec_s32_t)sum_v, zero_s32v );
+    sqr_v = (vec_u32_t)vec_sums( (vec_s32_t)sqr_v, zero_s32v );
+    vec_ste(sum_v, 12, sum_tab);
+    vec_ste(sqr_v, 12, sqr_tab);
+
+    uint32_t sum = sum_tab[3];
+    uint32_t sqr = sqr_tab[3];
+    uint32_t var = sqr - (sum * sum >> 8);
+    return var;
+}
+
+static int x264_pixel_var_8x8_altivec( uint8_t *pix, int i_stride )
+{
+    DECLARE_ALIGNED_16(uint32_t sum_tab[4]);
+    DECLARE_ALIGNED_16(uint32_t sqr_tab[4]);
+
+    LOAD_ZERO;
+    vec_u32_t sqr_v = zero_u32v;
+    vec_u32_t sum_v = zero_u32v;
+
+    static const vec_u8_t perm_tab[] = {
+        CV(0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,  /* pix=mod16, i_stride=mod16 */
+           0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17),
+        CV(0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F,  /* pix=mod8, i_stride=mod16  */
+           0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F),
+    };
+    vec_u8_t perm = perm_tab[ ((uintptr_t)pix & 8) >> 3 ];
+
+    int y;
+    for( y = 0; y < 8; y+=2 )
+    {
+        vec_u8_t pix0_v = vec_ld(0, pix);
+        vec_u8_t pix1_v = vec_ld(i_stride, pix);
+        vec_u8_t pix_v = vec_perm(pix0_v, pix1_v, perm);
+        sum_v = vec_sum4s(pix_v, sum_v);
+        sqr_v = vec_msum(pix_v, pix_v, sqr_v);
+
+        pix += i_stride<<1;
+    }
+    sum_v = (vec_u32_t)vec_sums( (vec_s32_t)sum_v, zero_s32v );
+    sqr_v = (vec_u32_t)vec_sums( (vec_s32_t)sqr_v, zero_s32v );
+    vec_ste(sum_v, 12, sum_tab);
+    vec_ste(sqr_v, 12, sqr_tab);
+
+    uint32_t sum = sum_tab[3];
+    uint32_t sqr = sqr_tab[3];
+    uint32_t var = sqr - (sum * sum >> 6);
+    return var;
+}
+
+
 /**********************************************************************
  * SA8D routines: sum of 8x8 Hadamard transformed differences
  **********************************************************************/
@@ -1781,6 +1852,144 @@ static int pixel_sa8d_16x16_altivec( uint8_t *pix1, int i_pix1,
     return i_satd;
 }
 
+#define HADAMARD4_ALTIVEC(d0,d1,d2,d3,s0,s1,s2,s3) {\
+    vec_s16_t t0 = vec_add(s0, s1);                 \
+    vec_s16_t t1 = vec_sub(s0, s1);                 \
+    vec_s16_t t2 = vec_add(s2, s3);                 \
+    vec_s16_t t3 = vec_sub(s2, s3);                 \
+    d0 = vec_add(t0, t2);                           \
+    d2 = vec_sub(t0, t2);                           \
+    d1 = vec_add(t1, t3);                           \
+    d3 = vec_sub(t1, t3);                           \
+}
+
+#define VEC_LOAD_HIGH( p, num )                                    \
+    vec_u8_t pix8_##num = vec_ld( stride*num, p );                 \
+    vec_s16_t pix16_s##num = (vec_s16_t)vec_perm(pix8_##num, zero_u8v, perm); \
+    vec_s16_t pix16_d##num;
+
+static uint64_t pixel_hadamard_ac_altivec( uint8_t *pix, int stride, const vec_u8_t perm )
+{
+    DECLARE_ALIGNED_16( int32_t sum4_tab[4] );
+    DECLARE_ALIGNED_16( int32_t sum8_tab[4] );
+    LOAD_ZERO;
+
+    VEC_LOAD_HIGH( pix, 0 );
+    VEC_LOAD_HIGH( pix, 1 );
+    VEC_LOAD_HIGH( pix, 2 );
+    VEC_LOAD_HIGH( pix, 3 );
+    HADAMARD4_ALTIVEC(pix16_d0,pix16_d1,pix16_d2,pix16_d3,
+                      pix16_s0,pix16_s1,pix16_s2,pix16_s3);
+
+    VEC_LOAD_HIGH( pix, 4 );
+    VEC_LOAD_HIGH( pix, 5 );
+    VEC_LOAD_HIGH( pix, 6 );
+    VEC_LOAD_HIGH( pix, 7 );
+    HADAMARD4_ALTIVEC(pix16_d4,pix16_d5,pix16_d6,pix16_d7,
+                      pix16_s4,pix16_s5,pix16_s6,pix16_s7);
+
+    VEC_TRANSPOSE_8(pix16_d0, pix16_d1, pix16_d2, pix16_d3,
+                    pix16_d4, pix16_d5, pix16_d6, pix16_d7,
+                    pix16_s0, pix16_s1, pix16_s2, pix16_s3,
+                    pix16_s4, pix16_s5, pix16_s6, pix16_s7);
+
+    HADAMARD4_ALTIVEC(pix16_d0,pix16_d1,pix16_d2,pix16_d3,
+                      pix16_s0,pix16_s1,pix16_s2,pix16_s3);
+
+    HADAMARD4_ALTIVEC(pix16_d4,pix16_d5,pix16_d6,pix16_d7,
+                      pix16_s4,pix16_s5,pix16_s6,pix16_s7);
+
+    vec_u16_t addabs01 = vec_add( VEC_ABSOLUTE(pix16_d0), VEC_ABSOLUTE(pix16_d1) );
+    vec_u16_t addabs23 = vec_add( VEC_ABSOLUTE(pix16_d2), VEC_ABSOLUTE(pix16_d3) );
+    vec_u16_t addabs45 = vec_add( VEC_ABSOLUTE(pix16_d4), VEC_ABSOLUTE(pix16_d5) );
+    vec_u16_t addabs67 = vec_add( VEC_ABSOLUTE(pix16_d6), VEC_ABSOLUTE(pix16_d7) );
+
+    vec_u16_t sum4_v = vec_add(vec_add(addabs01, addabs23), vec_add(addabs45, addabs67));
+    vec_ste(vec_sums(vec_sum4s((vec_s16_t)sum4_v, zero_s32v), zero_s32v), 12, sum4_tab);
+
+    vec_s16_t tmpi0 = vec_add(pix16_d0, pix16_d4);
+    vec_s16_t tmpi4 = vec_sub(pix16_d0, pix16_d4);
+    vec_s16_t tmpi1 = vec_add(pix16_d1, pix16_d5);
+    vec_s16_t tmpi5 = vec_sub(pix16_d1, pix16_d5);
+    vec_s16_t tmpi2 = vec_add(pix16_d2, pix16_d6);
+    vec_s16_t tmpi6 = vec_sub(pix16_d2, pix16_d6);
+    vec_s16_t tmpi3 = vec_add(pix16_d3, pix16_d7);
+    vec_s16_t tmpi7 = vec_sub(pix16_d3, pix16_d7);
+
+    int sum4 = sum4_tab[3];
+
+    VEC_TRANSPOSE_8(tmpi0, tmpi1, tmpi2, tmpi3,
+                    tmpi4, tmpi5, tmpi6, tmpi7,
+                    pix16_d0, pix16_d1, pix16_d2, pix16_d3,
+                    pix16_d4, pix16_d5, pix16_d6, pix16_d7);
+
+    vec_u16_t addsum04 = vec_add( VEC_ABSOLUTE( vec_add(pix16_d0, pix16_d4) ),
+                                  VEC_ABSOLUTE( vec_sub(pix16_d0, pix16_d4) ) );
+    vec_u16_t addsum15 = vec_add( VEC_ABSOLUTE( vec_add(pix16_d1, pix16_d5) ),
+                                  VEC_ABSOLUTE( vec_sub(pix16_d1, pix16_d5) ) );
+    vec_u16_t addsum26 = vec_add( VEC_ABSOLUTE( vec_add(pix16_d2, pix16_d6) ),
+                                  VEC_ABSOLUTE( vec_sub(pix16_d2, pix16_d6) ) );
+    vec_u16_t addsum37 = vec_add( VEC_ABSOLUTE( vec_add(pix16_d3, pix16_d7) ),
+                                  VEC_ABSOLUTE( vec_sub(pix16_d3, pix16_d7) ) );
+
+    vec_u16_t sum8_v = vec_add( vec_add(addsum04, addsum15), vec_add(addsum26, addsum37) );
+    vec_ste(vec_sums(vec_sum4s((vec_s16_t)sum8_v, zero_s32v), zero_s32v), 12, sum8_tab);
+
+    int sum8 = sum8_tab[3];
+
+    DECLARE_ALIGNED_16( int16_t tmp0_4_tab[8] );
+    vec_ste(vec_add(pix16_d0, pix16_d4), 0, tmp0_4_tab);
+
+    sum4 -= tmp0_4_tab[0];
+    sum8 -= tmp0_4_tab[0];
+    return ((uint64_t)sum8<<32) + sum4;
+}
+
+
+static const vec_u8_t hadamard_permtab[] = {
+    CV(0x10,0x00,0x11,0x01, 0x12,0x02,0x13,0x03,     /* pix = mod16 */
+       0x14,0x04,0x15,0x05, 0x16,0x06,0x17,0x07 ),
+    CV(0x18,0x08,0x19,0x09, 0x1A,0x0A,0x1B,0x0B,     /* pix = mod8 */
+       0x1C,0x0C,0x1D,0x0D, 0x1E,0x0E,0x1F,0x0F )
+ };
+
+static uint64_t x264_pixel_hadamard_ac_16x16_altivec( uint8_t *pix, int stride )
+{
+    int index =  ((uintptr_t)pix & 8) >> 3;
+    vec_u8_t permh = hadamard_permtab[index];
+    vec_u8_t perml = hadamard_permtab[!index];
+    uint64_t sum = pixel_hadamard_ac_altivec( pix, stride, permh );
+    sum += pixel_hadamard_ac_altivec( pix+8, stride, perml );
+    sum += pixel_hadamard_ac_altivec( pix+8*stride, stride, permh );
+    sum += pixel_hadamard_ac_altivec( pix+8*stride+8, stride, perml );
+    return ((sum>>34)<<32) + ((uint32_t)sum>>1);
+}
+
+static uint64_t x264_pixel_hadamard_ac_16x8_altivec( uint8_t *pix, int stride )
+{
+    int index =  ((uintptr_t)pix & 8) >> 3;
+    vec_u8_t permh = hadamard_permtab[index];
+    vec_u8_t perml = hadamard_permtab[!index];
+    uint64_t sum = pixel_hadamard_ac_altivec( pix, stride, permh );
+    sum += pixel_hadamard_ac_altivec( pix+8, stride, perml );
+    return ((sum>>34)<<32) + ((uint32_t)sum>>1);
+}
+
+static uint64_t x264_pixel_hadamard_ac_8x16_altivec( uint8_t *pix, int stride )
+{
+    vec_u8_t perm = hadamard_permtab[ (((uintptr_t)pix & 8) >> 3) ];
+    uint64_t sum = pixel_hadamard_ac_altivec( pix, stride, perm );
+    sum += pixel_hadamard_ac_altivec( pix+8*stride, stride, perm );
+    return ((sum>>34)<<32) + ((uint32_t)sum>>1);
+}
+
+static uint64_t x264_pixel_hadamard_ac_8x8_altivec( uint8_t *pix, int stride ) {
+    vec_u8_t perm = hadamard_permtab[ (((uintptr_t)pix & 8) >> 3) ];
+    uint64_t sum = pixel_hadamard_ac_altivec( pix, stride, perm );
+    return ((sum>>34)<<32) + ((uint32_t)sum>>1);
+}
+
+
 /****************************************************************************
  * structural similarity metric
  ****************************************************************************/
@@ -1859,6 +2068,14 @@ void x264_pixel_altivec_init( x264_pixel_function_t *pixf )
 
     pixf->sa8d[PIXEL_16x16] = pixel_sa8d_16x16_altivec;
     pixf->sa8d[PIXEL_8x8]   = pixel_sa8d_8x8_altivec;
+
+    pixf->var[PIXEL_16x16] = x264_pixel_var_16x16_altivec;
+    pixf->var[PIXEL_8x8]   = x264_pixel_var_8x8_altivec;
+
+    pixf->hadamard_ac[PIXEL_16x16] = x264_pixel_hadamard_ac_16x16_altivec;
+    pixf->hadamard_ac[PIXEL_16x8]  = x264_pixel_hadamard_ac_16x8_altivec;
+    pixf->hadamard_ac[PIXEL_8x16]  = x264_pixel_hadamard_ac_8x16_altivec;
+    pixf->hadamard_ac[PIXEL_8x8]   = x264_pixel_hadamard_ac_8x8_altivec;
 
     pixf->ssim_4x4x2_core = ssim_4x4x2_core_altivec;
 }

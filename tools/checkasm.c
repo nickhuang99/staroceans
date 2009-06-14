@@ -80,6 +80,10 @@ static inline uint32_t read_time(void)
     uint32_t a;
     asm volatile( "rdtsc" :"=a"(a) ::"edx" );
     return a;
+#elif defined(ARCH_PPC)
+    uint32_t a;
+    asm volatile( "mftb %0" : "=r" (a) );
+    return a;
 #else
     return 0;
 #endif
@@ -147,16 +151,18 @@ static void print_bench(void)
             if( k<j ) continue;
             printf( "%s_%s%s: %"PRId64"\n", benchs[i].name,
                     b->cpu&X264_CPU_SSE4 ? "sse4" :
-                    b->cpu&X264_CPU_PHADD_IS_FAST ? "phadd" :
+                    b->cpu&X264_CPU_SHUFFLE_IS_FAST ? "fastshuffle" :
                     b->cpu&X264_CPU_SSSE3 ? "ssse3" :
                     b->cpu&X264_CPU_SSE3 ? "sse3" :
                     /* print sse2slow only if there's also a sse2fast version of the same func */
                     b->cpu&X264_CPU_SSE2_IS_SLOW && j<MAX_CPUS && b[1].cpu&X264_CPU_SSE2_IS_FAST && !(b[1].cpu&X264_CPU_SSE3) ? "sse2slow" :
                     b->cpu&X264_CPU_SSE2 ? "sse2" :
-                    b->cpu&X264_CPU_MMX ? "mmx" : "c",
+                    b->cpu&X264_CPU_MMX ? "mmx" :
+                    b->cpu&X264_CPU_ALTIVEC ? "altivec" : "c",
                     b->cpu&X264_CPU_CACHELINE_32 ? "_c32" :
                     b->cpu&X264_CPU_CACHELINE_64 ? "_c64" :
-                    b->cpu&X264_CPU_SSE_MISALIGN ? "_misalign" : "",
+                    b->cpu&X264_CPU_SSE_MISALIGN ? "_misalign" :
+                    b->cpu&X264_CPU_LZCNT ? "_lzcnt" : "",
                     ((int64_t)10*b->cycles/b->den - nop_time)/4 );
         }
 }
@@ -169,11 +175,11 @@ int x264_stack_pagealign( int (*func)(), int align );
 
 #define call_c1(func,...) func(__VA_ARGS__)
 
-#ifdef ARCH_X86
+#if defined(ARCH_X86) || defined(_WIN64)
 /* detect when callee-saved regs aren't saved.
  * needs an explicit asm check because it only sometimes crashes in normal use. */
-long x264_checkasm_call( long (*func)(), int *ok, ... );
-#define call_a1(func,...) x264_checkasm_call((long(*)())func, &ok, __VA_ARGS__)
+intptr_t x264_checkasm_call( intptr_t (*func)(), int *ok, ... );
+#define call_a1(func,...) x264_checkasm_call((intptr_t(*)())func, &ok, __VA_ARGS__)
 #else
 #define call_a1 call_c1
 #endif
@@ -222,6 +228,7 @@ static int check_pixel( int cpu_ref, int cpu_new )
     x264_predict_t predict_8x8c[4+3];
     x264_predict_t predict_4x4[9+3];
     x264_predict8x8_t predict_8x8[9+3];
+    x264_predict_8x8_filter_t predict_8x8_filter;
     DECLARE_ALIGNED_16( uint8_t edge[33] );
     uint16_t cost_mv[32];
     int ret = 0, ok, used_asm;
@@ -232,9 +239,9 @@ static int check_pixel( int cpu_ref, int cpu_new )
     x264_pixel_init( cpu_new, &pixel_asm );
     x264_predict_16x16_init( 0, predict_16x16 );
     x264_predict_8x8c_init( 0, predict_8x8c );
-    x264_predict_8x8_init( 0, predict_8x8 );
+    x264_predict_8x8_init( 0, predict_8x8, &predict_8x8_filter );
     x264_predict_4x4_init( 0, predict_4x4 );
-    x264_predict_8x8_filter( buf2+40, edge, ALL_NEIGHBORS, ALL_NEIGHBORS );
+    predict_8x8_filter( buf2+40, edge, ALL_NEIGHBORS, ALL_NEIGHBORS );
 
     // maximize sum
     for( i=0; i<256; i++ )
@@ -285,7 +292,7 @@ static int check_pixel( int cpu_ref, int cpu_new )
     TEST_PIXEL( sad_aligned, 1 );
     TEST_PIXEL( ssd, 1 );
     TEST_PIXEL( satd, 0 );
-    TEST_PIXEL( sa8d, 0 );
+    TEST_PIXEL( sa8d, 1 );
 
 #define TEST_PIXEL_X( N ) \
     for( i = 0, ok = 1, used_asm = 0; i < 7; i++ ) \
@@ -398,6 +405,9 @@ static int check_pixel( int cpu_ref, int cpu_new )
     TEST_INTRA_MBCMP( intra_sa8d_x3_8x8  , predict_8x8  , sa8d[PIXEL_8x8]  , 1, edge );
     report( "intra satd_x3 :" );
     TEST_INTRA_MBCMP( intra_sad_x3_16x16 , predict_16x16, sad [PIXEL_16x16], 0 );
+    TEST_INTRA_MBCMP( intra_sad_x3_8x8c  , predict_8x8c , sad [PIXEL_8x8]  , 0 );
+    TEST_INTRA_MBCMP( intra_sad_x3_8x8   , predict_8x8  , sad [PIXEL_8x8]  , 1, edge );
+    TEST_INTRA_MBCMP( intra_sad_x3_4x4   , predict_4x4  , sad [PIXEL_4x4]  , 0 );
     report( "intra sad_x3 :" );
 
     if( pixel_asm.ssim_4x4x2_core != pixel_ref.ssim_4x4x2_core ||
@@ -407,8 +417,8 @@ static int check_pixel( int cpu_ref, int cpu_new )
         int sums[5][4] = {{0}};
         used_asm = ok = 1;
         x264_emms();
-        res_c = x264_pixel_ssim_wxh( &pixel_c,   buf1+2, 32, buf2+2, 32, 32, 28 );
-        res_a = x264_pixel_ssim_wxh( &pixel_asm, buf1+2, 32, buf2+2, 32, 32, 28 );
+        res_c = x264_pixel_ssim_wxh( &pixel_c,   buf1+2, 32, buf2+2, 32, 32, 28, buf3 );
+        res_a = x264_pixel_ssim_wxh( &pixel_asm, buf1+2, 32, buf2+2, 32, 32, 28, buf3 );
         if( fabs(res_c - res_a) > 1e-6 )
         {
             ok = 0;
@@ -550,7 +560,9 @@ static int check_dct( int cpu_ref, int cpu_new )
     ok = 1; used_asm = 0;
     TEST_IDCT( add4x4_idct, dct4 );
     TEST_IDCT( add8x8_idct, dct4 );
+    TEST_IDCT( add8x8_idct_dc, dct4 );
     TEST_IDCT( add16x16_idct, dct4 );
+    TEST_IDCT( add16x16_idct_dc, dct4 );
     report( "add_idct4 :" );
 
     ok = 1; used_asm = 0;
@@ -627,6 +639,26 @@ static int check_dct( int cpu_ref, int cpu_new )
         call_a2( zigzag_asm.name, t2, buf2, buf4 ); \
     }
 
+#define TEST_INTERLEAVE( name, t1, t2, dct, size )   \
+    if( zigzag_asm.name != zigzag_ref.name ) \
+    { \
+        for( j=0; j<100; j++ ) \
+        { \
+            set_func_name( "zigzag_"#name"_%s", interlace?"field":"frame" );\
+            used_asm = 1; \
+            memcpy(dct, buf1, size*sizeof(int16_t));\
+            for( i=0; i<size; i++ ) \
+                dct[i] = rand()&0x1F ? 0 : dct[i]; \
+            memcpy(buf3, buf4, 10*sizeof(uint8_t)); \
+            call_c( zigzag_c.name, t1, dct, buf3 ); \
+            call_a( zigzag_asm.name, t2, dct, buf4 ); \
+            if( memcmp( t1, t2, size*sizeof(int16_t) ) || memcmp( buf3, buf4, 10*sizeof(uint8_t) ) ) \
+            { \
+                ok = 0; \
+            } \
+        } \
+    }
+
     interlace = 0;
     x264_zigzag_init( 0, &zigzag_c, 0 );
     x264_zigzag_init( cpu_ref, &zigzag_ref, 0 );
@@ -635,7 +667,6 @@ static int check_dct( int cpu_ref, int cpu_new )
     ok = 1; used_asm = 0;
     TEST_ZIGZAG_SCAN( scan_8x8, level1, level2, (void*)dct1, 64 );
     TEST_ZIGZAG_SCAN( scan_4x4, level1, level2, dct1[0], 16  );
-    TEST_ZIGZAG_SCAN( interleave_8x8_cavlc, level1, level2, (void*)dct1, 64 );
     TEST_ZIGZAG_SUB( sub_4x4, level1, level2, 16 );
     report( "zigzag_frame :" );
 
@@ -649,6 +680,10 @@ static int check_dct( int cpu_ref, int cpu_new )
     TEST_ZIGZAG_SCAN( scan_4x4, level1, level2, dct1[0], 16  );
     TEST_ZIGZAG_SUB( sub_4x4, level1, level2, 16 );
     report( "zigzag_field :" );
+
+    ok = 1; used_asm = 0;
+    TEST_INTERLEAVE( interleave_8x8_cavlc, level1, level2, dct1[0][0], 64 );
+    report( "zigzag_interleave :" );
 #undef TEST_ZIGZAG_SCAN
 #undef TEST_ZIGZAG_SUB
 
@@ -792,12 +827,13 @@ static int check_mc( int cpu_ref, int cpu_new )
         uint8_t *src = buf1+8+2*64;
         uint8_t *dstc[3] = { buf3+8, buf3+8+16*64, buf3+8+32*64 };
         uint8_t *dsta[3] = { buf4+8, buf4+8+16*64, buf4+8+32*64 };
+        void *tmp = buf3+49*64;
         set_func_name( "hpel_filter" );
         ok = 1; used_asm = 1;
         memset( buf3, 0, 4096 );
         memset( buf4, 0, 4096 );
-        call_c( mc_c.hpel_filter, dstc[0], dstc[1], dstc[2], src, 64, 48, 10 );
-        call_a( mc_a.hpel_filter, dsta[0], dsta[1], dsta[2], src, 64, 48, 10 );
+        call_c( mc_c.hpel_filter, dstc[0], dstc[1], dstc[2], src, 64, 48, 10, tmp );
+        call_a( mc_a.hpel_filter, dsta[0], dsta[1], dsta[2], src, 64, 48, 10, tmp );
         for( i=0; i<3; i++ )
             for( j=0; j<10; j++ )
                 //FIXME ideally the first pixels would match too, but they aren't actually used
@@ -950,7 +986,7 @@ static int check_quant( int cpu_ref, int cpu_new )
     DECLARE_ALIGNED_16( uint8_t cqm_buf[64] );
     int ret = 0, ok, used_asm;
     int oks[2] = {1,1}, used_asms[2] = {0,0};
-    int i, i_cqm, qp;
+    int i, j, i_cqm, qp;
     x264_t h_buf;
     x264_t *h = &h_buf;
     memset( h, 0, sizeof(*h) );
@@ -999,7 +1035,7 @@ static int check_quant( int cpu_ref, int cpu_new )
                 for( x = 0; x < 8; x++ ) \
                 { \
                     unsigned int scale = (255*scale1d[y]*scale1d[x])/16; \
-                    dct1[y*8+x] = dct2[y*8+x] = (rand()%(2*scale+1))-scale; \
+                    dct1[y*8+x] = dct2[y*8+x] = j ? (rand()%(2*scale+1))-scale : 0; \
                 } \
         }
 
@@ -1011,7 +1047,7 @@ static int check_quant( int cpu_ref, int cpu_new )
                 for( x = 0; x < 4; x++ ) \
                 { \
                     unsigned int scale = 255*scale1d[y]*scale1d[x]; \
-                    dct1[y*4+x] = dct2[y*4+x] = (rand()%(2*scale+1))-scale; \
+                    dct1[y*4+x] = dct2[y*4+x] = j ? (rand()%(2*scale+1))-scale : 0; \
                 } \
         }
 
@@ -1022,18 +1058,22 @@ static int check_quant( int cpu_ref, int cpu_new )
             used_asms[0] = 1; \
             for( qp = 51; qp > 0; qp-- ) \
             { \
-                for( i = 0; i < 16; i++ ) \
-                    dct1[i] = dct2[i] = (rand() & 0x1fff) - 0xfff; \
-                call_c1( qf_c.name, (void*)dct1, h->quant4_mf[CQM_4IY][qp][0], h->quant4_bias[CQM_4IY][qp][0] ); \
-                call_a1( qf_a.name, (void*)dct2, h->quant4_mf[CQM_4IY][qp][0], h->quant4_bias[CQM_4IY][qp][0] ); \
-                if( memcmp( dct1, dct2, 16*2 ) )       \
+                for( j = 0; j < 2; j++ ) \
                 { \
-                    oks[0] = 0; \
-                    fprintf( stderr, #name "(cqm=%d): [FAILED]\n", i_cqm ); \
-                    break; \
+                    int result_c, result_a; \
+                    for( i = 0; i < 16; i++ ) \
+                        dct1[i] = dct2[i] = j ? (rand() & 0x1fff) - 0xfff : 0; \
+                    result_c = call_c1( qf_c.name, (void*)dct1, h->quant4_mf[CQM_4IY][qp][0], h->quant4_bias[CQM_4IY][qp][0] ); \
+                    result_a = call_a1( qf_a.name, (void*)dct2, h->quant4_mf[CQM_4IY][qp][0], h->quant4_bias[CQM_4IY][qp][0] ); \
+                    if( memcmp( dct1, dct2, 16*2 ) || result_c != result_a )       \
+                    { \
+                        oks[0] = 0; \
+                        fprintf( stderr, #name "(cqm=%d): [FAILED]\n", i_cqm ); \
+                        break; \
+                    } \
+                    call_c2( qf_c.name, (void*)dct1, h->quant4_mf[CQM_4IY][qp][0], h->quant4_bias[CQM_4IY][qp][0] ); \
+                    call_a2( qf_a.name, (void*)dct2, h->quant4_mf[CQM_4IY][qp][0], h->quant4_bias[CQM_4IY][qp][0] ); \
                 } \
-                call_c2( qf_c.name, (void*)dct1, h->quant4_mf[CQM_4IY][qp][0], h->quant4_bias[CQM_4IY][qp][0] ); \
-                call_a2( qf_a.name, (void*)dct2, h->quant4_mf[CQM_4IY][qp][0], h->quant4_bias[CQM_4IY][qp][0] ); \
             } \
         }
 
@@ -1044,17 +1084,21 @@ static int check_quant( int cpu_ref, int cpu_new )
             used_asms[0] = 1; \
             for( qp = 51; qp > 0; qp-- ) \
             { \
-                INIT_QUANT##w() \
-                call_c1( qf_c.qname, (void*)dct1, h->quant##w##_mf[block][qp], h->quant##w##_bias[block][qp] ); \
-                call_a1( qf_a.qname, (void*)dct2, h->quant##w##_mf[block][qp], h->quant##w##_bias[block][qp] ); \
-                if( memcmp( dct1, dct2, w*w*2 ) ) \
+                for( j = 0; j < 2; j++ ) \
                 { \
-                    oks[0] = 0; \
-                    fprintf( stderr, #qname "(qp=%d, cqm=%d, block="#block"): [FAILED]\n", qp, i_cqm ); \
-                    break; \
+                    int result_c, result_a; \
+                    INIT_QUANT##w() \
+                    result_c = call_c1( qf_c.qname, (void*)dct1, h->quant##w##_mf[block][qp], h->quant##w##_bias[block][qp] ); \
+                    result_a = call_a1( qf_a.qname, (void*)dct2, h->quant##w##_mf[block][qp], h->quant##w##_bias[block][qp] ); \
+                    if( memcmp( dct1, dct2, w*w*2 ) || result_c != result_a ) \
+                    { \
+                        oks[0] = 0; \
+                        fprintf( stderr, #qname "(qp=%d, cqm=%d, block="#block"): [FAILED]\n", qp, i_cqm ); \
+                        break; \
+                    } \
+                    call_c2( qf_c.qname, (void*)dct1, h->quant##w##_mf[block][qp], h->quant##w##_bias[block][qp] ); \
+                    call_a2( qf_a.qname, (void*)dct2, h->quant##w##_mf[block][qp], h->quant##w##_bias[block][qp] ); \
                 } \
-                call_c2( qf_c.qname, (void*)dct1, h->quant##w##_mf[block][qp], h->quant##w##_bias[block][qp] ); \
-                call_a2( qf_a.qname, (void*)dct2, h->quant##w##_mf[block][qp], h->quant##w##_bias[block][qp] ); \
             } \
         }
 
@@ -1070,6 +1114,7 @@ static int check_quant( int cpu_ref, int cpu_new )
         { \
             set_func_name( "%s_%s", #dqname, i_cqm?"cqm":"flat" ); \
             used_asms[1] = 1; \
+            j = 1; \
             for( qp = 51; qp > 0; qp-- ) \
             { \
                 INIT_QUANT##w() \
@@ -1253,30 +1298,32 @@ static int check_intra( int cpu_ref, int cpu_new )
     int ret = 0, ok = 1, used_asm = 0;
     int i;
     DECLARE_ALIGNED_16( uint8_t edge[33] );
+    DECLARE_ALIGNED_16( uint8_t edge2[33] );
     struct
     {
         x264_predict_t      predict_16x16[4+3];
         x264_predict_t      predict_8x8c[4+3];
         x264_predict8x8_t   predict_8x8[9+3];
         x264_predict_t      predict_4x4[9+3];
+        x264_predict_8x8_filter_t predict_8x8_filter;
     } ip_c, ip_ref, ip_a;
 
     x264_predict_16x16_init( 0, ip_c.predict_16x16 );
     x264_predict_8x8c_init( 0, ip_c.predict_8x8c );
-    x264_predict_8x8_init( 0, ip_c.predict_8x8 );
+    x264_predict_8x8_init( 0, ip_c.predict_8x8, &ip_c.predict_8x8_filter );
     x264_predict_4x4_init( 0, ip_c.predict_4x4 );
 
     x264_predict_16x16_init( cpu_ref, ip_ref.predict_16x16 );
     x264_predict_8x8c_init( cpu_ref, ip_ref.predict_8x8c );
-    x264_predict_8x8_init( cpu_ref, ip_ref.predict_8x8 );
+    x264_predict_8x8_init( cpu_ref, ip_ref.predict_8x8, &ip_ref.predict_8x8_filter );
     x264_predict_4x4_init( cpu_ref, ip_ref.predict_4x4 );
 
     x264_predict_16x16_init( cpu_new, ip_a.predict_16x16 );
     x264_predict_8x8c_init( cpu_new, ip_a.predict_8x8c );
-    x264_predict_8x8_init( cpu_new, ip_a.predict_8x8 );
+    x264_predict_8x8_init( cpu_new, ip_a.predict_8x8, &ip_a.predict_8x8_filter );
     x264_predict_4x4_init( cpu_new, ip_a.predict_4x4 );
 
-    x264_predict_8x8_filter( buf1+48, edge, ALL_NEIGHBORS, ALL_NEIGHBORS );
+    ip_c.predict_8x8_filter( buf1+48, edge, ALL_NEIGHBORS, ALL_NEIGHBORS );
 
 #define INTRA_TEST( name, dir, w, ... ) \
     if( ip_a.name[dir] != ip_ref.name[dir] )\
@@ -1319,6 +1366,23 @@ static int check_intra( int cpu_ref, int cpu_new )
         INTRA_TEST( predict_16x16, i, 16 );
     for( i = 0; i < 12; i++ )
         INTRA_TEST( predict_8x8, i, 8, edge );
+
+    set_func_name("intra_predict_8x8_filter");
+    if( ip_a.predict_8x8_filter != ip_ref.predict_8x8_filter )
+    {
+        used_asm = 1;
+        for( i = 0; i < 32; i++ )
+        {
+            memcpy( edge2, edge, 33 );
+            call_c(ip_c.predict_8x8_filter, buf1+48, edge, (i&24)>>1, i&7);
+            call_a(ip_a.predict_8x8_filter, buf1+48, edge2, (i&24)>>1, i&7);
+            if( memcmp( edge, edge2, 33 ) )
+            {
+                fprintf( stderr, "predict_8x8_filter :  [FAILED] %d %d\n", (i&24)>>1, i&7);
+                ok = 0;
+            }
+        }
+    }
 
     report( "intra pred :" );
     return ret;
@@ -1391,18 +1455,31 @@ static int check_all_flags( void )
         ret |= add_flags( &cpu0, &cpu1, X264_CPU_CACHELINE_32, "MMX Cache32" );
         cpu1 &= ~X264_CPU_CACHELINE_32;
 #endif
+        if( x264_cpu_detect() & X264_CPU_LZCNT )
+        {
+            ret |= add_flags( &cpu0, &cpu1, X264_CPU_LZCNT, "MMX_LZCNT" );
+            cpu1 &= ~X264_CPU_LZCNT;
+        }
     }
     if( x264_cpu_detect() & X264_CPU_SSE2 )
     {
         ret |= add_flags( &cpu0, &cpu1, X264_CPU_SSE | X264_CPU_SSE2 | X264_CPU_SSE2_IS_SLOW, "SSE2Slow" );
         ret |= add_flags( &cpu0, &cpu1, X264_CPU_SSE2_IS_FAST, "SSE2Fast" );
         ret |= add_flags( &cpu0, &cpu1, X264_CPU_CACHELINE_64, "SSE2Fast Cache64" );
+        ret |= add_flags( &cpu0, &cpu1, X264_CPU_SHUFFLE_IS_FAST, "SSE2 FastShuffle" );
+        cpu1 &= ~X264_CPU_SHUFFLE_IS_FAST;
     }
     if( x264_cpu_detect() & X264_CPU_SSE_MISALIGN )
     {
         cpu1 &= ~X264_CPU_CACHELINE_64;
         ret |= add_flags( &cpu0, &cpu1, X264_CPU_SSE_MISALIGN, "SSE_Misalign" );
         cpu1 &= ~X264_CPU_SSE_MISALIGN;
+    }
+    if( x264_cpu_detect() & X264_CPU_LZCNT )
+    {
+        cpu1 &= ~X264_CPU_CACHELINE_64;
+        ret |= add_flags( &cpu0, &cpu1, X264_CPU_LZCNT, "SSE_LZCNT" );
+        cpu1 &= ~X264_CPU_LZCNT;
     }
     if( x264_cpu_detect() & X264_CPU_SSE3 )
         ret |= add_flags( &cpu0, &cpu1, X264_CPU_SSE3 | X264_CPU_CACHELINE_64, "SSE3" );
@@ -1411,7 +1488,8 @@ static int check_all_flags( void )
         cpu1 &= ~X264_CPU_CACHELINE_64;
         ret |= add_flags( &cpu0, &cpu1, X264_CPU_SSSE3, "SSSE3" );
         ret |= add_flags( &cpu0, &cpu1, X264_CPU_CACHELINE_64, "SSSE3 Cache64" );
-        ret |= add_flags( &cpu0, &cpu1, X264_CPU_PHADD_IS_FAST, "PHADD" );
+        ret |= add_flags( &cpu0, &cpu1, X264_CPU_SHUFFLE_IS_FAST, "SSSE3 FastShuffle" );
+        cpu1 &= ~X264_CPU_SHUFFLE_IS_FAST;
     }
     if( x264_cpu_detect() & X264_CPU_SSE4 )
     {
@@ -1435,7 +1513,7 @@ int main(int argc, char *argv[])
 
     if( argc > 1 && !strncmp( argv[1], "--bench", 7 ) )
     {
-#if !defined(ARCH_X86) && !defined(ARCH_X86_64)
+#if !defined(ARCH_X86) && !defined(ARCH_X86_64) && !defined(ARCH_PPC)
         fprintf( stderr, "no --bench for your cpu until you port rdtsc\n" );
         return 1;
 #endif

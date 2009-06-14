@@ -97,13 +97,19 @@ typedef struct
     void (*intra_mbcmp_x3_16x16)( uint8_t *fenc, uint8_t *fdec  , int res[3] );
     void (*intra_satd_x3_16x16) ( uint8_t *fenc, uint8_t *fdec  , int res[3] );
     void (*intra_sad_x3_16x16)  ( uint8_t *fenc, uint8_t *fdec  , int res[3] );
+    void (*intra_mbcmp_x3_8x8c) ( uint8_t *fenc, uint8_t *fdec  , int res[3] );
     void (*intra_satd_x3_8x8c)  ( uint8_t *fenc, uint8_t *fdec  , int res[3] );
+    void (*intra_sad_x3_8x8c)   ( uint8_t *fenc, uint8_t *fdec  , int res[3] );
+    void (*intra_mbcmp_x3_4x4)  ( uint8_t *fenc, uint8_t *fdec  , int res[3] );
     void (*intra_satd_x3_4x4)   ( uint8_t *fenc, uint8_t *fdec  , int res[3] );
+    void (*intra_sad_x3_4x4)    ( uint8_t *fenc, uint8_t *fdec  , int res[3] );
+    void (*intra_mbcmp_x3_8x8)  ( uint8_t *fenc, uint8_t edge[33], int res[3] );
     void (*intra_sa8d_x3_8x8)   ( uint8_t *fenc, uint8_t edge[33], int res[3] );
+    void (*intra_sad_x3_8x8)    ( uint8_t *fenc, uint8_t edge[33], int res[3] );
 } x264_pixel_function_t;
 
 void x264_pixel_init( int cpu, x264_pixel_function_t *pixf );
 int64_t x264_pixel_ssd_wxh( x264_pixel_function_t *pf, uint8_t *pix1, int i_pix1, uint8_t *pix2, int i_pix2, int i_width, int i_height );
-float x264_pixel_ssim_wxh( x264_pixel_function_t *pf, uint8_t *pix1, int i_pix1, uint8_t *pix2, int i_pix2, int i_width, int i_height );
+float x264_pixel_ssim_wxh( x264_pixel_function_t *pf, uint8_t *pix1, int i_pix1, uint8_t *pix2, int i_pix2, int i_width, int i_height, void *buf );
 
 #endif
