@@ -1,3 +1,9 @@
+x264 (1:0.svn20090502-0.0ubuntu2) karmic; urgency=low
+
+  * take over marillats package under the umbrella of pkg-multimedia
+
+ -- Reinhard Tartler <siretart@tauware.de>  Sun, 14 Jun 2009 17:49:13 +0200
+
 x264 (1:0.svn20090502-0.0ubuntu1) karmic; urgency=low
 
   * Merge from debian-multimedia, Ubuntu remaining changes:
