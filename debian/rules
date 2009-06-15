@@ -21,7 +21,9 @@ ifeq ($(NCPUS),0)
 	NCPUS:=1
 endif
 
-confflags = --enable-pthread --prefix=/usr --enable-debug
+confflags += --enable-debug
+confflags += --enable-pthread
+confflags += --prefix=/usr
 
 CFLAGS += -Wall -g -O$(if $(findstring noopt,$(DEB_BUILD_OPTIONS)),0,2)
 
