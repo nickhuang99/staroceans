@@ -2,7 +2,7 @@ Source: x264
 Section: libs
 Priority: extra
 Maintainer: Debian multimedia packages maintainers <pkg-multimedia-maintainers@lists.alioth.debian.org>
-Uploaders: Reinhard Tartler <siretart@tauware.de>
+Uploaders: Reinhard Tartler <siretart@tauware.de>,
            Fabian Greffrath <fabian@debian-unofficial.org>
 Build-Depends: debhelper (>= 7),
                yasm [i386 amd64 kfreebsd-amd64 lpia],
