@@ -23,8 +23,8 @@ endif
 
 confflags = --enable-pthread --prefix=/usr --enable-debug
 
-CFLAGS = -Wall -g
-LDFLAGS = -Wl,--as-needed
+CFLAGS += -Wall -g
+LDFLAGS += -Wl,--as-needed
 
 ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
 	CFLAGS += -O0
