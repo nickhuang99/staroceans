@@ -23,14 +23,8 @@ endif
 
 confflags = --enable-pthread --prefix=/usr --enable-debug
 
-CFLAGS += -Wall -g
+CFLAGS += -Wall -g -O$(if $(findstring noopt,$(DEB_BUILD_OPTIONS)),0,2)
 LDFLAGS += -Wl,--as-needed
-
-ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
-	CFLAGS += -O0
-else
-	CFLAGS += -O2
-endif
 
 build: build-stamp
 build-stamp: debian/stamp-patched
