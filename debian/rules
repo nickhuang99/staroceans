@@ -25,6 +25,10 @@ confflags += --enable-debug
 confflags += --enable-pthread
 confflags += --prefix=/usr
 
+shared_confflags += --enable-pic
+shared_confflags += --enable-shared
+shared_confflags += --enable-visualize
+
 CFLAGS += -Wall -g -O$(if $(findstring noopt,$(DEB_BUILD_OPTIONS)),0,2)
 
 build: build-stamp
@@ -41,8 +45,7 @@ build-stamp: debian/stamp-patched
 	# Build shared lib
 	$(MAKE) clean
 
-	CFLAGS="$(CFLAGS)" ./configure $(confflags) --enable-shared \
-	--enable-pic --enable-visualize
+	CFLAGS="$(CFLAGS)" ./configure $(confflags) $(shared_confflags)
 
 	$(MAKE) -j $(NCPUS)
 
