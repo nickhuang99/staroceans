@@ -1,8 +1,21 @@
 x264 (1:0.svn20090502-0.0ubuntu2) karmic; urgency=low
 
+  [ Reinhard Tartler ]
   * take over marillats package under the umbrella of pkg-multimedia
 
- -- Reinhard Tartler <siretart@tauware.de>  Sun, 14 Jun 2009 17:49:13 +0200
+  [ Fabian Greffrath ]
+  * Added myself to uploaders.
+  * Append to CFLAGS/LDFLAGS instead of overriding.
+  * Clean up CFLAGS.
+  * Remove -Wl,--as-needed from LDFLAGS. It has become unnecessary since
+    we don't link against GTK+ anymore. Redundant linking of the
+    frontend against -lX11 and -lm doesn't hurt, because the shared
+    library links against them anyway.
+  * Add one confflag per line, makes it easier to track minor changes.
+  * Repeat the last change for the shared_confflags.
+  * Kill some whitespace from debian/rules to improve readability.
+
+ -- Fabian Greffrath <fabian@greffrath.com>  Mon, 15 Jun 2009 12:48:53 +0200
 
 x264 (1:0.svn20090502-0.0ubuntu1) karmic; urgency=low
 
