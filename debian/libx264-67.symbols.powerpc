@@ -1,0 +1,27 @@
+#include "libx264-67.symbols.common"
+ x264_add16x16_idct8_altivec@Base 1:0.svn20090502
+ x264_add16x16_idct_altivec@Base 1:0.svn20090502
+ x264_add4x4_idct_altivec@Base 1:0.svn20090502
+ x264_add8x8_idct8_altivec@Base 1:0.svn20090502
+ x264_add8x8_idct_altivec@Base 1:0.svn20090502
+ x264_deblock_h_luma_altivec@Base 1:0.svn20090502
+ x264_deblock_v_luma_altivec@Base 1:0.svn20090502
+ x264_dequant_4x4_altivec@Base 1:0.svn20090502
+ x264_dequant_8x8_altivec@Base 1:0.svn20090502
+ x264_emms@Base 1:0.svn20090502
+ x264_hpel_filter_altivec@Base 1:0.svn20090502
+ x264_mc_altivec_init@Base 1:0.svn20090502
+ x264_pixel_altivec_init@Base 1:0.svn20090502
+ x264_predict_16x16_init_altivec@Base 1:0.svn20090502
+ x264_predict_8x8c_init_altivec@Base 1:0.svn20090502
+ x264_quant_2x2_dc_altivec@Base 1:0.svn20090502
+ x264_quant_4x4_altivec@Base 1:0.svn20090502
+ x264_quant_4x4_dc_altivec@Base 1:0.svn20090502
+ x264_quant_8x8_altivec@Base 1:0.svn20090502
+ x264_sub16x16_dct8_altivec@Base 1:0.svn20090502
+ x264_sub16x16_dct_altivec@Base 1:0.svn20090502
+ x264_sub4x4_dct_altivec@Base 1:0.svn20090502
+ x264_sub8x8_dct8_altivec@Base 1:0.svn20090502
+ x264_sub8x8_dct_altivec@Base 1:0.svn20090502
+ x264_zigzag_scan_4x4_field_altivec@Base 1:0.svn20090502
+ x264_zigzag_scan_4x4_frame_altivec@Base 1:0.svn20090502

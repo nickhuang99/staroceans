@@ -1,0 +1,14 @@
+#include "libx264-67.symbols.common"
+ x264_add8x8_idct8_sse2.skip_prologue@Base 1:0.svn20090502
+ x264_add8x8_idct_sse2.skip_prologue@Base 1:0.svn20090502
+ x264_intra_sa8d_x3_8x8_sse2@Base 1:0.svn20090502
+ x264_intra_sa8d_x3_8x8_ssse3@Base 1:0.svn20090502
+ x264_mc_init_mmx@Base 1:0.svn20090502
+ x264_predict_16x16_init_mmx@Base 1:0.svn20090502
+ x264_predict_4x4_init_mmx@Base 1:0.svn20090502
+ x264_predict_8x8_init_mmx@Base 1:0.svn20090502
+ x264_predict_8x8c_init_mmx@Base 1:0.svn20090502
+ x264_sub8x8_dct8_sse2.skip_prologue@Base 1:0.svn20090502
+ x264_sub8x8_dct8_ssse3.skip_prologue@Base 1:0.svn20090502
+ x264_sub8x8_dct_sse2.skip_prologue@Base 1:0.svn20090502
+ x264_sub8x8_dct_ssse3.skip_prologue@Base 1:0.svn20090502

@@ -8,9 +8,6 @@ libx264.so.67 libx264-67 #MINVER#
  disp_sync@Base 1:0.svn20090502
  x264_adaptive_quant@Base 1:0.svn20090502
  x264_adaptive_quant_frame@Base 1:0.svn20090502
- x264_add8x8_idct8_mmx.skip_prologue@Base 1:0.svn20090502
- x264_add8x8_idct8_sse2.skip_prologue@Base 1:0.svn20090502
- x264_add8x8_idct_sse2.skip_prologue@Base 1:0.svn20090502
  x264_cabac_context_init@Base 1:0.svn20090502
  x264_cabac_encode_bypass@Base 1:0.svn20090502
  x264_cabac_encode_decision_c@Base 1:0.svn20090502
@@ -67,7 +64,6 @@ libx264.so.67 libx264-67 #MINVER#
  x264_frame_unshift@Base 1:0.svn20090502
  x264_free@Base 1:0.svn20090502
  x264_init_vlc_tables@Base 1:0.svn20090502
- x264_intra_sa8d_x3_8x8_mmxext@Base 1:0.svn20090502
  x264_lambda2_tab@Base 1:0.svn20090502
  x264_lambda_tab@Base 1:0.svn20090502
  x264_level_token@Base 1:0.svn20090502
@@ -99,7 +95,6 @@ libx264.so.67 libx264-67 #MINVER#
  x264_mb_predict_mv_pskip@Base 1:0.svn20090502
  x264_mb_predict_mv_ref16x16@Base 1:0.svn20090502
  x264_mc_init@Base 1:0.svn20090502
- x264_mc_init_mmx@Base 1:0.svn20090502
  x264_mdate@Base 1:0.svn20090502
  x264_me_refine_bidir_rd@Base 1:0.svn20090502
  x264_me_refine_bidir_satd@Base 1:0.svn20090502
@@ -119,13 +114,9 @@ libx264.so.67 libx264-67 #MINVER#
  x264_pps_init@Base 1:0.svn20090502
  x264_pps_write@Base 1:0.svn20090502
  x264_predict_16x16_init@Base 1:0.svn20090502
- x264_predict_16x16_init_mmx@Base 1:0.svn20090502
  x264_predict_4x4_init@Base 1:0.svn20090502
- x264_predict_4x4_init_mmx@Base 1:0.svn20090502
  x264_predict_8x8_init@Base 1:0.svn20090502
- x264_predict_8x8_init_mmx@Base 1:0.svn20090502
  x264_predict_8x8c_init@Base 1:0.svn20090502
- x264_predict_8x8c_init_mmx@Base 1:0.svn20090502
  x264_predict_lossless_16x16@Base 1:0.svn20090502
  x264_predict_lossless_4x4@Base 1:0.svn20090502
  x264_predict_lossless_8x8@Base 1:0.svn20090502
@@ -156,11 +147,6 @@ libx264.so.67 libx264-67 #MINVER#
  x264_slurp_file@Base 1:0.svn20090502
  x264_sps_init@Base 1:0.svn20090502
  x264_sps_write@Base 1:0.svn20090502
- x264_sub8x8_dct8_mmx.skip_prologue@Base 1:0.svn20090502
- x264_sub8x8_dct8_sse2.skip_prologue@Base 1:0.svn20090502
- x264_sub8x8_dct8_ssse3.skip_prologue@Base 1:0.svn20090502
- x264_sub8x8_dct_sse2.skip_prologue@Base 1:0.svn20090502
- x264_sub8x8_dct_ssse3.skip_prologue@Base 1:0.svn20090502
  x264_thread_sync_ratecontrol@Base 1:0.svn20090502
  x264_total_zeros@Base 1:0.svn20090502
  x264_total_zeros_dc@Base 1:0.svn20090502
