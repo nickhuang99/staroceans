@@ -1,8 +1,10 @@
 x264 (1:0.svn20090621+git364d7d-0ubuntu1) karmic; urgency=low
 
   * New Upstream Version
+  * add symbols file
+  * make dh_makeshlibs less strict
 
- -- Reinhard Tartler <siretart@tauware.de>  Sun, 21 Jun 2009 11:10:46 +0200
+ -- Reinhard Tartler <siretart@tauware.de>  Sun, 21 Jun 2009 11:22:31 +0200
 
 x264 (1:0.svn20090502-0.0ubuntu2) karmic; urgency=low
 
