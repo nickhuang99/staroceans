@@ -1,6 +1,7 @@
 x264 (1:0.svn20090621+git364d7d-0ubuntu2) karmic; urgency=low
 
-  * prepare new upload
+  * update symbol files with architecture specific symbols.
+  * remove reference to the now removed bime version, LP: #371786
 
  -- Reinhard Tartler <siretart@tauware.de>  Sun, 21 Jun 2009 18:18:51 +0200
 
