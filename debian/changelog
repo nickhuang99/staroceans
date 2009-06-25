@@ -1,3 +1,9 @@
+x264 (1:0.svn20090621+git364d7d-1) unstable; urgency=low
+
+  * Target for debian
+
+ -- Reinhard Tartler <siretart@tauware.de>  Thu, 25 Jun 2009 18:18:58 +0200
+
 x264 (1:0.svn20090621+git364d7d-0ubuntu2) karmic; urgency=low
 
   * update symbol files with architecture specific symbols.
