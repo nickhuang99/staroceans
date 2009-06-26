@@ -8,29 +8,26 @@ include /usr/share/quilt/quilt.make
 # This has to be exported to make some magic below work.
 export DH_OPTIONS
 
-DEB_HOST_GNU_TYPE   ?= $(shell dpkg-architecture -qDEB_HOST_GNU_TYPE)
-DEB_BUILD_GNU_TYPE  ?= $(shell dpkg-architecture -qDEB_BUILD_GNU_TYPE)
+DEB_HOST_GNU_TYPE  ?= $(shell dpkg-architecture -qDEB_HOST_GNU_TYPE)
+DEB_BUILD_GNU_TYPE ?= $(shell dpkg-architecture -qDEB_BUILD_GNU_TYPE)
 
 NCPUS := $(shell getconf _NPROCESSORS_ONLN 2>/dev/null || echo 1)
-
 ifeq ($(NCPUS),-1)
 	NCPUS:=1
 endif
-
 ifeq ($(NCPUS),0)
 	NCPUS:=1
 endif
 
-confflags = --enable-pthread --prefix=/usr --enable-debug
+confflags += --enable-debug
+confflags += --enable-pthread
+confflags += --prefix=/usr
 
-CFLAGS = -Wall -g
-LDFLAGS = -Wl,--as-needed
+shared_confflags += --enable-pic
+shared_confflags += --enable-shared
+shared_confflags += --enable-visualize
 
-ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
-	CFLAGS += -O0
-else
-	CFLAGS += -O2
-endif
+CFLAGS += -Wall -g -O$(if $(findstring noopt,$(DEB_BUILD_OPTIONS)),0,2)
 
 build: build-stamp
 build-stamp: debian/stamp-patched
@@ -45,10 +42,7 @@ build-stamp: debian/stamp-patched
 
 	# Build shared lib
 	$(MAKE) clean
-
-	CFLAGS="$(CFLAGS)" ./configure $(confflags) --enable-shared \
-	--enable-pic --enable-visualize
-
+	CFLAGS="$(CFLAGS)" ./configure $(confflags) $(shared_confflags)
 	$(MAKE) -j $(NCPUS)
 
 	# Restore static lib
