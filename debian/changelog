@@ -1,3 +1,21 @@
+x264 (1:0.svn20090621+git364d7d-2) unstable; urgency=low
+
+  [ Fabian Greffrath ]
+  * Append to CFLAGS/LDFLAGS instead of overriding.
+  * Clean up CFLAGS.
+  * Remove -Wl,--as-needed from LDFLAGS. It has become unnecessary since
+    we don't link against GTK+ anymore. Redundant linking of the
+    frontend against -lX11 and -lm doesn't hurt, because the shared
+    library links against them anyway.
+  * Add one confflag per line, makes it easier to track minor changes.
+  * Repeat the last change for the shared_confflags.
+  * Kill some whitespace from debian/rules to improve readability.
+
+  [ Reinhard Tartler ]
+  * prepare upload.
+
+ -- Reinhard Tartler <siretart@tauware.de>  Wed, 01 Jul 2009 08:41:47 +0200
+
 x264 (1:0.svn20090621+git364d7d-1) unstable; urgency=low
 
   * Target for debian
