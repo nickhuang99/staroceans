@@ -1,10 +1,10 @@
-x264 (1:0.svn20090621+git364d7d-0debimedia3) UNRELEASED; urgency=low
+x264 (1:0.svn20090621+git364d7d-0debimedia3) unstable; urgency=low
 
   * Added patch description to debian/patches/01_link.diff.
   * Fixed binary-control-field-duplicates-source.
   * Bumped Standards-Version to 3.8.2.
 
- -- Fabian Greffrath <fabian@greffrath.com>  Thu, 13 Aug 2009 16:30:55 +0200
+ -- Fabian Greffrath <fabian@debian-unofficial.org>  Thu, 13 Aug 2009 16:30:55 +0200
 
 x264 (1:0.svn20090621+git364d7d-0debimedia2) unstable; urgency=low
 
