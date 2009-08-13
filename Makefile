@@ -80,7 +80,8 @@ libx264.a: .depend $(OBJS) $(OBJASM)
 $(SONAME): .depend $(OBJS) $(OBJASM)
 	$(CC) -shared -o $@ $(OBJS) $(OBJASM) $(SOFLAGS) $(LDFLAGS)
 
-x264$(EXE): $(OBJCLI) libx264.a 
+x264$(EXE): $(SONAME)
+x264$(EXE): $(OBJCLI)
 	$(CC) -o $@ $+ $(LDFLAGS)
 
 checkasm: tools/checkasm.o libx264.a

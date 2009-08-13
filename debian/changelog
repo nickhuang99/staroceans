@@ -1,4 +1,4 @@
-x264 (1:0.svn20090621+git364d7d-2) unstable; urgency=low
+x264 (1:0.svn20090621+git364d7d-0debimedia2) unstable; urgency=low
 
   [ Fabian Greffrath ]
   * Append to CFLAGS/LDFLAGS instead of overriding.
@@ -16,7 +16,7 @@ x264 (1:0.svn20090621+git364d7d-2) unstable; urgency=low
 
  -- Reinhard Tartler <siretart@tauware.de>  Wed, 01 Jul 2009 08:41:47 +0200
 
-x264 (1:0.svn20090621+git364d7d-1) unstable; urgency=low
+x264 (1:0.svn20090621+git364d7d-0debimedia1) unstable; urgency=low
 
   * Target for debian
 
