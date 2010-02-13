@@ -7,7 +7,7 @@ Build-Depends: debhelper (>= 7),
                yasm [i386 amd64 kfreebsd-amd64 lpia],
                libx11-dev,
                quilt
-Standards-Version: 3.8.1
+Standards-Version: 3.8.4
 
 Package: x264
 Section: graphics
