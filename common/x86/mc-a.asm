@@ -6,6 +6,7 @@
 ;* Authors: Loren Merritt <lorenm@u.washington.edu>
 ;*          Jason Garrett-Glaser <darkshikari@gmail.com>
 ;*          Laurent Aimar <fenrir@via.ecp.fr>
+;*          Dylan Yudaken <dyudaken@gmail.com>
 ;*          Min Chen <chenm001.163.com>
 ;*
 ;* This program is free software; you can redistribute it and/or modify
@@ -25,8 +26,10 @@
 
 %include "x86inc.asm"
 
-SECTION_RODATA
+SECTION_RODATA 32
 
+ch_shuffle: db 0,1,1,2,2,3,3,4,4,5,5,6,6,7,7,8,8,9,9,10,10,11,11,12,12,13,13,14,14,15,0,0
+pw_1:  times 8 dw  1
 pw_4:  times 8 dw  4
 pw_8:  times 8 dw  8
 pw_32: times 8 dw 32
@@ -36,9 +39,8 @@ sw_64: dd 64
 SECTION .text
 
 ;=============================================================================
-; weighted prediction
+; implicit weighted biprediction
 ;=============================================================================
-; implicit bipred only:
 ; assumes log2_denom = 5, offset = 0, weight1 + weight2 = 64
 %ifdef ARCH_X86_64
     DECLARE_REG_TMP 0,1,2,3,4,5,10,11
@@ -63,12 +65,12 @@ SECTION .text
     %endmacro
 %endif
 
-%macro SPLATW 2
+%macro SPLATW 2-3 0
 %if mmsize==16
-    pshuflw  %1, %2, 0
+    pshuflw  %1, %2, %3*0x55
     punpcklqdq %1, %1
 %else
-    pshufw   %1, %2, 0
+    pshufw   %1, %2, %3*0x55
 %endif
 %endmacro
 
@@ -173,6 +175,225 @@ AVG_WEIGHT ssse3, 4
 INIT_XMM
 AVG_WEIGHT ssse3, 8,  7
 AVG_WEIGHT ssse3, 16, 7
+
+;=============================================================================
+; P frame explicit weighted prediction
+;=============================================================================
+
+%macro WEIGHT_START 1
+    mova     m3, [r4]
+    mova     m6, [r4+16]
+    movd     m5, [r4+32]
+    pxor     m2, m2
+%if (%1 == 20 || %1 == 12) && mmsize == 16
+    movdq2q mm3, xmm3
+    movdq2q mm4, xmm4
+    movdq2q mm5, xmm5
+    movdq2q mm6, xmm6
+    pxor    mm2, mm2
+%endif
+%endmacro
+
+%macro WEIGHT_START_SSSE3 1
+    mova     m3, [r4]
+    mova     m4, [r4+16]
+    pxor     m2, m2
+%if %1 == 20 || %1 == 12
+    movdq2q mm3, xmm3
+    movdq2q mm4, xmm4
+    pxor    mm2, mm2
+%endif
+%endmacro
+
+;; macro to weight mmsize bytes taking half from %1 and half from %2
+%macro WEIGHT 2             ; (src1,src2)
+    movh      m0, [%1]
+    movh      m1, [%2]
+    punpcklbw m0, m2        ;setup
+    punpcklbw m1, m2        ;setup
+    pmullw    m0, m3        ;scale
+    pmullw    m1, m3        ;scale
+    paddsw    m0, m6        ;1<<(denom-1)+(offset<<denom)
+    paddsw    m1, m6        ;1<<(denom-1)+(offset<<denom)
+    psraw     m0, m5        ;denom
+    psraw     m1, m5        ;denom
+%endmacro
+
+%macro WEIGHT_SSSE3 2
+    movh      m0, [%1]
+    movh      m1, [%2]
+    punpcklbw m0, m2
+    punpcklbw m1, m2
+    psllw     m0, 7
+    psllw     m1, 7
+    pmulhrsw  m0, m3
+    pmulhrsw  m1, m3
+    paddw     m0, m4
+    paddw     m1, m4
+%endmacro
+
+%macro WEIGHT_SAVE_ROW 3        ;(src,dst,width)
+%if %3 == 16
+    mova     [%2], %1
+%elif %3 == 8
+    movq     [%2], %1
+%else
+    movd     [%2], %1       ; width 2 can write garbage for last 2 bytes
+%endif
+%endmacro
+
+%macro WEIGHT_ROW 3         ; (src,dst,width)
+    ;; load weights
+    WEIGHT           %1, (%1+(mmsize/2))
+    packuswb         m0, m1        ;put bytes into m0
+    WEIGHT_SAVE_ROW  m0, %2, %3
+%endmacro
+
+%macro WEIGHT_SAVE_COL 2        ;(dst,size)
+%if %2 == 8
+    packuswb     m0, m1
+    movq       [%1], m0
+    movhps  [%1+r1], m0
+%else
+    packuswb     m0, m0
+    packuswb     m1, m1
+    movd       [%1], m0    ; width 2 can write garbage for last 2 bytes
+    movd    [%1+r1], m1
+%endif
+%endmacro
+
+%macro WEIGHT_COL 3     ; (src,dst,width)
+%if %3 <= 4 && mmsize == 16
+    INIT_MMX
+    ;; load weights
+    WEIGHT           %1, (%1+r3)
+    WEIGHT_SAVE_COL  %2, %3
+    INIT_XMM
+%else
+    WEIGHT           %1, (%1+r3)
+    WEIGHT_SAVE_COL  %2, %3
+%endif
+
+%endmacro
+
+%macro WEIGHT_TWO_ROW 3 ; (src,dst,width)
+%assign x 0
+%rep %3
+%if (%3-x) >= mmsize
+    WEIGHT_ROW    (%1+x),    (%2+x), mmsize     ; weight 1 mmsize
+    WEIGHT_ROW (%1+r3+x), (%2+r1+x), mmsize     ; weight 1 mmsize
+    %assign x (x+mmsize)
+%else
+    WEIGHT_COL (%1+x),(%2+x),(%3-x)
+    %exitrep
+%endif
+%if x >= %3
+    %exitrep
+%endif
+%endrep
+%endmacro
+
+
+;void x264_mc_weight_wX( uint8_t *dst, int i_dst_stride, uint8_t *src,int i_src_stride, x264_weight_t *weight,int h)
+
+%ifdef ARCH_X86_64
+%define NUMREGS 6
+%define LOAD_HEIGHT
+%define HEIGHT_REG r5d
+%else
+%define NUMREGS 5
+%define LOAD_HEIGHT mov r4d, r5m
+%define HEIGHT_REG r4d
+%endif
+
+%macro WEIGHTER 2
+    cglobal x264_mc_weight_w%1_%2, NUMREGS, NUMREGS, 7
+    WEIGHT_START %1
+    LOAD_HEIGHT
+.loop:
+    WEIGHT_TWO_ROW r2, r0, %1
+    lea  r0, [r0+r1*2]
+    lea  r2, [r2+r3*2]
+    sub HEIGHT_REG, 2
+    jg .loop
+    REP_RET
+%endmacro
+
+INIT_MMX
+WEIGHTER  4, mmxext
+WEIGHTER  8, mmxext
+WEIGHTER 12, mmxext
+WEIGHTER 16, mmxext
+WEIGHTER 20, mmxext
+INIT_XMM
+WEIGHTER  8, sse2
+WEIGHTER 16, sse2
+WEIGHTER 20, sse2
+%define WEIGHT WEIGHT_SSSE3
+%define WEIGHT_START WEIGHT_START_SSSE3
+INIT_MMX
+WEIGHTER  4, ssse3
+INIT_XMM
+WEIGHTER  8, ssse3
+WEIGHTER 16, ssse3
+WEIGHTER 20, ssse3
+
+%macro OFFSET_OP 7
+    mov%6        m0, [%1]
+    mov%6        m1, [%2]
+    p%5usb       m0, m2
+    p%5usb       m1, m2
+    mov%7      [%3], m0
+    mov%7      [%4], m1
+%endmacro
+
+%macro OFFSET_TWO_ROW 4
+%assign x 0
+%rep %3
+%if (%3-x) >= mmsize
+    OFFSET_OP (%1+x), (%1+x+r3), (%2+x), (%2+x+r1), %4, u, a
+    %assign x (x+mmsize)
+%else
+    OFFSET_OP (%1+x),(%1+x+r3), (%2+x), (%2+x+r1), %4, d, d
+    %exitrep
+%endif
+%if x >= %3
+    %exitrep
+%endif
+%endrep
+%endmacro
+
+;void x264_mc_offset_wX( uint8_t *src, int i_src_stride, uint8_t *dst, int i_dst_stride, x264_weight_t *w, int h )
+%macro OFFSET 3
+    cglobal x264_mc_offset%3_w%1_%2, NUMREGS, NUMREGS
+    mova m2, [r4]
+    LOAD_HEIGHT
+.loop:
+    OFFSET_TWO_ROW r2, r0, %1, %3
+    lea  r0, [r0+r1*2]
+    lea  r2, [r2+r3*2]
+    sub HEIGHT_REG, 2
+    jg .loop
+    REP_RET
+%endmacro
+
+%macro OFFSETPN 2
+       OFFSET %1, %2, add
+       OFFSET %1, %2, sub
+%endmacro
+INIT_MMX
+OFFSETPN  4, mmxext
+OFFSETPN  8, mmxext
+OFFSETPN 12, mmxext
+OFFSETPN 16, mmxext
+OFFSETPN 20, mmxext
+INIT_XMM
+OFFSETPN 12, sse2
+OFFSETPN 16, sse2
+OFFSETPN 20, sse2
+%undef LOAD_HEIGHT
+%undef HEIGHT_REG
+%undef NUMREGS
 
 
 
@@ -509,6 +730,66 @@ AVG_CACHELINE_CHECK  8, 64, mmxext
 AVG_CACHELINE_CHECK 12, 64, mmxext
 AVG_CACHELINE_CHECK 16, 64, sse2
 AVG_CACHELINE_CHECK 20, 64, sse2
+
+; computed jump assumes this loop is exactly 48 bytes
+%macro AVG16_CACHELINE_LOOP_SSSE3 2 ; alignment
+ALIGN 16
+avg_w16_align%1_%2_ssse3:
+%if %2&15==0
+    movdqa  xmm1, [r2+16]
+    palignr xmm1, [r2], %1
+    pavgb   xmm1, [r2+r4]
+%else
+    movdqa  xmm1, [r2+16]
+    movdqa  xmm2, [r2+r4+16]
+    palignr xmm1, [r2], %1
+    palignr xmm2, [r2+r4], %2
+    pavgb   xmm1, xmm2
+%endif
+    movdqa  [r0], xmm1
+    add    r2, r3
+    add    r0, r1
+    dec    r5d
+    jg     avg_w16_align%1_%2_ssse3
+    rep ret
+%endmacro
+
+%assign j 1
+%assign k 2
+%rep 15
+AVG16_CACHELINE_LOOP_SSSE3 j, j
+AVG16_CACHELINE_LOOP_SSSE3 j, k
+%assign j j+1
+%assign k k+1
+%endrep
+
+cglobal x264_pixel_avg2_w16_cache64_ssse3
+    mov    eax, r2m
+    and    eax, 0x3f
+    cmp    eax, 0x30
+    jle x264_pixel_avg2_w16_sse2
+    PROLOGUE 6,7
+    lea    r6, [r4+r2]
+    and    r4, ~0xf
+    and    r6, 0x1f
+    and    r2, ~0xf
+    lea    r6, [r6*3]    ;(offset + align*2)*3
+    sub    r4, r2
+    shl    r6, 4         ;jump = (offset + align*2)*48
+%define avg_w16_addr avg_w16_align1_1_ssse3-(avg_w16_align2_2_ssse3-avg_w16_align1_1_ssse3)
+%ifdef PIC
+    lea   r11, [avg_w16_addr GLOBAL]
+    add    r6, r11
+%else
+    lea    r6, [avg_w16_addr + r6 GLOBAL]
+%endif
+%ifdef UNIX64
+    jmp    r6
+%else
+    call   r6
+    RET
+%endif
+
 
 ;=============================================================================
 ; pixel copy
@@ -869,8 +1150,9 @@ MC_CHROMA mmxext
 INIT_XMM
 MC_CHROMA sse2, 8
 
+%macro MC_CHROMA_SSSE3 2
 INIT_MMX
-cglobal x264_mc_chroma_ssse3, 0,6,8
+cglobal x264_mc_chroma_ssse3%1, 0,6,%2
     MC_CHROMA_START
     and       r4d, 7
     and       r5d, 7
@@ -887,19 +1169,27 @@ cglobal x264_mc_chroma_ssse3, 0,6,8
     mova       m5, [pw_32 GLOBAL]
     movd       m6, r5d
     movd       m7, r4d
-    movifnidn r0,  r0mp
+    movifnidn  r0, r0mp
     movifnidn r1d, r1m
     movifnidn r4d, r7m
     SPLATW     m6, m6
     SPLATW     m7, m7
-    movh       m0, [r2]
-    punpcklbw  m0, [r2+1]
-    add r2, r3
+    mov        r5, r2
+    and        r2, ~3
+    and        r5, 3
+%ifdef PIC
+    lea       r11, [ch_shuffle GLOBAL]
+    movu       m5, [r11 + r5*2]
+%else
+    movu       m5, [ch_shuffle + r5*2 GLOBAL]
+%endif
+    movu       m0, [r2]
+    pshufb     m0, m5
 .loop4:
-    movh       m1, [r2]
-    movh       m3, [r2+r3]
-    punpcklbw  m1, [r2+1]
-    punpcklbw  m3, [r2+r3+1]
+    movu       m1, [r2+r3]
+    pshufb     m1, m5
+    movu       m3, [r2+2*r3]
+    pshufb     m3, m5
     lea        r2, [r2+2*r3]
     mova       m2, m1
     mova       m4, m3
@@ -907,8 +1197,8 @@ cglobal x264_mc_chroma_ssse3, 0,6,8
     pmaddubsw  m1, m6
     pmaddubsw  m2, m7
     pmaddubsw  m3, m6
-    paddw      m0, m5
-    paddw      m2, m5
+    paddw      m0, [pw_32 GLOBAL]
+    paddw      m2, [pw_32 GLOBAL]
     paddw      m1, m0
     paddw      m3, m2
     mova       m0, m4
@@ -925,23 +1215,28 @@ cglobal x264_mc_chroma_ssse3, 0,6,8
 
 INIT_XMM
 .width8:
-    mova       m5, [pw_32 GLOBAL]
     movd       m6, r5d
     movd       m7, r4d
-    movifnidn r0,  r0mp
+    movifnidn  r0, r0mp
     movifnidn r1d, r1m
     movifnidn r4d, r7m
     SPLATW     m6, m6
     SPLATW     m7, m7
+%ifidn %1, _cache64
+    mov        r5, r2
+    and        r5, 0x3f
+    cmp        r5, 0x38
+    jge .split
+%endif
+    mova       m5, [pw_32 GLOBAL]
     movh       m0, [r2]
     movh       m1, [r2+1]
     punpcklbw  m0, m1
-    add r2, r3
 .loop8:
-    movh       m1, [r2]
-    movh       m2, [r2+1]
-    movh       m3, [r2+r3]
-    movh       m4, [r2+r3+1]
+    movh       m1, [r2+1*r3]
+    movh       m2, [r2+1*r3+1]
+    movh       m3, [r2+2*r3]
+    movh       m4, [r2+2*r3+1]
     punpcklbw  m1, m2
     punpcklbw  m3, m4
     lea        r2, [r2+2*r3]
@@ -965,6 +1260,53 @@ INIT_XMM
     lea        r0, [r0+2*r1]
     jg .loop8
     REP_RET
-
+%ifidn %1, _cache64
+.split:
+    and        r2, ~7
+    and        r5, 7
+%ifdef PIC
+    lea       r11, [ch_shuffle GLOBAL]
+    movu       m5, [r11 + r5*2]
+%else
+    movu       m5, [ch_shuffle + r5*2 GLOBAL]
+%endif
+    movu       m0, [r2]
+    pshufb     m0, m5
+%ifdef ARCH_X86_64
+    mova       m8, [pw_32 GLOBAL]
+    %define round m8
+%else
+    %define round [pw_32 GLOBAL]
+%endif
+.splitloop8:
+    movu       m1, [r2+r3]
+    pshufb     m1, m5
+    movu       m3, [r2+2*r3]
+    pshufb     m3, m5
+    lea        r2, [r2+2*r3]
+    mova       m2, m1
+    mova       m4, m3
+    pmaddubsw  m0, m7
+    pmaddubsw  m1, m6
+    pmaddubsw  m2, m7
+    pmaddubsw  m3, m6
+    paddw      m0, round
+    paddw      m2, round
+    paddw      m1, m0
+    paddw      m3, m2
+    mova       m0, m4
+    psrlw      m1, 6
+    psrlw      m3, 6
+    packuswb   m1, m3
+    movh     [r0], m1
+    movhps [r0+r1], m1
+    sub       r4d, 2
+    lea        r0, [r0+2*r1]
+    jg .splitloop8
+    REP_RET
+%endif
 ; mc_chroma 1d ssse3 is negligibly faster, and definitely not worth the extra code size
+%endmacro
 
+MC_CHROMA_SSSE3 , 8
+MC_CHROMA_SSSE3 _cache64, 9

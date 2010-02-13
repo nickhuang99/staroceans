@@ -22,8 +22,11 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02111, USA.
  *****************************************************************************/
 
+#define _GNU_SOURCE // for sched_getaffinity
+#include "common.h"
+#include "cpu.h"
+
 #if defined(HAVE_PTHREAD) && defined(SYS_LINUX)
-#define _GNU_SOURCE
 #include <sched.h>
 #endif
 #ifdef SYS_BEOS
@@ -38,9 +41,6 @@
 #include <sys/sysctl.h>
 #include <machine/cpu.h>
 #endif
-
-#include "common.h"
-#include "cpu.h"
 
 const x264_cpu_name_t x264_cpu_names[] = {
     {"Altivec", X264_CPU_ALTIVEC},
@@ -61,9 +61,30 @@ const x264_cpu_name_t x264_cpu_names[] = {
     {"SSEMisalign", X264_CPU_SSE_MISALIGN},
     {"LZCNT", X264_CPU_LZCNT},
     {"Slow_mod4_stack", X264_CPU_STACK_MOD4},
+    {"ARMv6", X264_CPU_ARMV6},
+    {"NEON",  X264_CPU_NEON},
+    {"Fast_NEON_MRC",  X264_CPU_FAST_NEON_MRC},
     {"", 0},
 };
 
+#if (defined(ARCH_PPC) && defined(SYS_LINUX)) || (defined(ARCH_ARM) && !defined(HAVE_NEON))
+#include <signal.h>
+#include <setjmp.h>
+static sigjmp_buf jmpbuf;
+static volatile sig_atomic_t canjump = 0;
+
+static void sigill_handler( int sig )
+{
+    if( !canjump )
+    {
+        signal( sig, SIG_DFL );
+        raise( sig );
+    }
+
+    canjump = 0;
+    siglongjmp( jmpbuf, 1 );
+}
+#endif
 
 #ifdef HAVE_MMX
 extern int  x264_cpu_cpuid_test( void );
@@ -122,13 +143,17 @@ uint32_t x264_cpu_detect( void )
             if( ecx&0x00000040 ) /* SSE4a */
             {
                 cpu |= X264_CPU_SSE2_IS_FAST;
-                cpu |= X264_CPU_SSE_MISALIGN;
                 cpu |= X264_CPU_LZCNT;
                 cpu |= X264_CPU_SHUFFLE_IS_FAST;
-                x264_cpu_mask_misalign_sse();
             }
             else
                 cpu |= X264_CPU_SSE2_IS_SLOW;
+
+            if( ecx&0x00000080 ) /* Misalign SSE */
+            {
+                cpu |= X264_CPU_SSE_MISALIGN;
+                x264_cpu_mask_misalign_sse();
+            }
         }
     }
 
@@ -224,22 +249,6 @@ uint32_t x264_cpu_detect( void )
 }
 
 #elif defined( SYS_LINUX )
-#include <signal.h>
-#include <setjmp.h>
-static sigjmp_buf jmpbuf;
-static volatile sig_atomic_t canjump = 0;
-
-static void sigill_handler( int sig )
-{
-    if( !canjump )
-    {
-        signal( sig, SIG_DFL );
-        raise( sig );
-    }
-
-    canjump = 0;
-    siglongjmp( jmpbuf, 1 );
-}
 
 uint32_t x264_cpu_detect( void )
 {
@@ -264,6 +273,48 @@ uint32_t x264_cpu_detect( void )
     return X264_CPU_ALTIVEC;
 }
 #endif
+
+#elif defined( ARCH_ARM )
+
+void x264_cpu_neon_test();
+int x264_cpu_fast_neon_mrc_test();
+
+uint32_t x264_cpu_detect( void )
+{
+    int flags = 0;
+#ifdef HAVE_ARMV6
+    flags |= X264_CPU_ARMV6;
+
+    // don't do this hack if compiled with -mfpu=neon
+#ifndef HAVE_NEON
+    static void (* oldsig)( int );
+    oldsig = signal( SIGILL, sigill_handler );
+    if( sigsetjmp( jmpbuf, 1 ) )
+    {
+        signal( SIGILL, oldsig );
+        return flags;
+    }
+
+    canjump = 1;
+    x264_cpu_neon_test();
+    canjump = 0;
+    signal( SIGILL, oldsig );
+#endif
+
+    flags |= X264_CPU_NEON;
+
+    // fast neon -> arm (Cortex-A9) detection relies on user access to the
+    // cycle counter; this assumes ARMv7 performance counters.
+    // NEON requires at least ARMv7, ARMv8 may require changes here, but
+    // hopefully this hacky detection method will have been replaced by then.
+    // Note that there is potential for a race condition if another program or
+    // x264 instance disables or reinits the counters while x264 is using them,
+    // which may result in incorrect detection and the counters stuck enabled.
+    flags |= x264_cpu_fast_neon_mrc_test() ? X264_CPU_FAST_NEON_MRC : 0;
+    // TODO: write dual issue test? currently it's A8 (dual issue) vs. A9 (fast mrc)
+#endif
+    return flags;
+}
 
 #else
 

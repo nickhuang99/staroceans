@@ -77,13 +77,16 @@ SECTION .text
 ;=============================================================================
 
 %macro SSD_LOAD_FULL 5
-    mova      m1, [r0+%1]
-    mova      m2, [r2+%2]
-    mova      m3, [r0+%3]
-    mova      m4, [r2+%4]
-%if %5
-    lea       r0, [r0+2*r1]
-    lea       r2, [r2+2*r3]
+    mova      m1, [t0+%1]
+    mova      m2, [t2+%2]
+    mova      m3, [t0+%3]
+    mova      m4, [t2+%4]
+%if %5==1
+    add       t0, t1
+    add       t2, t3
+%elif %5==2
+    lea       t0, [t0+2*t1]
+    lea       t2, [t2+2*t3]
 %endif
 %endmacro
 
@@ -91,7 +94,7 @@ SECTION .text
     movh      m%1, %3
     movh      m%2, %4
 %if %5
-    lea       r0, [r0+2*r1]
+    lea       t0, [t0+2*t1]
 %endif
 %endmacro
 
@@ -99,7 +102,7 @@ SECTION .text
     movh      m%3, %5
     movh      m%4, %6
 %if %7
-    lea       r2, [r2+2*r3]
+    lea       t2, [t2+2*t3]
 %endif
     punpcklbw m%1, m7
     punpcklbw m%3, m7
@@ -113,7 +116,7 @@ SECTION .text
     movh      m%3, %5
     movh      m%4, %6
 %if %7
-    lea       r2, [r2+2*r3]
+    lea       t2, [t2+2*t3]
 %endif
     punpcklqdq m%1, m%2
     punpcklqdq m%3, m%4
@@ -126,17 +129,17 @@ SECTION .text
     movh      m%3, %5
     movh      m%4, %6
 %if %7
-    lea       r2, [r2+2*r3]
+    lea       t2, [t2+2*t3]
 %endif
     punpcklbw m%1, m%3
     punpcklbw m%2, m%4
 %endmacro
 
 %macro SSD_LOAD_HALF 5
-    LOAD      1, 2, [r0+%1], [r0+%3], 1
-    JOIN      1, 2, 3, 4, [r2+%2], [r2+%4], 1
-    LOAD      3, 4, [r0+%1], [r0+%3], %5
-    JOIN      3, 4, 5, 6, [r2+%2], [r2+%4], %5
+    LOAD      1, 2, [t0+%1], [t0+%3], 1
+    JOIN      1, 2, 3, 4, [t2+%2], [t2+%4], 1
+    LOAD      3, 4, [t0+%1], [t0+%3], %5
+    JOIN      3, 4, 5, 6, [t2+%2], [t2+%4], %5
 %endmacro
 
 %macro SSD_CORE 7-8
@@ -152,8 +155,8 @@ SECTION .text
     mova      m%2, m%1
     mova      m%4, m%3
     punpckhbw m%1, m%5
-    punpckhbw m%3, m%5
     punpcklbw m%2, m%5
+    punpckhbw m%3, m%5
     punpcklbw m%4, m%5
 %endif
     pmaddwd   m%1, m%1
@@ -167,11 +170,11 @@ SECTION .text
     DEINTB %6, %1, %7, %2, %5
     psubw m%6, m%7
     psubw m%1, m%2
-    SWAP %2, %6
+    SWAP %6, %2, %1
     DEINTB %6, %3, %7, %4, %5
     psubw m%6, m%7
     psubw m%3, m%4
-    SWAP %4, %6
+    SWAP %6, %4, %3
 %endif
     pmaddwd   m%1, m%1
     pmaddwd   m%2, m%2
@@ -187,7 +190,7 @@ SECTION .text
     punpcklbw m%3, m%4
     punpckhbw m%6, m%2
     punpckhbw m%7, m%4
-    SWAP %6, %2
+    SWAP %6, %2, %3
     SWAP %7, %4
 %endif
     pmaddubsw m%1, m%5
@@ -200,28 +203,46 @@ SECTION .text
     pmaddwd   m%4, m%4
 %endmacro
 
-%macro SSD_END 1
+%macro SSD_ITER 6
+    SSD_LOAD_%1 %2,%3,%4,%5,%6
+    SSD_CORE  1, 2, 3, 4, 7, 5, 6, %1
     paddd     m1, m2
     paddd     m3, m4
-%if %1
     paddd     m0, m1
-%else
-    SWAP      0, 1
-%endif
     paddd     m0, m3
-%endmacro
-
-%macro SSD_ITER 7
-    SSD_LOAD_%1 %2,%3,%4,%5,%7
-    SSD_CORE  1, 2, 3, 4, 7, 5, 6, %1
-    SSD_END  %6
 %endmacro
 
 ;-----------------------------------------------------------------------------
 ; int x264_pixel_ssd_16x16_mmx( uint8_t *, int, uint8_t *, int )
 ;-----------------------------------------------------------------------------
 %macro SSD 3-4 0
-cglobal x264_pixel_ssd_%1x%2_%3, 4,4,%4
+%if %1 != %2
+    %assign function_align 8
+%else
+    %assign function_align 16
+%endif
+cglobal x264_pixel_ssd_%1x%2_%3, 0,0,0
+    mov     al, %1*%2/mmsize/2
+
+%if %1 != %2
+    jmp mangle(x264_pixel_ssd_%1x%1_%3.startloop)
+%else
+
+.startloop:
+%ifdef ARCH_X86_64
+    DECLARE_REG_TMP 0,1,2,3
+%ifnidn %3, mmx
+    PROLOGUE 0,0,8
+%endif
+%else
+    PROLOGUE 0,5
+    DECLARE_REG_TMP 1,2,3,4
+    mov t0, r0m
+    mov t1, r1m
+    mov t2, r2m
+    mov t3, r3m
+%endif
+
 %ifidn %3, ssse3
     mova    m7, [hsub_mul GLOBAL]
 %elifidn %3, sse2
@@ -229,57 +250,57 @@ cglobal x264_pixel_ssd_%1x%2_%3, 4,4,%4
 %elif %1 >= mmsize
     pxor    m7, m7
 %endif
-%assign i 0
-%rep %2/4
+    pxor    m0, m0
+
+ALIGN 16
+.loop:
 %if %1 > mmsize
-    SSD_ITER FULL, 0,  0,     mmsize,    mmsize, i, 0
-    SSD_ITER FULL, r1, r3, r1+mmsize, r3+mmsize, 1, 1
-    SSD_ITER FULL, 0,  0,     mmsize,    mmsize, 1, 0
-    SSD_ITER FULL, r1, r3, r1+mmsize, r3+mmsize, 1, i<%2/4-1
+    SSD_ITER FULL, 0, 0, mmsize, mmsize, 1
 %elif %1 == mmsize
-    SSD_ITER FULL, 0, 0, r1, r3, i, 1
-    SSD_ITER FULL, 0, 0, r1, r3, 1, i<%2/4-1
+    SSD_ITER FULL, 0, 0, t1, t3, 2
 %else
-    SSD_ITER HALF, 0, 0, r1, r3, i, i<%2/4-1
+    SSD_ITER HALF, 0, 0, t1, t3, 2
 %endif
-%assign i i+1
-%endrep
+    dec     al
+    jg .loop
     HADDD   m0, m1
     movd   eax, m0
     RET
+%endif
 %endmacro
 
 INIT_MMX
 SSD 16, 16, mmx
 SSD 16,  8, mmx
-SSD  8, 16, mmx
 SSD  8,  8, mmx
+SSD  8, 16, mmx
+SSD  4,  4, mmx
 SSD  8,  4, mmx
 SSD  4,  8, mmx
-SSD  4,  4, mmx
 INIT_XMM
 SSD 16, 16, sse2slow, 8
+SSD  8,  8, sse2slow, 8
 SSD 16,  8, sse2slow, 8
 SSD  8, 16, sse2slow, 8
-SSD  8,  8, sse2slow, 8
 SSD  8,  4, sse2slow, 8
 %define SSD_CORE SSD_CORE_SSE2
 %define JOIN JOIN_SSE2
 SSD 16, 16, sse2, 8
+SSD  8,  8, sse2, 8
 SSD 16,  8, sse2, 8
 SSD  8, 16, sse2, 8
-SSD  8,  8, sse2, 8
 SSD  8,  4, sse2, 8
 %define SSD_CORE SSD_CORE_SSSE3
 %define JOIN JOIN_SSSE3
 SSD 16, 16, ssse3, 8
+SSD  8,  8, ssse3, 8
 SSD 16,  8, ssse3, 8
 SSD  8, 16, ssse3, 8
-SSD  8,  8, ssse3, 8
 SSD  8,  4, ssse3, 8
 INIT_MMX
-SSD  4,  8, ssse3
 SSD  4,  4, ssse3
+SSD  4,  8, ssse3
+%assign function_align 16
 
 ;=============================================================================
 ; variance
@@ -295,14 +316,15 @@ SSD  4,  4, ssse3
 %endif
 %endmacro
 
-%macro VAR_END 1
+%macro VAR_END 0
     HADDW   m5, m7
-    movd   r1d, m5
-    imul   r1d, r1d
+    movd   eax, m5
     HADDD   m6, m1
-    shr    r1d, %1
-    movd   eax, m6
-    sub    eax, r1d  ; sqr - (sum * sum >> shift)
+    movd   edx, m6
+%ifdef ARCH_X86_64
+    shl    rdx, 32
+    add    rax, rdx
+%endif
     RET
 %endmacro
 
@@ -349,12 +371,12 @@ INIT_MMX
 cglobal x264_pixel_var_16x16_mmxext, 2,3
     VAR_START 0
     VAR_2ROW 8, 16
-    VAR_END 8
+    VAR_END
 
 cglobal x264_pixel_var_8x8_mmxext, 2,3
     VAR_START 0
     VAR_2ROW r1, 4
-    VAR_END 6
+    VAR_END
 
 INIT_XMM
 cglobal x264_pixel_var_16x16_sse2, 2,3,8
@@ -368,7 +390,7 @@ cglobal x264_pixel_var_16x16_sse2, 2,3,8
     VAR_CORE
     dec r2d
     jg .loop
-    VAR_END 8
+    VAR_END
 
 cglobal x264_pixel_var_8x8_sse2, 2,4,8
     VAR_START 1
@@ -384,8 +406,121 @@ cglobal x264_pixel_var_8x8_sse2, 2,4,8
     VAR_CORE
     dec r2d
     jg .loop
-    VAR_END 6
+    VAR_END
 
+%macro VAR2_END 0
+    HADDW   m5, m7
+    movd   r1d, m5
+    imul   r1d, r1d
+    HADDD   m6, m1
+    shr    r1d, 6
+    movd   eax, m6
+    mov   [r4], eax
+    sub    eax, r1d  ; sqr - (sum * sum >> shift)
+    RET
+%endmacro
+
+;-----------------------------------------------------------------------------
+; int x264_pixel_var2_8x8_mmxext( uint8_t *, int, uint8_t *, int, int * )
+;-----------------------------------------------------------------------------
+%ifndef ARCH_X86_64
+INIT_MMX
+cglobal x264_pixel_var2_8x8_mmxext, 5,6
+    VAR_START 0
+    mov      r5d, 8
+.loop:
+    movq      m0, [r0]
+    movq      m1, m0
+    movq      m4, m0
+    movq      m2, [r2]
+    movq      m3, m2
+    punpcklbw m0, m7
+    punpckhbw m1, m7
+    punpcklbw m2, m7
+    punpckhbw m3, m7
+    psubw     m0, m2
+    psubw     m1, m3
+    paddw     m5, m0
+    paddw     m5, m1
+    pmaddwd   m0, m0
+    pmaddwd   m1, m1
+    paddd     m6, m0
+    paddd     m6, m1
+    add       r0, r1
+    add       r2, r3
+    dec       r5d
+    jg .loop
+    VAR2_END
+    RET
+%endif
+
+INIT_XMM
+cglobal x264_pixel_var2_8x8_sse2, 5,6,8
+    VAR_START 1
+    mov      r5d, 4
+.loop:
+    movq      m1, [r0]
+    movhps    m1, [r0+r1]
+    movq      m3, [r2]
+    movhps    m3, [r2+r3]
+    DEINTB    0, 1, 2, 3, 7
+    psubw     m0, m2
+    psubw     m1, m3
+    paddw     m5, m0
+    paddw     m5, m1
+    pmaddwd   m0, m0
+    pmaddwd   m1, m1
+    paddd     m6, m0
+    paddd     m6, m1
+    lea       r0, [r0+r1*2]
+    lea       r2, [r2+r3*2]
+    dec      r5d
+    jg .loop
+    VAR2_END
+    RET
+
+cglobal x264_pixel_var2_8x8_ssse3, 5,6,8
+    pxor      m5, m5    ; sum
+    pxor      m6, m6    ; sum squared
+    mova      m7, [hsub_mul GLOBAL]
+    mov      r5d, 2
+.loop:
+    movq      m0, [r0]
+    movq      m2, [r2]
+    movq      m1, [r0+r1]
+    movq      m3, [r2+r3]
+    lea       r0, [r0+r1*2]
+    lea       r2, [r2+r3*2]
+    punpcklbw m0, m2
+    punpcklbw m1, m3
+    movq      m2, [r0]
+    movq      m3, [r2]
+    punpcklbw m2, m3
+    movq      m3, [r0+r1]
+    movq      m4, [r2+r3]
+    punpcklbw m3, m4
+    pmaddubsw m0, m7
+    pmaddubsw m1, m7
+    pmaddubsw m2, m7
+    pmaddubsw m3, m7
+    paddw     m5, m0
+    paddw     m5, m1
+    paddw     m5, m2
+    paddw     m5, m3
+    pmaddwd   m0, m0
+    pmaddwd   m1, m1
+    pmaddwd   m2, m2
+    pmaddwd   m3, m3
+    paddd     m6, m0
+    paddd     m6, m1
+    paddd     m6, m2
+    paddd     m6, m3
+    lea       r0, [r0+r1*2]
+    lea       r2, [r2+r3*2]
+    dec      r5d
+    jg .loop
+    VAR2_END
+    RET
 
 ;=============================================================================
 ; SATD

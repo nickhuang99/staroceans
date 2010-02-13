@@ -24,9 +24,6 @@
 #include <math.h>
 
 #include "common/common.h"
-#ifndef _MSC_VER
-#include "config.h"
-#endif
 #include "set.h"
 
 #define bs_write_ue bs_write_ue_big
@@ -83,7 +80,7 @@ void x264_sps_init( x264_sps_t *sps, int i_id, x264_param_t *param )
         sps->i_profile_idc  = PROFILE_HIGH444_PREDICTIVE;
     else if( param->analyse.b_transform_8x8 || param->i_cqm_preset != X264_CQM_FLAT )
         sps->i_profile_idc  = PROFILE_HIGH;
-    else if( param->b_cabac || param->i_bframe > 0 || param->b_interlaced )
+    else if( param->b_cabac || param->i_bframe > 0 || param->b_interlaced || param->analyse.i_weighted_pred > 0 )
         sps->i_profile_idc  = PROFILE_MAIN;
     else
         sps->i_profile_idc  = PROFILE_BASELINE;
@@ -97,11 +94,9 @@ void x264_sps_init( x264_sps_t *sps, int i_id, x264_param_t *param )
     sps->b_constraint_set2  = 0;
 
     sps->i_log2_max_frame_num = 4;  /* at least 4 */
-    while( (1 << sps->i_log2_max_frame_num) <= param->i_keyint_max )
-    {
+    while( (1 << sps->i_log2_max_frame_num) <= param->i_keyint_max && sps->i_log2_max_frame_num < 10 )
         sps->i_log2_max_frame_num++;
-    }
-    sps->i_log2_max_frame_num++;    /* just in case */
+    sps->i_log2_max_frame_num++;
 
     sps->i_poc_type = 0;
     if( sps->i_poc_type == 0 )
@@ -185,19 +180,21 @@ void x264_sps_init( x264_sps_t *sps, int i_id, x264_param_t *param )
     }
 
     sps->vui.b_timing_info_present = 0;
-    if( param->i_fps_num > 0 && param->i_fps_den > 0)
+    if( param->i_timebase_num > 0 && param->i_timebase_den > 0 )
     {
         sps->vui.b_timing_info_present = 1;
-        sps->vui.i_num_units_in_tick = param->i_fps_den;
-        sps->vui.i_time_scale = param->i_fps_num * 2;
-        sps->vui.b_fixed_frame_rate = 1;
+        sps->vui.i_num_units_in_tick = param->i_timebase_num;
+        sps->vui.i_time_scale = param->i_timebase_den * 2;
+        sps->vui.b_fixed_frame_rate = !param->b_vfr_input;
     }
 
-    sps->vui.i_num_reorder_frames = param->b_bframe_pyramid ? 2 : param->i_bframe ? 1 : 0;
+    sps->vui.i_num_reorder_frames = param->i_bframe_pyramid ? 2 : param->i_bframe ? 1 : 0;
     /* extra slot with pyramid so that we don't have to override the
      * order of forgetting old pictures */
     sps->vui.i_max_dec_frame_buffering =
-    sps->i_num_ref_frames = X264_MIN(16, X264_MAX(param->i_frame_reference, 1 + sps->vui.i_num_reorder_frames));
+    sps->i_num_ref_frames = X264_MIN(16, X264_MAX3(param->i_frame_reference, 1 + sps->vui.i_num_reorder_frames,
+                                                   param->i_bframe_pyramid ? 4 : 1 ));
+    sps->i_num_ref_frames -= param->i_bframe_pyramid == X264_B_PYRAMID_STRICT;
 
     sps->vui.b_bitstream_restriction = 1;
     if( sps->vui.b_bitstream_restriction )
@@ -213,6 +210,7 @@ void x264_sps_init( x264_sps_t *sps, int i_id, x264_param_t *param )
 
 void x264_sps_write( bs_t *s, x264_sps_t *sps )
 {
+    bs_realign( s );
     bs_write( s, 8, sps->i_profile_idc );
     bs_write( s, 1, sps->b_constraint_set0 );
     bs_write( s, 1, sps->b_constraint_set1 );
@@ -362,6 +360,7 @@ void x264_sps_write( bs_t *s, x264_sps_t *sps )
     }
 
     bs_rbsp_trailing( s );
+    bs_flush( s );
 }
 
 void x264_pps_init( x264_pps_t *pps, int i_id, x264_param_t *param, x264_sps_t *sps )
@@ -372,13 +371,13 @@ void x264_pps_init( x264_pps_t *pps, int i_id, x264_param_t *param, x264_sps_t *
     pps->i_sps_id = sps->i_id;
     pps->b_cabac = param->b_cabac;
 
-    pps->b_pic_order = 0;
+    pps->b_pic_order = param->b_interlaced;
     pps->i_num_slice_groups = 1;
 
     pps->i_num_ref_idx_l0_active = 1;
     pps->i_num_ref_idx_l1_active = 1;
 
-    pps->b_weighted_pred = 0;
+    pps->b_weighted_pred = param->analyse.i_weighted_pred > 0;
     pps->b_weighted_bipred = param->analyse.b_weighted_bipred ? 2 : 0;
 
     pps->i_pic_init_qp = param->rc.i_rc_method == X264_RC_ABR ? 26 : param->rc.i_qp_constant;
@@ -386,7 +385,7 @@ void x264_pps_init( x264_pps_t *pps, int i_id, x264_param_t *param, x264_sps_t *
 
     pps->i_chroma_qp_index_offset = param->analyse.i_chroma_qp_offset;
     pps->b_deblocking_filter_control = 1;
-    pps->b_constrained_intra_pred = 0;
+    pps->b_constrained_intra_pred = param->b_constrained_intra;
     pps->b_redundant_pic_cnt = 0;
 
     pps->b_transform_8x8_mode = param->analyse.b_transform_8x8 ? 1 : 0;
@@ -426,6 +425,7 @@ void x264_pps_init( x264_pps_t *pps, int i_id, x264_param_t *param, x264_sps_t *
 
 void x264_pps_write( bs_t *s, x264_pps_t *pps )
 {
+    bs_realign( s );
     bs_write_ue( s, pps->i_id );
     bs_write_ue( s, pps->i_sps_id );
 
@@ -468,9 +468,29 @@ void x264_pps_write( bs_t *s, x264_pps_t *pps )
     }
 
     bs_rbsp_trailing( s );
+    bs_flush( s );
 }
 
-void x264_sei_version_write( x264_t *h, bs_t *s )
+void x264_sei_recovery_point_write( x264_t *h, bs_t *s, int recovery_frame_cnt )
+{
+    int payload_size;
+
+    bs_realign( s );
+    bs_write( s, 8, 0x06 ); // payload_type = Recovery Point
+    payload_size = bs_size_ue( recovery_frame_cnt ) + 4;
+
+    bs_write( s, 8, (payload_size + 7) / 8);
+    bs_write_ue( s, recovery_frame_cnt ); // recovery_frame_cnt
+    bs_write( s, 1, 1 ); //exact_match_flag 1
+    bs_write( s, 1, 0 ); //broken_link_flag 0
+    bs_write( s, 2, 0 ); //changing_slice_group 0
+
+    bs_align_10( s );
+    bs_rbsp_trailing( s );
+    bs_flush( s );
+}
+
+int x264_sei_version_write( x264_t *h, bs_t *s )
 {
     int i;
     // random ID number generated according to ISO-11578
@@ -479,14 +499,19 @@ void x264_sei_version_write( x264_t *h, bs_t *s )
         0x96, 0x2c, 0xd8, 0x20, 0xd9, 0x23, 0xee, 0xef
     };
     char *opts = x264_param2string( &h->param, 0 );
-    char *version = x264_malloc( 200 + strlen(opts) );
+    char *version;
     int length;
+
+    if( !opts )
+        return -1;
+    CHECKED_MALLOC( version, 200 + strlen( opts ) );
 
     sprintf( version, "x264 - core %d%s - H.264/MPEG-4 AVC codec - "
              "Copyleft 2003-2009 - http://www.videolan.org/x264.html - options: %s",
              X264_BUILD, X264_VERSION, opts );
     length = strlen(version)+1+16;
 
+    bs_realign( s );
     bs_write( s, 8, 0x5 ); // payload_type = user_data_unregistered
     // payload_size
     for( i = 0; i <= length-255; i += 255 )
@@ -499,9 +524,14 @@ void x264_sei_version_write( x264_t *h, bs_t *s )
         bs_write( s, 8, version[i] );
 
     bs_rbsp_trailing( s );
+    bs_flush( s );
 
     x264_free( opts );
     x264_free( version );
+    return 0;
+fail:
+    x264_free( opts );
+    return -1;
 }
 
 const x264_level_t x264_levels[] =
@@ -536,7 +566,7 @@ int x264_validate_levels( x264_t *h, int verbose )
 {
     int ret = 0;
     int mbs = h->sps->i_mb_width * h->sps->i_mb_height;
-    int dpb = mbs * 384 * h->sps->i_num_ref_frames;
+    int dpb = mbs * 384 * h->sps->vui.i_max_dec_frame_buffering;
     int cbp_factor = h->sps->i_profile_idc==PROFILE_HIGH ? 5 : 4;
 
     const x264_level_t *l = x264_levels;
@@ -550,7 +580,7 @@ int x264_validate_levels( x264_t *h, int verbose )
                h->sps->i_mb_width, h->sps->i_mb_height, l->frame_size );
     if( dpb > l->dpb )
         ERROR( "DPB size (%d frames, %d bytes) > level limit (%d frames, %d bytes)\n",
-                h->sps->i_num_ref_frames, dpb, (int)(l->dpb / (384*mbs)), l->dpb );
+                h->sps->vui.i_max_dec_frame_buffering, dpb, (int)(l->dpb / (384*mbs)), l->dpb );
 
 #define CHECK( name, limit, val ) \
     if( (val) > (limit) ) \
