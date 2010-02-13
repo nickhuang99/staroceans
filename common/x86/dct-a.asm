@@ -26,16 +26,30 @@
 %include "x86inc.asm"
 %include "x86util.asm"
 
+%macro SHUFFLE_16BIT 8
+    %rep 8
+        db %1*2
+        db %1*2+1
+        %rotate 1
+    %endrep
+%endmacro
+
 SECTION_RODATA
+pw_32_0: times 4 dw 32
+         times 4 dw 0
 pw_32: times 8 dw 32
 pw_8000: times 8 dw 0x8000
 hsub_mul: times 8 db 1, -1
+
 pb_sub4frame:   db 0,1,4,8,5,2,3,6,9,12,13,10,7,11,14,15
-pb_scan4framea: db 12,13,6,7,14,15,0,1,8,9,2,3,4,5,10,11
-pb_scan4frameb: db 0,1,8,9,2,3,4,5,10,11,12,13,6,7,14,15
+pb_sub4field:   db 0,4,1,8,12,5,9,13,2,6,10,14,3,7,11,15
+pb_subacmask:   dw 0,-1,-1,-1,-1,-1,-1,-1
+pb_scan4framea: SHUFFLE_16BIT 6,3,7,0,4,1,2,5
+pb_scan4frameb: SHUFFLE_16BIT 0,4,1,2,5,6,3,7
 pb_idctdc_unpack: db 0,0,0,0,1,1,1,1,2,2,2,2,3,3,3,3
 pb_idctdc_unpack2: db 4,4,4,4,5,5,5,5,6,6,6,6,7,7,7,7
 pb_1: times 16 db 1
+pw_1: times 8 dw 1
 
 SECTION .text
 
@@ -145,6 +159,59 @@ cglobal x264_add4x4_idct_mmx, 2,2
     STORE_DIFF  m3, m4, m7, [r0+3*FDEC_STRIDE]
     RET
 
+INIT_XMM
+cglobal x264_add4x4_idct_sse4, 2,2,6
+    mova      m0, [r1+0x00]     ; row1/row0
+    mova      m2, [r1+0x10]     ; row3/row2
+    mova      m1, m0            ; row1/row0
+    psraw     m0, 1             ; row1>>1/...
+    mova      m3, m2            ; row3/row2
+    psraw     m2, 1             ; row3>>1/...
+    movsd     m0, m1            ; row1>>1/row0
+    movsd     m2, m3            ; row3>>1/row2
+    psubw     m0, m3            ; row1>>1-row3/row0-2
+    paddw     m2, m1            ; row3>>1+row1/row0+2
+    SBUTTERFLY2 wd, 0, 2, 1
+    SUMSUB_BA m2, m0, m1
+    pshuflw   m1, m2, 10110001b
+    pshufhw   m2, m2, 10110001b
+    punpckldq m1, m0
+    punpckhdq m2, m0
+    SWAP 0, 1
+
+    mova      m1, [pw_32_0 GLOBAL]
+    paddw     m1, m0            ; row1/row0 corrected
+    psraw     m0, 1             ; row1>>1/...
+    mova      m3, m2            ; row3/row2
+    psraw     m2, 1             ; row3>>1/...
+    movsd     m0, m1            ; row1>>1/row0
+    movsd     m2, m3            ; row3>>1/row2
+    psubw     m0, m3            ; row1>>1-row3/row0-2
+    paddw     m2, m1            ; row3>>1+row1/row0+2
+    SBUTTERFLY2 qdq, 0, 2, 1
+    SUMSUB_BA m2, m0, m1
+
+    movd      m4, [r0+FDEC_STRIDE*0]
+    movd      m1, [r0+FDEC_STRIDE*1]
+    movd      m3, [r0+FDEC_STRIDE*2]
+    movd      m5, [r0+FDEC_STRIDE*3]
+    punpckldq m1, m4            ; row0/row1
+    pxor      m4, m4
+    punpckldq m3, m5            ; row3/row2
+    punpcklbw m1, m4
+    psraw     m2, 6
+    punpcklbw m3, m4
+    psraw     m0, 6
+    paddsw    m2, m1
+    paddsw    m0, m3
+    packuswb  m0, m2            ; row0/row1/row3/row2
+    pextrd   [r0+FDEC_STRIDE*0], m0, 3
+    pextrd   [r0+FDEC_STRIDE*1], m0, 2
+    movd     [r0+FDEC_STRIDE*2], m0
+    pextrd   [r0+FDEC_STRIDE*3], m0, 1
+    RET
+
+INIT_MMX
 ;-----------------------------------------------------------------------------
 ; void x264_sub8x8_dct_mmx( int16_t dct[4][4][4], uint8_t *pix1, uint8_t *pix2 )
 ;-----------------------------------------------------------------------------
@@ -428,6 +495,79 @@ cglobal x264_add16x16_idct_dc_ssse3, 2,2,8
     ret
 
 ;-----------------------------------------------------------------------------
+; void sub8x8_dct_dc( int16_t dct[2][2], uint8_t *pix1, uint8_t *pix2 )
+;-----------------------------------------------------------------------------
+
+%macro DCTDC_2ROW_MMX 3
+    movq      %1, [r1+FENC_STRIDE*(0+%3)]
+    movq      m1, [r1+FENC_STRIDE*(1+%3)]
+    movq      m2, [r2+FDEC_STRIDE*(0+%3)]
+    movq      m3, [r2+FDEC_STRIDE*(1+%3)]
+    movq      %2, %1
+    punpckldq %1, m1
+    punpckhdq %2, m1
+    movq      m1, m2
+    punpckldq m2, m3
+    punpckhdq m1, m3
+    psadbw    %1, m7
+    psadbw    %2, m7
+    psadbw    m2, m7
+    psadbw    m1, m7
+    psubw     %1, m2
+    psubw     %2, m1
+%endmacro
+
+INIT_MMX
+cglobal x264_sub8x8_dct_dc_mmxext, 3,3
+    pxor      m7, m7
+    call .loop
+    add       r1, FENC_STRIDE*4
+    add       r2, FDEC_STRIDE*4
+    add       r0, 4
+.loop:
+    DCTDC_2ROW_MMX m0, m4, 0
+    DCTDC_2ROW_MMX m5, m6, 2
+    paddw     m0, m5
+    paddw     m4, m6
+    punpcklwd m0, m4
+    movd    [r0], m0
+    ret
+
+INIT_XMM
+%macro DCTDC_2ROW_SSE2 3
+    movq      m0, [r1+FENC_STRIDE*(0+%1)]
+    movq      m1, [r1+FENC_STRIDE*(1+%1)]
+    movq      m2, [r2+FDEC_STRIDE*(0+%1)]
+    movq      m3, [r2+FDEC_STRIDE*(1+%1)]
+    punpckldq m0, m1
+    punpckldq m2, m3
+    psadbw    m0, m7
+    psadbw    m2, m7
+%if %2
+    paddw     %3, m0
+    paddw     m6, m2
+%else
+    SWAP      %3, m0
+    SWAP      m6, m2
+%endif
+%endmacro
+
+cglobal x264_sub8x8_dct_dc_sse2, 3,3,8
+    pxor     m7, m7
+    DCTDC_2ROW_SSE2 0, 0, m4
+    DCTDC_2ROW_SSE2 2, 1, m4
+    add      r1, FENC_STRIDE*4
+    add      r2, FDEC_STRIDE*4
+    psubq    m4, m6
+    DCTDC_2ROW_SSE2 0, 0, m5
+    DCTDC_2ROW_SSE2 2, 1, m5
+    psubq    m5, m6
+    packssdw m4, m5
+    packssdw m4, m4
+    movq   [r0], m4
+    RET
+
+;-----------------------------------------------------------------------------
 ; void x264_zigzag_scan_8x8_frame_ssse3( int16_t level[64], int16_t dct[8][8] )
 ;-----------------------------------------------------------------------------
 %macro SCAN_8x8 1
@@ -704,9 +844,106 @@ cglobal x264_zigzag_scan_4x4_field_mmxext, 2,3
     RET
 
 ;-----------------------------------------------------------------------------
+; void x264_zigzag_scan_8x8_field_mmxext( int16_t level[64], int16_t dct[8][8] )
+;-----------------------------------------------------------------------------
+
+; Output order:
+;  0  1  2  8  9  3  4 10
+; 16 11  5  6  7 12 17 24
+; 18 13 14 15 19 25 32 26
+; 20 21 22 23 27 33 40 34
+; 28 29 30 31 35 41 48 42
+; 36 37 38 39 43 49 50 44
+; 45 46 47 51 56 57 52 53
+; 54 55 58 59 60 61 62 63
+
+cglobal x264_zigzag_scan_8x8_field_mmxext, 2,3
+    movq       mm0, [r1+2*0]        ; 03 02 01 00
+    movq       mm1, [r1+2*4]        ; 07 06 05 04
+    movq       mm2, [r1+2*8]        ; 11 10 09 08
+    pshufw     mm3, mm0, 011111111b ; 03 03 03 03
+    movd        r2, mm2             ; 09 08
+    pshufw     mm2, mm2, 000111001b ; 08 11 10 09
+    punpcklwd  mm3, mm1             ; 05 03 04 03
+    pinsrw     mm0, r2, 3           ; 08 02 01 00
+    movq       mm4, mm2
+    punpcklwd  mm2, mm3             ; 04 10 03 09
+    pshufw     mm2, mm2, 010110100b ; 10 04 03 09
+    movq  [r0+2*0], mm0             ; 08 02 01 00
+    movq  [r0+2*4], mm2             ; 10 04 03 09
+    movq       mm3, [r1+2*12]       ; 15 14 13 12
+    movq       mm5, [r1+2*16]       ; 19 18 17 16
+    punpckldq  mm6, mm5             ; 17 16 XX XX
+    psrlq      mm1, 16              ; XX 07 06 05
+    punpckhwd  mm6, mm4             ; 08 17 11 16
+    punpckldq  mm6, mm1             ; 06 05 11 16
+    movq  [r0+2*8], mm6             ; 06 05 11 16
+    psrlq      mm1, 16              ; XX XX 07 06
+    punpcklwd  mm1, mm5             ; 17 07 16 06
+    movq       mm0, [r1+2*20]       ; 23 22 21 20
+    movq       mm2, [r1+2*24]       ; 27 26 25 24
+    movq       mm6, mm3
+    punpckhdq  mm1, mm1             ; 17 07 17 07
+    punpcklwd  mm6, mm2             ; 25 13 24 12
+    pextrw      r2, mm5, 2
+    movq [r0+2*24], mm0             ; 23 22 21 20
+    punpcklwd  mm1, mm6             ; 24 17 12 07
+    movq [r0+2*12], mm1
+    pinsrw     mm3, r2, 0           ; 15 14 13 18
+    movq [r0+2*16], mm3             ; 15 14 13 18
+    movq       mm7, [r1+2*28]
+    movq       mm0, [r1+2*32]       ; 35 34 33 32
+    psrlq      mm5, 48              ; XX XX XX 19
+    pshufw     mm1, mm2, 011111001b ; 27 27 26 25
+    punpcklwd  mm5, mm0             ; 33 XX 32 19
+    psrlq      mm2, 48              ; XX XX XX 27
+    punpcklwd  mm5, mm1             ; 26 32 25 19
+    movq [r0+2*32], mm7
+    movq [r0+2*20], mm5             ; 26 32 25 19
+    movq       mm7, [r1+2*36]
+    movq       mm1, [r1+2*40]       ; 43 42 41 40
+    pshufw     mm3, mm0, 011111001b ; 35 35 34 33
+    punpcklwd  mm2, mm1             ; 41 XX 40 27
+    movq [r0+2*40], mm7
+    punpcklwd  mm2, mm3             ; 34 40 33 27
+    movq [r0+2*28], mm2
+    movq       mm7, [r1+2*44]       ; 47 46 45 44
+    movq       mm2, [r1+2*48]       ; 51 50 49 48
+    psrlq      mm0, 48              ; XX XX XX 35
+    punpcklwd  mm0, mm2             ; 49 XX 48 35
+    pshufw     mm3, mm1, 011111001b ; 43 43 42 41
+    punpcklwd  mm0, mm3             ; 42 48 41 35
+    movq [r0+2*36], mm0
+    pextrw      r2, mm2, 3          ; 51
+    psrlq      mm1, 48              ; XX XX XX 43
+    punpcklwd  mm1, mm7             ; 45 XX 44 43
+    psrlq      mm2, 16              ; XX 51 50 49
+    punpcklwd  mm1, mm2             ; 50 44 49 43
+    pshufw     mm1, mm1, 010110100b ; 44 50 49 43
+    movq [r0+2*44], mm1
+    psrlq      mm7, 16              ; XX 47 46 45
+    pinsrw     mm7, r2, 3           ; 51 47 46 45
+    movq [r0+2*48], mm7
+    movq       mm0, [r1+2*56]       ; 59 58 57 56
+    movq       mm1, [r1+2*52]       ; 55 54 53 52
+    movq       mm2, mm0
+    movq       mm7, [r1+2*60]
+    punpckldq  mm2, mm1             ; 53 52 57 56
+    punpckhdq  mm1, mm0             ; 59 58 55 54
+    movq [r0+2*52], mm2
+    movq [r0+2*56], mm1
+    movq [r0+2*60], mm7
+    RET
+
+;-----------------------------------------------------------------------------
 ; void x264_zigzag_sub_4x4_frame_ssse3( int16_t level[16], const uint8_t *src, uint8_t *dst )
 ;-----------------------------------------------------------------------------
-cglobal x264_zigzag_sub_4x4_frame_ssse3, 3,3,8
+%macro ZIGZAG_SUB_4x4 2
+%ifidn %1, ac
+cglobal x264_zigzag_sub_4x4%1_%2_ssse3, 4,4,8
+%else
+cglobal x264_zigzag_sub_4x4%1_%2_ssse3, 3,3,8
+%endif
     movd      xmm0, [r1+0*FENC_STRIDE]
     movd      xmm1, [r1+1*FENC_STRIDE]
     movd      xmm2, [r1+2*FENC_STRIDE]
@@ -725,7 +962,11 @@ cglobal x264_zigzag_sub_4x4_frame_ssse3, 3,3,8
     punpckldq xmm6, xmm7
     punpcklqdq xmm0, xmm2
     punpcklqdq xmm4, xmm6
+%ifidn %2, frame
     movdqa    xmm7, [pb_sub4frame GLOBAL]
+%else
+    movdqa    xmm7, [pb_sub4field GLOBAL]
+%endif
     pshufb    xmm0, xmm7
     pshufb    xmm4, xmm7
     pxor      xmm6, xmm6
@@ -737,9 +978,28 @@ cglobal x264_zigzag_sub_4x4_frame_ssse3, 3,3,8
     punpckhbw xmm5, xmm6
     psubw     xmm0, xmm4
     psubw     xmm1, xmm5
+%ifidn %1, ac
+    movd       r2d, xmm0
+    pand      xmm0, [pb_subacmask GLOBAL]
+%endif
     movdqa    [r0], xmm0
+    pxor      xmm2, xmm2
     movdqa [r0+16], xmm1
+    por       xmm0, xmm1
+    pcmpeqb   xmm0, xmm2
+    pmovmskb   eax, xmm0
+%ifidn %1, ac
+    mov       [r3], r2w
+%endif
+    sub        eax, 0xffff
+    shr        eax, 31
     RET
+%endmacro
+
+ZIGZAG_SUB_4x4   , frame
+ZIGZAG_SUB_4x4 ac, frame
+ZIGZAG_SUB_4x4   , field
+ZIGZAG_SUB_4x4 ac, field
 
 ;-----------------------------------------------------------------------------
 ; void x264_zigzag_interleave_8x8_cavlc_mmx( int16_t *dst, int16_t *src, uint8_t *nnz )

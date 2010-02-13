@@ -69,8 +69,8 @@ DECL_X4( sad, cache64_mmxext );
 DECL_X4( sad, cache64_sse2 );
 DECL_X4( sad, cache64_ssse3 );
 
-DECL_PIXELS( int, var, mmxext, ( uint8_t *pix, int i_stride ))
-DECL_PIXELS( int, var, sse2,   ( uint8_t *pix, int i_stride ))
+DECL_PIXELS( uint64_t, var, mmxext, ( uint8_t *pix, int i_stride ))
+DECL_PIXELS( uint64_t, var, sse2,   ( uint8_t *pix, int i_stride ))
 DECL_PIXELS( uint64_t, hadamard_ac, mmxext, ( uint8_t *pix, int i_stride ))
 DECL_PIXELS( uint64_t, hadamard_ac, sse2,   ( uint8_t *pix, int i_stride ))
 DECL_PIXELS( uint64_t, hadamard_ac, ssse3,  ( uint8_t *pix, int i_stride ))
@@ -102,6 +102,9 @@ void x264_pixel_ssim_4x4x2_core_mmxext( const uint8_t *pix1, int stride1,
 void x264_pixel_ssim_4x4x2_core_sse2( const uint8_t *pix1, int stride1,
                                       const uint8_t *pix2, int stride2, int sums[2][4] );
 float x264_pixel_ssim_end4_sse2( int sum0[5][4], int sum1[5][4], int width );
+int  x264_pixel_var2_8x8_mmxext( uint8_t *, int, uint8_t *, int, int * );
+int  x264_pixel_var2_8x8_sse2( uint8_t *, int, uint8_t *, int, int * );
+int  x264_pixel_var2_8x8_ssse3( uint8_t *, int, uint8_t *, int, int * );
 
 #define DECL_ADS( size, suffix ) \
 int x264_pixel_ads##size##_##suffix( int enc_dc[size], uint16_t *sums, int delta,\

@@ -263,6 +263,7 @@ enum cabac_ctx_block_cat_e
 
 int  x264_macroblock_cache_init( x264_t *h );
 void x264_macroblock_slice_init( x264_t *h );
+void x264_macroblock_thread_init( x264_t *h );
 void x264_macroblock_cache_load( x264_t *h, int i_mb_x, int i_mb_y );
 void x264_macroblock_cache_save( x264_t *h );
 void x264_macroblock_cache_end( x264_t *h );
@@ -291,10 +292,6 @@ void x264_mb_predict_mv( x264_t *h, int i_list, int idx, int i_width, int16_t mv
  *      if b_changed != NULL, set it to whether refs or mvs differ from
  *      before this functioncall. */
 int x264_mb_predict_mv_direct16x16( x264_t *h, int *b_changed );
-/* x264_mb_load_mv_direct8x8:
- *      set h->mb.cache.mv and h->mb.cache.ref for B_DIRECT
- *      must be called only after x264_mb_predict_mv_direct16x16 */
-void x264_mb_load_mv_direct8x8( x264_t *h, int idx );
 /* x264_mb_predict_mv_ref16x16:
  *      set mvc with D_16x16 prediction.
  *      uses all neighbors, even those that didn't end up using this ref.
@@ -338,21 +335,22 @@ static ALWAYS_INLINE uint32_t pack16to32_mask( int a, int b )
 }
 static ALWAYS_INLINE void x264_macroblock_cache_rect1( void *dst, int width, int height, uint8_t val )
 {
+    uint32_t *d = dst;
     if( width == 4 )
     {
         uint32_t val2 = val * 0x01010101;
-                          ((uint32_t*)dst)[0] = val2;
-        if( height >= 2 ) ((uint32_t*)dst)[2] = val2;
-        if( height == 4 ) ((uint32_t*)dst)[4] = val2;
-        if( height == 4 ) ((uint32_t*)dst)[6] = val2;
+                          M32( d+0 ) = val2;
+        if( height >= 2 ) M32( d+2 ) = val2;
+        if( height == 4 ) M32( d+4 ) = val2;
+        if( height == 4 ) M32( d+6 ) = val2;
     }
     else // 2
     {
         uint32_t val2 = val * 0x0101;
-                          ((uint16_t*)dst)[ 0] = val2;
-        if( height >= 2 ) ((uint16_t*)dst)[ 4] = val2;
-        if( height == 4 ) ((uint16_t*)dst)[ 8] = val2;
-        if( height == 4 ) ((uint16_t*)dst)[12] = val2;
+                          M16( d+0 ) = val2;
+        if( height >= 2 ) M16( d+2 ) = val2;
+        if( height == 4 ) M16( d+4 ) = val2;
+        if( height == 4 ) M16( d+6 ) = val2;
     }
 }
 static ALWAYS_INLINE void x264_macroblock_cache_rect4( void *dst, int width, int height, uint32_t val )
@@ -360,25 +358,27 @@ static ALWAYS_INLINE void x264_macroblock_cache_rect4( void *dst, int width, int
     int dy;
     if( width == 1 || WORD_SIZE < 8 )
     {
+        uint32_t *d = dst;
         for( dy = 0; dy < height; dy++ )
         {
-                             ((uint32_t*)dst)[8*dy+0] = val;
-            if( width >= 2 ) ((uint32_t*)dst)[8*dy+1] = val;
-            if( width == 4 ) ((uint32_t*)dst)[8*dy+2] = val;
-            if( width == 4 ) ((uint32_t*)dst)[8*dy+3] = val;
+                             M32( d+8*dy+0 ) = val;
+            if( width >= 2 ) M32( d+8*dy+1 ) = val;
+            if( width == 4 ) M32( d+8*dy+2 ) = val;
+            if( width == 4 ) M32( d+8*dy+3 ) = val;
         }
     }
     else
     {
         uint64_t val64 = val + ((uint64_t)val<<32);
+        uint64_t *d = dst;
         for( dy = 0; dy < height; dy++ )
         {
-                             ((uint64_t*)dst)[4*dy+0] = val64;
-            if( width == 4 ) ((uint64_t*)dst)[4*dy+1] = val64;
+                             M64( d+4*dy+0 ) = val64;
+            if( width == 4 ) M64( d+4*dy+1 ) = val64;
         }
     }
 }
-#define x264_macroblock_cache_mv_ptr(a,x,y,w,h,l,mv) x264_macroblock_cache_mv(a,x,y,w,h,l,*(uint32_t*)mv)
+#define x264_macroblock_cache_mv_ptr( a, x, y, w, h, l, mv ) x264_macroblock_cache_mv( a, x, y, w, h, l, M32( mv ) )
 static ALWAYS_INLINE void x264_macroblock_cache_mv( x264_t *h, int x, int y, int width, int height, int i_list, uint32_t mv )
 {
     x264_macroblock_cache_rect4( &h->mb.cache.mv[i_list][X264_SCAN8_0+x+8*y], width, height, mv );
@@ -401,22 +401,20 @@ static ALWAYS_INLINE void x264_macroblock_cache_intra8x8_pred( x264_t *h, int x,
     cache[0] = cache[1] = cache[8] = cache[9] = i_mode;
 }
 #define array_non_zero(a) array_non_zero_int(a, sizeof(a))
-#define array_non_zero_int array_non_zero_int_c
-static ALWAYS_INLINE int array_non_zero_int_c( void *v, int i_count )
+#define array_non_zero_int array_non_zero_int
+static ALWAYS_INLINE int array_non_zero_int( int16_t *v, int i_count )
 {
-    union {uint16_t s[4]; uint64_t l;} *x = v;
     if(i_count == 8)
-        return !!x[0].l;
+        return !!M64( &v[0] );
     else if(i_count == 16)
-        return !!(x[0].l|x[1].l);
+        return !!(M64( &v[0] ) | M64( &v[4] ));
     else if(i_count == 32)
-        return !!(x[0].l|x[1].l|x[2].l|x[3].l);
+        return !!(M64( &v[0] ) | M64( &v[4] ) | M64( &v[8] ) | M64( &v[12] ));
     else
     {
         int i;
-        i_count /= sizeof(uint64_t);
-        for( i = 0; i < i_count; i++ )
-            if( x[i].l ) return 1;
+        for( i = 0; i < i_count; i+=4 )
+            if( M64( &v[i] ) ) return 1;
         return 0;
     }
 }
@@ -462,7 +460,7 @@ static inline int x264_mb_transform_8x8_allowed( x264_t *h )
         return 0;
     if( h->mb.i_type != P_8x8 )
         return partition_tab[h->mb.i_type];
-    return *(uint32_t*)h->mb.i_sub_partition == D_L0_8x8*0x01010101;
+    return M32( h->mb.i_sub_partition ) == D_L0_8x8*0x01010101;
 }
 
 #endif
