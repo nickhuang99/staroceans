@@ -1,3 +1,11 @@
+x264 (1:0.85.1442+gitfcf70c-1) lucid; urgency=low
+
+  * use proper upstream version
+  * this package is properly maintained in ubuntu. Indicate this by using
+    "-N" as versioning scheme.
+
+ -- Reinhard Tartler <siretart@tauware.de>  Tue, 16 Feb 2010 20:42:48 +0100
+
 x264 (1:0.svn20100213+gitfcf70c-0ubuntu1~ppa1) lucid; urgency=low
 
   * new upstream version test upload.
