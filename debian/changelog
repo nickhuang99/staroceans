@@ -1,10 +1,12 @@
-x264 (1:0.85.1442+gitfcf70c-1) lucid; urgency=low
+x264 (2:0.85.1442+gitfcf70c-1) lucid; urgency=low
 
   * use proper upstream version
   * this package is properly maintained in ubuntu. Indicate this by using
     "-N" as versioning scheme.
+  * change versioning scheme as discussed with upstream. Requires bumping
+    epoch, though.
 
- -- Reinhard Tartler <siretart@tauware.de>  Tue, 16 Feb 2010 20:42:48 +0100
+ -- Reinhard Tartler <siretart@tauware.de>  Thu, 18 Feb 2010 07:39:51 +0100
 
 x264 (1:0.svn20100213+gitfcf70c-0ubuntu1~ppa1) lucid; urgency=low
 
