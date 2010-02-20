@@ -8,6 +8,8 @@ Build-Depends: debhelper (>= 7),
                libx11-dev,
                quilt
 Standards-Version: 3.8.4
+Vcs-Git: git://git.debian.org/git/pkg-multimedia/x264.git
+Vcs-Browser: http://git.debian.org/?p=pkg-multimedia/x264.git
 
 Package: x264
 Section: graphics
