@@ -1,3 +1,11 @@
+x264 (2:0.85.1442.1+git781d30-1) lucid; urgency=low
+
+  * really package revision 1442.
+    (NB: the first number (85) is the API version,
+         the second the number of git commits so far)
+
+ -- Reinhard Tartler <siretart@tauware.de>  Sat, 20 Feb 2010 10:16:27 +0100
+
 x264 (2:0.85.1442+gitfcf70c-1) lucid; urgency=low
 
   * use proper upstream version
