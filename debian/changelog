@@ -1,8 +1,9 @@
-x264 (2:0.85.1442+git781d30-1) lucid; urgency=low
+x264 (2:0.85.1442.1+git781d30-1) lucid; urgency=low
 
-  * use proper upstream version, LP: #315697, #463516
+  * use proper upstream version
     (NB: the first number (85) is the API version,
          the second the number of git commits so far)
+  * New upstream version should fix: LP: #315697, #463516
   * Many ARM Neon Optimisations, LP: #388388
   * this package is properly maintained in ubuntu. Indicate this by using
     "-N" as versioning scheme.
