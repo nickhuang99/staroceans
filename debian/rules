@@ -36,6 +36,11 @@ build: build-stamp
 build-stamp: debian/stamp-patched
 	dh_testdir
 
+	# fix version.sh for the debian package
+	mv version.sh version.sh-upstream
+	cp debian/debian-version.sh version.sh
+	chmod +x version.sh
+
 	# Build static lib
 	CFLAGS="$(CFLAGS)" ./configure $(confflags)
 	$(MAKE) -j $(NCPUS) libx264.a
@@ -49,10 +54,12 @@ build-stamp: debian/stamp-patched
 	CFLAGS="$(CFLAGS)" ./configure $(confflags) --enable-shared \
 	--enable-pic --enable-visualize
 
+
 	$(MAKE) -j $(NCPUS)
 
 	# Restore static lib
 	mv libx264.a.bak libx264.a
+	mv version.sh-upstream version.sh
 
 	touch $@
 
@@ -61,6 +68,7 @@ clean-real:
 	dh_testdir
 	dh_testroot
 	[ ! -f Makefile ] || $(MAKE) distclean
+	[ ! -f version.sh-upstream ] ||  mv version.sh-upstream version.sh
 	dh_clean build-stamp libx264.a.bak
 
 install:
