@@ -16,13 +16,9 @@ static_confflags += \
 # also, we try providing an optimized flavor for the arches / toolchain
 # combinations where it makes sense
 
-# TODO disable PIC on i386 for performance?  Upstream's configure seems to be
-# turning PIC when it knows an arch requires it, but doesn't support all Debian
-# arches
 shared_confflags += \
 	$(common_confflags) \
 	--enable-shared \
-	--enable-pic \
 	--enable-visualize
 
 opt_confflags += \
