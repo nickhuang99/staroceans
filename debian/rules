@@ -42,7 +42,7 @@ build-stamp: debian/stamp-patched
 	chmod +x version.sh
 
 	# Build static lib
-	CFLAGS="$(CFLAGS)" ./configure $(confflags)
+	CFLAGS="$(CFLAGS)" LDFLAGS="$(LDFLAGS)" ./configure $(confflags)
 	$(MAKE) -j $(NCPUS) libx264.a
 
 	# Backup static lib
@@ -51,7 +51,7 @@ build-stamp: debian/stamp-patched
 	# Build shared lib
 	$(MAKE) clean
 
-	CFLAGS="$(CFLAGS)" ./configure $(confflags) --enable-shared \
+	CFLAGS="$(CFLAGS)" LDFLAGS="$(LDFLAGS)" ./configure $(confflags) --enable-shared \
 	--enable-pic --enable-visualize
 
 
