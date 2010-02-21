@@ -1,12 +1,6 @@
 #!/usr/bin/make -f
 
-# Uncomment this to turn on verbose mode.
-#export DH_VERBOSE=1
-
 include /usr/share/quilt/quilt.make
-
-# This has to be exported to make some magic below work.
-export DH_OPTIONS
 
 DEB_HOST_GNU_TYPE   ?= $(shell dpkg-architecture -qDEB_HOST_GNU_TYPE)
 DEB_BUILD_GNU_TYPE  ?= $(shell dpkg-architecture -qDEB_BUILD_GNU_TYPE)
@@ -39,37 +33,30 @@ endif
 build: build-stamp
 build-stamp: debian/stamp-patched
 	dh_testdir
-
 	# fix version.sh for the debian package
 	mv version.sh version.sh-upstream
 	cp debian/debian-version.sh version.sh
 	chmod +x version.sh
-
 	# Build static lib
 	CFLAGS="$(CFLAGS)" LDFLAGS="$(LDFLAGS)" ./configure $(static_confflags)
 	$(MAKE) -j $(NCPUS) libx264.a
-
 	# Backup static lib
 	mv libx264.a libx264.a.bak
-
 	# Build shared lib
-	$(MAKE) clean
-
+	$(MAKE) -j $(NCPUS) clean
 	CFLAGS="$(CFLAGS)" LDFLAGS="$(LDFLAGS)" ./configure $(shared_confflags)
 	$(MAKE) -j $(NCPUS)
-
 	# Restore static lib
 	mv libx264.a.bak libx264.a
 	mv version.sh-upstream version.sh
-
 	touch $@
 
-clean: clean-real unpatch
-clean-real:
+clean:
 	dh_testdir
 	dh_testroot
 	[ ! -f Makefile ] || $(MAKE) distclean
 	[ ! -f version.sh-upstream ] ||  mv version.sh-upstream version.sh
+	$(MAKE) -f debian/rules unpatch
 	dh_clean build-stamp libx264.a.bak
 
 install:
