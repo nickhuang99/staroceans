@@ -32,7 +32,7 @@ build-stamp: debian/stamp-patched
 	# Backup static lib
 	mv libx264.a libx264.a.bak
 	# Build shared lib
-	$(MAKE) clean
+	$(MAKE) distclean
 	CFLAGS="$(CFLAGS)" LDFLAGS="$(LDFLAGS)" ./configure $(shared_confflags)
 	$(MAKE)
 	# Restore static lib
