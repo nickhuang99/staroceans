@@ -62,7 +62,7 @@ binary-arch: build install
 	dh_installchangelogs -s
 	dh_installdocs -s
 	dh_installexamples -s
-	dh_installman -s debian/x264.1
+	dh_installman -s
 	dh_link -s
 	dh_strip -s
 	dh_compress -s
