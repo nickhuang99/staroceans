@@ -16,14 +16,8 @@ static_confflags = $(common_confflags)
 # XXX why is --enable-visualize only used in the shared build?
 shared_confflags = $(common_confflags) --enable-shared --enable-pic --enable-visualize
 
-CFLAGS = -Wall -g
-LDFLAGS = -Wl,--as-needed
-
-ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
-	CFLAGS += -O0
-else
-	CFLAGS += -O2
-endif
+CFLAGS += -Wall -g -O$(if $(findstring noopt,$(DEB_BUILD_OPTIONS)),0,2)
+LDFLAGS += -Wl,--as-needed
 
 build: build-stamp
 build-stamp: debian/stamp-patched
