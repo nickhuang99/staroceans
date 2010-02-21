@@ -1,3 +1,5 @@
+# -*- mode: makefile -*-
+# vi:syntax=make
 # configure flags logic
 
 common_confflags += \
@@ -123,4 +125,3 @@ endif
 # which is not supported in Debian and for which there's no upstream flags by
 # default
 
-# vi:syntax=make
