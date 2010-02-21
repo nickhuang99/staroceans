@@ -23,3 +23,12 @@ checkasm
 *.y4m
 *.yuv
 x264_2pass.log
+
+/build-stamp
+/debian/*/
+/debian/*.debhelper
+/debian/*.debhelper.log
+/debian/*.substvars
+/debian/files
+/debian/stamp-patched
+/debian/tmp/
