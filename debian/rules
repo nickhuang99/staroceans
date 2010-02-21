@@ -10,11 +10,7 @@ PARALLEL_FLAGS += $(if $(DEB_BUILD_OPTIONS_PARALLEL),-j$(DEB_BUILD_OPTIONS_PARAL
 # will affect concurrency of debian/rules as well
 MAKEFLAGS += $(PARALLEL_FLAGS)
 
-common_confflags = --enable-pthread --prefix=/usr --enable-debug
-static_confflags = $(common_confflags)
-# TODO disable PIC on i386 for performance?
-# XXX why is --enable-visualize only used in the shared build?
-shared_confflags = $(common_confflags) --enable-shared --enable-pic --enable-visualize
+include debian/confflags
 
 CFLAGS += -Wall -g -O$(if $(findstring noopt,$(DEB_BUILD_OPTIONS)),0,2)
 LDFLAGS += -Wl,--as-needed

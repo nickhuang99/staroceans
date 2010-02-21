@@ -1,0 +1,19 @@
+# configure flags logic
+
+common_confflags += \
+	--enable-pthread \
+	--prefix=/usr \
+	--enable-debug
+
+static_confflags += \
+	$(common_confflags)
+
+# TODO disable PIC on i386 for performance?
+# XXX why is --enable-visualize only used in the shared build?
+shared_confflags = \
+	$(common_confflags) \
+	--enable-shared \
+	--enable-pic \
+	--enable-visualize
+
+# vi:syntax=make
