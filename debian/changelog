@@ -1,3 +1,9 @@
+x264 (2:0.85.1442.1+git781d30-2) lucid; urgency=low
+
+  * prepare new upload
+
+ -- Reinhard Tartler <siretart@tauware.de>  Sun, 21 Feb 2010 16:57:21 +0100
+
 x264 (2:0.85.1442.1+git781d30-1) lucid; urgency=low
 
   * use proper upstream version
