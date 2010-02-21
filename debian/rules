@@ -21,7 +21,11 @@ ifeq ($(NCPUS),0)
 	NCPUS:=1
 endif
 
-confflags = --enable-pthread --prefix=/usr --enable-debug
+common_confflags = --enable-pthread --prefix=/usr --enable-debug
+static_confflags = $(common_confflags) --disable-shared
+# TODO disable PIC on i386 for performance?
+# XXX why is --enable-visualize only used in the shared build?
+shared_confflags = $(common_confflags) --enable-shared --enable-pic --enable-visualize
 
 CFLAGS = -Wall -g
 LDFLAGS = -Wl,--as-needed
@@ -42,7 +46,7 @@ build-stamp: debian/stamp-patched
 	chmod +x version.sh
 
 	# Build static lib
-	CFLAGS="$(CFLAGS)" LDFLAGS="$(LDFLAGS)" ./configure $(confflags)
+	CFLAGS="$(CFLAGS)" LDFLAGS="$(LDFLAGS)" ./configure $(static_confflags)
 	$(MAKE) -j $(NCPUS) libx264.a
 
 	# Backup static lib
@@ -51,10 +55,7 @@ build-stamp: debian/stamp-patched
 	# Build shared lib
 	$(MAKE) clean
 
-	CFLAGS="$(CFLAGS)" LDFLAGS="$(LDFLAGS)" ./configure $(confflags) --enable-shared \
-	--enable-pic --enable-visualize
-
-
+	CFLAGS="$(CFLAGS)" LDFLAGS="$(LDFLAGS)" ./configure $(shared_confflags)
 	$(MAKE) -j $(NCPUS)
 
 	# Restore static lib
