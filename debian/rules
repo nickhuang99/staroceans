@@ -28,33 +28,31 @@ build-stamp: debian/stamp-patched
 	chmod +x version.sh
 	# Build static lib
 	CFLAGS="$(CFLAGS)" LDFLAGS="$(LDFLAGS)" ./configure $(static_confflags)
-	$(MAKE) libx264.a
-	# Backup static lib
-	mv libx264.a libx264.a.bak
-	# Build shared lib
+	$(MAKE)
+	$(MAKE) install DESTDIR=$(CURDIR)/debian/install/static
 	$(MAKE) distclean
+	# Build shared lib
 	CFLAGS="$(CFLAGS)" LDFLAGS="$(LDFLAGS)" ./configure $(shared_confflags)
 	$(MAKE)
-	# Restore static lib
-	mv libx264.a.bak libx264.a
+	$(MAKE) install DESTDIR=$(CURDIR)/debian/install/shared
 	mv version.sh-upstream version.sh
 	touch $@
 
 clean:
 	dh_testdir
 	dh_testroot
+	rm -rf debian/install
 	[ ! -f Makefile ] || $(MAKE) distclean
 	[ ! -f version.sh-upstream ] ||  mv version.sh-upstream version.sh
 	$(MAKE) -f debian/rules unpatch
-	dh_clean build-stamp libx264.a.bak
+	dh_clean build-stamp
 
 install:
 	dh_testdir
 	dh_testroot
 	dh_prep
 	dh_installdirs
-	$(MAKE) install DESTDIR=$(CURDIR)/debian/tmp
-	dh_install --fail-missing --sourcedir=debian/tmp
+	dh_install --list-missing --sourcedir=debian/install
 
 binary-arch: build install
 	dh_testdir
