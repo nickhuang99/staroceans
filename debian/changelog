@@ -1,7 +1,14 @@
 x264 (2:0.85.1448+git1a6d32-1) lucid; urgency=low
 
-  * New upstream snapshot, no new features, LP: #526396 
+  [ Loic Minier ]
+  * Drop --enable-pic, let's see what breaks, LP: #524859
 
+  [ Reinhard Tartler ]
+  * New upstream snapshot, no new features, LP: #526396 
+  * remove quilt infrastructure
+  * don't set CFLAGS in debian/rules, upstream build system overrides
+    this anyways
+  
  -- Reinhard Tartler <siretart@tauware.de>  Sun, 21 Feb 2010 16:57:21 +0100
 
 x264 (2:0.85.1442.1+git781d30-1) lucid; urgency=low
