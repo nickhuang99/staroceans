@@ -1,3 +1,9 @@
+x264 (2:0.85.1448+git1a6d32-2) UNRELEASED; urgency=low
+
+  * Add check_c() macro and use it for altivec check
+
+ -- Loïc Minier <lool@dooz.org>  Tue, 09 Mar 2010 21:37:57 +0100
+
 x264 (2:0.85.1448+git1a6d32-1) lucid; urgency=low
 
   [ Loic Minier ]
