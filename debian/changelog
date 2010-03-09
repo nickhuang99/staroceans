@@ -1,6 +1,6 @@
-x264 (2:0.85.1442.1+git781d30-2) lucid; urgency=low
+x264 (2:0.85.1448+git1a6d32-1) lucid; urgency=low
 
-  * prepare new upload
+  * New upstream snapshot, no new features, LP: #526396 
 
  -- Reinhard Tartler <siretart@tauware.de>  Sun, 21 Feb 2010 16:57:21 +0100
 
