@@ -13,7 +13,6 @@ MAKEFLAGS += $(PARALLEL_FLAGS)
 
 include debian/confflags
 
-CFLAGS += -Wall -g -O$(if $(findstring noopt,$(DEB_BUILD_OPTIONS)),0,2)
 LDFLAGS += -Wl,--as-needed
 
 build: build-stamp
@@ -24,18 +23,18 @@ build-stamp:
 	cp debian/debian-version.sh version.sh
 	chmod +x version.sh
 	# Build static lib
-	CFLAGS="$(CFLAGS)" LDFLAGS="$(LDFLAGS)" ./configure $(static_confflags)
+	LDFLAGS="$(LDFLAGS)" ./configure $(static_confflags)
 	$(MAKE)
 	$(MAKE) install DESTDIR=$(CURDIR)/debian/install/static
 	$(MAKE) distclean
 	# Build shared lib
-	CFLAGS="$(CFLAGS) $(shared_extra_cflags)" LDFLAGS="$(LDFLAGS)" ./configure $(shared_confflags)
+	CFLAGS="$(shared_extra_cflags)" LDFLAGS="$(LDFLAGS)" ./configure $(shared_confflags)
 	$(MAKE)
 	$(MAKE) install DESTDIR=$(CURDIR)/debian/install/shared
 ifeq ($(do_opt),yes)
 	$(MAKE) distclean
 	# Build opt lib
-	CFLAGS="$(CFLAGS)" LDFLAGS="$(LDFLAGS)" ./configure $(opt_confflags)
+	LDFLAGS="$(LDFLAGS)" ./configure $(opt_confflags)
 	$(MAKE)
 	$(MAKE) install DESTDIR=$(CURDIR)/debian/install/opt
 endif
