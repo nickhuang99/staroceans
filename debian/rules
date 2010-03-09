@@ -1,7 +1,5 @@
 #!/usr/bin/make -f
 
-include /usr/share/quilt/quilt.make
-
 libx264N := $(shell sed -rn 's/^Package:[[:space:]]*(libx264-[0-9]+)[[:space:]]*$$/\1/p' debian/control)
 
 DEB_BUILD_GNU_TYPE  ?= $(shell dpkg-architecture -qDEB_BUILD_GNU_TYPE)
@@ -19,7 +17,7 @@ CFLAGS += -Wall -g -O$(if $(findstring noopt,$(DEB_BUILD_OPTIONS)),0,2)
 LDFLAGS += -Wl,--as-needed
 
 build: build-stamp
-build-stamp: debian/stamp-patched
+build-stamp:
 	dh_testdir
 	# fix version.sh for the debian package
 	mv version.sh version.sh-upstream
@@ -50,7 +48,6 @@ clean:
 	rm -rf debian/install
 	[ ! -f Makefile ] || $(MAKE) distclean
 	[ ! -f version.sh-upstream ] ||  mv version.sh-upstream version.sh
-	$(MAKE) -f debian/rules unpatch
 	dh_clean build-stamp
 
 install:
