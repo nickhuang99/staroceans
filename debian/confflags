@@ -37,10 +37,11 @@ else
 CC := $(DEB_HOST_GNU_TYPE)-gcc
 endif
 
-# this outputs 0 or 1 depending on whether a piece of assembly can be compiled
-# with the *default* gcc flags; this is used to test the toolchain *default*
-# configuration
-check_asm = $(shell echo 'void foo(void) { __asm__ volatile("$(1)"); }' | $(CC) -x c -c - -o /dev/null 2>/dev/null && echo 1 || echo 0)
+# this outputs 0 or 1 depending on whether a piece of C or assembly can be
+# compiled with the *default* gcc flags; this is used to test the toolchain
+# *default* configuration
+check_c = $(shell echo 'int main(void) { $(1); }' | $(CC) -Werror $(2) -x c - -o /dev/null 2>/dev/null && echo 1 || echo 0)
+check_asm = $(call check_c, __asm__ volatile("$(1)"))
 
 do_opt := no
 
@@ -67,7 +68,8 @@ endif
 # -mabi=altivec by default
 # XXX upstream: --disable-asm should disable altivec
 ifneq (,$(filter powerpc powerpc64,$(DEB_HOST_GNU_CPU)))
-has_altivec := $(shell printf '#include <altivec.h>\nvoid foo(void) { vector signed int v1, v2, v3; v1 = vec_add(v2, v3); }\n' | $(CC) -x c -c - -o /dev/null 2>/dev/null && echo 1 || echo 0)
+altivec_c := vector signed int v1, v2, v3; v1 = vec_add(v2, v3)
+has_altivec := $(call check_c, $(altivec_c), -include altivec.h)
 ifneq ($(has_altivec),1)
 # build an Altivec optimized flavor
 do_opt := yes
