@@ -66,7 +66,8 @@ endif
 
 # PPC upstream arch, powerpc and ppc64 Debian arches; upstream adds -maltivec
 # -mabi=altivec by default
-# XXX upstream: --disable-asm should disable altivec
+# XXX upstream: --disable-asm should disable altivec; fixed in
+# 6a443d3cdf338408b1b39e7f336306d2a34703f6
 ifneq (,$(filter powerpc powerpc64,$(DEB_HOST_GNU_CPU)))
 altivec_c := vector signed int v1, v2, v3; v1 = vec_add(v2, v3)
 has_altivec := $(call check_c, $(altivec_c), -include altivec.h)
@@ -78,12 +79,21 @@ shared_confflags += --disable-asm
 endif
 endif
 
-# TODO
 # Sparc and UltraSparc upstream arches, sparc Debian arch; upstream adds
-# -mcpu=ultrasparc to CFLAGS and LDCFLAGS and -xarch=v8plusa to ASFLAGS by
+# -mcpu=ultrasparc to CFLAGS and LDFLAGS and -xarch=v8plusa to ASFLAGS by
 # default
-#ifeq (sparc,$(DEB_HOST_GNU_CPU))
-#endif
+# XXX upstream: --disable-asm should disable vis; fixed in
+# 6a443d3cdf338408b1b39e7f336306d2a34703f6
+ifeq (sparc,$(DEB_HOST_GNU_CPU))
+vis_asm := pdist %f0, %f0, %f0
+has_vis := $(call check_asm, $(vis_asm))
+ifneq ($(has_vis),1)
+# build a VIS optimized flavor
+do_opt := yes
+opt_libdir := /usr/lib/v9
+shared_confflags += --disable-asm
+endif
+endif
 
 # MIPS upstream arch, mips and mipsel Debian arches; no upstream flags by
 # default
@@ -118,6 +128,13 @@ endif
 # default
 #ifneq (,$(filter s390 s390x,$(DEB_HOST_GNU_CPU)))
 #endif
+
+# IA64 upstream arch, ia64 Debian arch; no upstream flags by default
+# XXX upstream: --enable-pic is a workaround until the patches to set PIC by
+# default on IA64 get merged
+ifeq (ia64,$(DEB_HOST_GNU_CPU))
+shared_confflags += --enable-pic
+endif
 
 # there's no special handling for other arches upstream, except for PARISC
 # which is not supported in Debian and for which there's no upstream flags by
