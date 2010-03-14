@@ -1,3 +1,15 @@
+x264 (2:0.85.1448+git1a6d32-3) lucid; urgency=low
+
+  [ Loïc Minier ]
+  * Finish confflags logic and/or add workarounds
+
+  [ Reinhard Tartler ]
+  * build depend on libgpac-dev to enable mp4 support, LP: #464797
+  * simplify configure line, LP: #538555
+  * generate manpage with help2man to keep it up-to-date, LP: #391281
+
+ -- Reinhard Tartler <siretart@tauware.de>  Sun, 14 Mar 2010 10:10:26 +0100
+
 x264 (2:0.85.1448+git1a6d32-2) lucid; urgency=low
 
   * Add check_c() macro and use it for altivec check
