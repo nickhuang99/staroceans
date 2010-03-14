@@ -3,7 +3,6 @@
 # configure flags logic
 
 common_confflags += \
-	--enable-pthread \
 	--prefix=/usr \
 	--enable-debug
 
@@ -20,14 +19,11 @@ static_confflags += \
 
 shared_confflags += \
 	$(common_confflags) \
-	--enable-shared \
-	--enable-visualize
+	--enable-shared
 
 opt_confflags += \
 	$(common_confflags) \
 	--enable-shared \
-	--enable-pic \
-	--enable-visualize \
 	--libdir=$(opt_libdir)
 
 # this is only used for the check_asm macro
