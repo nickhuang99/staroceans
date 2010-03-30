@@ -48,9 +48,9 @@ ifneq (,$(filter i386 i486 i586 i686 pentium,$(DEB_HOST_GNU_CPU)))
 sse_asm := addss m0, m0
 has_sse := $(call check_asm, $(sse_asm))
 ifneq ($(has_sse),1)
-# build an SSE optimized flavor; SSE implies i686
+# build an SSE optimized flavor for i686
 do_opt := yes
-opt_libdir := /usr/lib/sse
+opt_libdir := /usr/lib/i686/sse2
 shared_confflags += --disable-asm
 endif
 endif
