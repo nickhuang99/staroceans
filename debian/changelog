@@ -1,6 +1,6 @@
 x264 (2:0.85.1448+git1a6d32-4) lucid; urgency=low
 
-  * prepare new upload
+  * install sse optimized version in /usr/lib/sse2. LP: #550524
 
  -- Reinhard Tartler <siretart@tauware.de>  Tue, 30 Mar 2010 22:27:28 +0200
 
