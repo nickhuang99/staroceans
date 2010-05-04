@@ -1,5 +1,5 @@
 Source: x264
-Section: libs
+Section: non-free/libs
 Priority: extra
 Maintainer: Debian multimedia packages maintainers <pkg-multimedia-maintainers@lists.alioth.debian.org>
 Uploaders: Reinhard Tartler <siretart@tauware.de>,
@@ -16,7 +16,7 @@ Vcs-Browser: http://git.debian.org/?p=pkg-multimedia/x264.git
 Homepage: http://www.videolan.org/developers/x264.html
 
 Package: x264
-Section: graphics
+Section: non-free/graphics
 Architecture: any
 Depends: ${shlibs:Depends},
          ${misc:Depends}
@@ -46,7 +46,6 @@ Description: video encoder for the H.264/MPEG-4 AVC standard
   * interlaced streams
 
 Package: libx264-85
-Section: libs
 Architecture: any
 Depends: ${shlibs:Depends},
          ${misc:Depends}
@@ -57,7 +56,7 @@ Description: x264 video coding library
  This package contains the libx264 shared library.
 
 Package: libx264-dev
-Section: libdevel
+Section: non-free/libdevel
 Architecture: any
 Depends: libx264-85 (= ${binary:Version}),
          ${misc:Depends} 
