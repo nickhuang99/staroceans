@@ -29,6 +29,9 @@
 #ifdef ARCH_PPC
 #   include "ppc/quant.h"
 #endif
+#ifdef ARCH_ARM
+#   include "arm/quant.h"
+#endif
 
 #define QUANT_ONE( coef, mf, f ) \
 { \
@@ -39,141 +42,101 @@
     nz |= (coef); \
 }
 
-static int quant_8x8( int16_t dct[8][8], uint16_t mf[64], uint16_t bias[64] )
+static int quant_8x8( int16_t dct[64], uint16_t mf[64], uint16_t bias[64] )
 {
     int i, nz = 0;
     for( i = 0; i < 64; i++ )
-        QUANT_ONE( dct[0][i], mf[i], bias[i] );
+        QUANT_ONE( dct[i], mf[i], bias[i] );
     return !!nz;
 }
 
-static int quant_4x4( int16_t dct[4][4], uint16_t mf[16], uint16_t bias[16] )
+static int quant_4x4( int16_t dct[16], uint16_t mf[16], uint16_t bias[16] )
 {
     int i, nz = 0;
     for( i = 0; i < 16; i++ )
-        QUANT_ONE( dct[0][i], mf[i], bias[i] );
+        QUANT_ONE( dct[i], mf[i], bias[i] );
     return !!nz;
 }
 
-static int quant_4x4_dc( int16_t dct[4][4], int mf, int bias )
+static int quant_4x4_dc( int16_t dct[16], int mf, int bias )
 {
     int i, nz = 0;
     for( i = 0; i < 16; i++ )
-        QUANT_ONE( dct[0][i], mf, bias );
+        QUANT_ONE( dct[i], mf, bias );
     return !!nz;
 }
 
-static int quant_2x2_dc( int16_t dct[2][2], int mf, int bias )
+static int quant_2x2_dc( int16_t dct[4], int mf, int bias )
 {
     int nz = 0;
-    QUANT_ONE( dct[0][0], mf, bias );
-    QUANT_ONE( dct[0][1], mf, bias );
-    QUANT_ONE( dct[0][2], mf, bias );
-    QUANT_ONE( dct[0][3], mf, bias );
+    QUANT_ONE( dct[0], mf, bias );
+    QUANT_ONE( dct[1], mf, bias );
+    QUANT_ONE( dct[2], mf, bias );
+    QUANT_ONE( dct[3], mf, bias );
     return !!nz;
 }
 
 #define DEQUANT_SHL( x ) \
-    dct[y][x] = ( dct[y][x] * dequant_mf[i_mf][y][x] ) << i_qbits
+    dct[x] = ( dct[x] * dequant_mf[i_mf][x] ) << i_qbits
 
 #define DEQUANT_SHR( x ) \
-    dct[y][x] = ( dct[y][x] * dequant_mf[i_mf][y][x] + f ) >> (-i_qbits)
+    dct[x] = ( dct[x] * dequant_mf[i_mf][x] + f ) >> (-i_qbits)
 
-static void dequant_4x4( int16_t dct[4][4], int dequant_mf[6][4][4], int i_qp )
+static void dequant_4x4( int16_t dct[16], int dequant_mf[6][16], int i_qp )
 {
     const int i_mf = i_qp%6;
     const int i_qbits = i_qp/6 - 4;
-    int y;
+    int i;
 
     if( i_qbits >= 0 )
     {
-        for( y = 0; y < 4; y++ )
-        {
-            DEQUANT_SHL( 0 );
-            DEQUANT_SHL( 1 );
-            DEQUANT_SHL( 2 );
-            DEQUANT_SHL( 3 );
-        }
+        for( i = 0; i < 16; i++ )
+            DEQUANT_SHL( i );
     }
     else
     {
         const int f = 1 << (-i_qbits-1);
-        for( y = 0; y < 4; y++ )
-        {
-            DEQUANT_SHR( 0 );
-            DEQUANT_SHR( 1 );
-            DEQUANT_SHR( 2 );
-            DEQUANT_SHR( 3 );
-        }
+        for( i = 0; i < 16; i++ )
+            DEQUANT_SHR( i );
     }
 }
 
-static void dequant_8x8( int16_t dct[8][8], int dequant_mf[6][8][8], int i_qp )
+static void dequant_8x8( int16_t dct[64], int dequant_mf[6][64], int i_qp )
 {
     const int i_mf = i_qp%6;
     const int i_qbits = i_qp/6 - 6;
-    int y;
+    int i;
 
     if( i_qbits >= 0 )
     {
-        for( y = 0; y < 8; y++ )
-        {
-            DEQUANT_SHL( 0 );
-            DEQUANT_SHL( 1 );
-            DEQUANT_SHL( 2 );
-            DEQUANT_SHL( 3 );
-            DEQUANT_SHL( 4 );
-            DEQUANT_SHL( 5 );
-            DEQUANT_SHL( 6 );
-            DEQUANT_SHL( 7 );
-        }
+        for( i = 0; i < 64; i++ )
+            DEQUANT_SHL( i );
     }
     else
     {
         const int f = 1 << (-i_qbits-1);
-        for( y = 0; y < 8; y++ )
-        {
-            DEQUANT_SHR( 0 );
-            DEQUANT_SHR( 1 );
-            DEQUANT_SHR( 2 );
-            DEQUANT_SHR( 3 );
-            DEQUANT_SHR( 4 );
-            DEQUANT_SHR( 5 );
-            DEQUANT_SHR( 6 );
-            DEQUANT_SHR( 7 );
-        }
+        for( i = 0; i < 64; i++ )
+            DEQUANT_SHR( i );
     }
 }
 
-static void dequant_4x4_dc( int16_t dct[4][4], int dequant_mf[6][4][4], int i_qp )
+static void dequant_4x4_dc( int16_t dct[16], int dequant_mf[6][16], int i_qp )
 {
     const int i_qbits = i_qp/6 - 6;
-    int y;
+    int i;
 
     if( i_qbits >= 0 )
     {
-        const int i_dmf = dequant_mf[i_qp%6][0][0] << i_qbits;
-
-        for( y = 0; y < 4; y++ )
-        {
-            dct[y][0] *= i_dmf;
-            dct[y][1] *= i_dmf;
-            dct[y][2] *= i_dmf;
-            dct[y][3] *= i_dmf;
-        }
+        const int i_dmf = dequant_mf[i_qp%6][0] << i_qbits;
+        for( i = 0; i < 16; i++ )
+            dct[i] *= i_dmf;
     }
     else
     {
-        const int i_dmf = dequant_mf[i_qp%6][0][0];
+        const int i_dmf = dequant_mf[i_qp%6][0];
         const int f = 1 << (-i_qbits-1);
-
-        for( y = 0; y < 4; y++ )
-        {
-            dct[y][0] = ( dct[y][0] * i_dmf + f ) >> (-i_qbits);
-            dct[y][1] = ( dct[y][1] * i_dmf + f ) >> (-i_qbits);
-            dct[y][2] = ( dct[y][2] * i_dmf + f ) >> (-i_qbits);
-            dct[y][3] = ( dct[y][3] * i_dmf + f ) >> (-i_qbits);
-        }
+        for( i = 0; i < 16; i++ )
+            dct[i] = ( dct[i] * i_dmf + f ) >> (-i_qbits);
     }
 }
 
@@ -215,7 +178,7 @@ static int ALWAYS_INLINE x264_decimate_score_internal( int16_t *dct, int i_max )
     int idx = i_max - 1;
 
     /* Yes, dct[idx-1] is guaranteed to be 32-bit aligned.  idx>=0 instead of 1 works correctly for the same reason */
-    while( idx >= 0 && *(uint32_t*)&dct[idx-1] == 0 )
+    while( idx >= 0 && M32( &dct[idx-1] ) == 0 )
         idx -= 2;
     if( idx >= 0 && dct[idx] == 0 )
         idx--;
@@ -255,7 +218,7 @@ static int ALWAYS_INLINE x264_coeff_last_internal( int16_t *l, int i_count )
 {
     int i_last;
     for( i_last = i_count-1; i_last >= 3; i_last -= 4 )
-        if( *(uint64_t*)(l+i_last-3) )
+        if( M64( l+i_last-3 ) )
             break;
     while( i_last >= 0 && l[i_last] == 0 )
         i_last--;
@@ -426,6 +389,25 @@ void x264_quant_init( x264_t *h, int cpu, x264_quant_function_t *pf )
 
         pf->dequant_4x4 = x264_dequant_4x4_altivec;
         pf->dequant_8x8 = x264_dequant_8x8_altivec;
+    }
+#endif
+
+#ifdef HAVE_ARMV6
+    if( cpu&X264_CPU_ARMV6 )
+        pf->coeff_last[DCT_CHROMA_DC] = x264_coeff_last4_arm;
+
+    if( cpu&X264_CPU_NEON )
+    {
+        pf->quant_2x2_dc   = x264_quant_2x2_dc_neon;
+        pf->quant_4x4      = x264_quant_4x4_neon;
+        pf->quant_4x4_dc   = x264_quant_4x4_dc_neon;
+        pf->quant_8x8      = x264_quant_8x8_neon;
+        pf->dequant_4x4    = x264_dequant_4x4_neon;
+        pf->dequant_4x4_dc = x264_dequant_4x4_dc_neon;
+        pf->dequant_8x8    = x264_dequant_8x8_neon;
+        pf->coeff_last[ DCT_LUMA_AC] = x264_coeff_last15_neon;
+        pf->coeff_last[DCT_LUMA_4x4] = x264_coeff_last16_neon;
+        pf->coeff_last[DCT_LUMA_8x8] = x264_coeff_last64_neon;
     }
 #endif
     pf->coeff_last[  DCT_LUMA_DC] = pf->coeff_last[DCT_LUMA_4x4];

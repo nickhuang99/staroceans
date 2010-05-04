@@ -27,7 +27,7 @@
 #include "common/macroblock.h"
 
 extern const int x264_lambda2_tab[52];
-extern const int x264_lambda_tab[52];
+extern const uint8_t x264_lambda_tab[52];
 
 void x264_rdo_init( void );
 
@@ -45,7 +45,7 @@ void x264_predict_lossless_16x16( x264_t *h, int i_mode );
 
 void x264_macroblock_encode      ( x264_t *h );
 void x264_macroblock_write_cabac ( x264_t *h, x264_cabac_t *cb );
-void x264_macroblock_write_cavlc ( x264_t *h, bs_t *s );
+void x264_macroblock_write_cavlc ( x264_t *h );
 
 void x264_macroblock_encode_p8x8( x264_t *h, int i8 );
 void x264_macroblock_encode_p4x4( x264_t *h, int i4 );
@@ -56,10 +56,10 @@ void x264_mb_encode_8x8_chroma( x264_t *h, int b_inter, int i_qp );
 void x264_cabac_mb_skip( x264_t *h, int b_skip );
 
 int x264_quant_dc_trellis( x264_t *h, int16_t *dct, int i_quant_cat,
-                             int i_qp, int i_ctxBlockCat, int b_intra );
-int x264_quant_4x4_trellis( x264_t *h, int16_t dct[4][4], int i_quant_cat,
-                             int i_qp, int i_ctxBlockCat, int b_intra, int idx );
-int x264_quant_8x8_trellis( x264_t *h, int16_t dct[8][8], int i_quant_cat,
+                             int i_qp, int i_ctxBlockCat, int b_intra, int b_chroma );
+int x264_quant_4x4_trellis( x264_t *h, int16_t *dct, int i_quant_cat,
+                             int i_qp, int i_ctxBlockCat, int b_intra, int b_chroma, int idx );
+int x264_quant_8x8_trellis( x264_t *h, int16_t *dct, int i_quant_cat,
                              int i_qp, int b_intra, int idx );
 
 void x264_noise_reduction_update( x264_t *h );

@@ -42,6 +42,32 @@ DECL_SUF( x264_pixel_avg_8x4,   ( uint8_t *, int, uint8_t *, int, uint8_t *, int
 DECL_SUF( x264_pixel_avg_4x8,   ( uint8_t *, int, uint8_t *, int, uint8_t *, int, int ))
 DECL_SUF( x264_pixel_avg_4x4,   ( uint8_t *, int, uint8_t *, int, uint8_t *, int, int ))
 DECL_SUF( x264_pixel_avg_4x2,   ( uint8_t *, int, uint8_t *, int, uint8_t *, int, int ))
+
+#define MC_WEIGHT(w,type) \
+    extern void x264_mc_weight_w##w##_##type( uint8_t *,int, uint8_t *,int, const x264_weight_t *,int );
+
+#define MC_WEIGHT_OFFSET(w,type) \
+    extern void x264_mc_offsetadd_w##w##_##type( uint8_t *,int, uint8_t *,int, const x264_weight_t *,int ); \
+    extern void x264_mc_offsetsub_w##w##_##type( uint8_t *,int, uint8_t *,int, const x264_weight_t *,int ); \
+    MC_WEIGHT(w,type)
+
+MC_WEIGHT_OFFSET( 4, mmxext )
+MC_WEIGHT_OFFSET( 8, mmxext )
+MC_WEIGHT_OFFSET( 12, mmxext )
+MC_WEIGHT_OFFSET( 16, mmxext )
+MC_WEIGHT_OFFSET( 20, mmxext )
+MC_WEIGHT_OFFSET( 12, sse2 )
+MC_WEIGHT_OFFSET( 16, sse2 )
+MC_WEIGHT_OFFSET( 20, sse2 )
+MC_WEIGHT( 8, sse2  )
+MC_WEIGHT( 4, ssse3 )
+MC_WEIGHT( 8, ssse3 )
+MC_WEIGHT( 12, ssse3 )
+MC_WEIGHT( 16, ssse3 )
+MC_WEIGHT( 20, ssse3 )
+#undef MC_OFFSET
+#undef MC_WEIGHT
+
 extern void x264_mc_copy_w4_mmx( uint8_t *, int, uint8_t *, int, int );
 extern void x264_mc_copy_w8_mmx( uint8_t *, int, uint8_t *, int, int );
 extern void x264_mc_copy_w16_mmx( uint8_t *, int, uint8_t *, int, int );
@@ -59,6 +85,9 @@ extern void x264_mc_chroma_sse2( uint8_t *src, int i_src_stride,
 extern void x264_mc_chroma_ssse3( uint8_t *src, int i_src_stride,
                                   uint8_t *dst, int i_dst_stride,
                                   int dx, int dy, int i_width, int i_height );
+extern void x264_mc_chroma_ssse3_cache64( uint8_t *src, int i_src_stride,
+                                  uint8_t *dst, int i_dst_stride,
+                                  int dx, int dy, int i_width, int i_height );
 extern void x264_plane_copy_mmxext( uint8_t *, int, uint8_t *, int, int w, int h);
 extern void *x264_memcpy_aligned_mmx( void * dst, const void * src, size_t n );
 extern void *x264_memcpy_aligned_sse2( void * dst, const void * src, size_t n );
@@ -71,6 +100,8 @@ extern void x264_integral_init4v_sse2( uint16_t *sum8, uint16_t *sum4, int strid
 extern void x264_integral_init8v_mmx( uint16_t *sum8, int stride );
 extern void x264_integral_init8v_sse2( uint16_t *sum8, int stride );
 extern void x264_integral_init4v_ssse3( uint16_t *sum8, uint16_t *sum4, int stride );
+extern void x264_mbtree_propagate_cost_sse2( int *dst, uint16_t *propagate_in, uint16_t *intra_costs,
+                                             uint16_t *inter_costs, uint16_t *inv_qscales, int len );
 #define LOWRES(cpu) \
 extern void x264_frame_init_lowres_core_##cpu( uint8_t *src0, uint8_t *dst0, uint8_t *dsth, uint8_t *dstv, uint8_t *dstc,\
                                                int src_stride, int dst_stride, int width, int height );
@@ -91,6 +122,7 @@ PIXEL_AVG_WALL(cache64_mmxext)
 PIXEL_AVG_WALL(cache64_sse2)
 PIXEL_AVG_WALL(sse2)
 PIXEL_AVG_WALL(sse2_misalign)
+PIXEL_AVG_WALL(cache64_ssse3)
 
 #define PIXEL_AVG_WTAB(instr, name1, name2, name3, name4, name5)\
 static void (* const x264_pixel_avg_wtab_##instr[6])( uint8_t *, int, uint8_t *, int, uint8_t *, int ) =\
@@ -116,6 +148,7 @@ PIXEL_AVG_WTAB(cache64_mmxext, mmxext, cache64_mmxext, cache64_mmxext, cache64_m
 PIXEL_AVG_WTAB(sse2, mmxext, mmxext, sse2, sse2, sse2)
 PIXEL_AVG_WTAB(sse2_misalign, mmxext, mmxext, sse2, sse2, sse2_misalign)
 PIXEL_AVG_WTAB(cache64_sse2, mmxext, cache64_mmxext, cache64_sse2, cache64_sse2, cache64_sse2)
+PIXEL_AVG_WTAB(cache64_ssse3, mmxext, cache64_mmxext, cache64_sse2, cache64_ssse3, cache64_sse2)
 
 #define MC_COPY_WTAB(instr, name1, name2, name3)\
 static void (* const x264_mc_copy_wtab_##instr[5])( uint8_t *, int, uint8_t *, int, int ) =\
@@ -130,6 +163,70 @@ static void (* const x264_mc_copy_wtab_##instr[5])( uint8_t *, int, uint8_t *, i
 MC_COPY_WTAB(mmx,mmx,mmx,mmx)
 MC_COPY_WTAB(sse2,mmx,mmx,sse2)
 
+#define MC_WEIGHT_WTAB(function, instr, name1, name2, w12version)\
+    static void (* x264_mc_##function##_wtab_##instr[6])( uint8_t *, int, uint8_t *, int, const x264_weight_t *, int ) =\
+{\
+    x264_mc_##function##_w4_##name1,\
+    x264_mc_##function##_w4_##name1,\
+    x264_mc_##function##_w8_##name2,\
+    x264_mc_##function##_w##w12version##_##instr,\
+    x264_mc_##function##_w16_##instr,\
+    x264_mc_##function##_w20_##instr,\
+};
+
+MC_WEIGHT_WTAB(weight,mmxext,mmxext,mmxext,12)
+MC_WEIGHT_WTAB(offsetadd,mmxext,mmxext,mmxext,12)
+MC_WEIGHT_WTAB(offsetsub,mmxext,mmxext,mmxext,12)
+MC_WEIGHT_WTAB(weight,sse2,mmxext,sse2,16)
+MC_WEIGHT_WTAB(offsetadd,sse2,mmxext,mmxext,16)
+MC_WEIGHT_WTAB(offsetsub,sse2,mmxext,mmxext,16)
+MC_WEIGHT_WTAB(weight,ssse3,ssse3,ssse3,16)
+
+static void x264_weight_cache_mmxext( x264_t *h, x264_weight_t *w )
+{
+    int i;
+    int16_t den1;
+
+    if( w->i_scale == 1<<w->i_denom )
+    {
+        if( w->i_offset < 0 )
+            w->weightfn = h->mc.offsetsub;
+        else
+            w->weightfn = h->mc.offsetadd;
+        memset( w->cachea, abs(w->i_offset), sizeof(w->cachea) );
+        return;
+    }
+    w->weightfn = h->mc.weight;
+    den1 = 1 << (w->i_denom - 1) | w->i_offset << w->i_denom;
+    for( i = 0; i < 8; i++ )
+    {
+        w->cachea[i] = w->i_scale;
+        w->cacheb[i] = den1;
+    }
+}
+
+static void x264_weight_cache_ssse3( x264_t *h, x264_weight_t *w )
+{
+    int i, den1;
+    if( w->i_scale == 1<<w->i_denom )
+    {
+        if( w->i_offset < 0 )
+            w->weightfn = h->mc.offsetsub;
+        else
+            w->weightfn = h->mc.offsetadd;
+
+        memset( w->cachea, abs( w->i_offset ), sizeof(w->cachea) );
+        return;
+    }
+    w->weightfn = h->mc.weight;
+    den1 = w->i_scale << (8 - w->i_denom);
+    for(i = 0;i<8;i++)
+    {
+        w->cachea[i] = den1;
+        w->cacheb[i] = w->i_offset;
+    }
+}
+
 static const int hpel_ref0[16] = {0,1,1,1,0,1,1,1,2,3,3,3,0,1,1,1};
 static const int hpel_ref1[16] = {0,0,0,0,2,2,3,2,2,2,3,2,2,2,3,2};
 
@@ -137,7 +234,7 @@ static const int hpel_ref1[16] = {0,0,0,0,2,2,3,2,2,2,3,2,2,2,3,2};
 static void mc_luma_##name( uint8_t *dst,    int i_dst_stride,\
                   uint8_t *src[4], int i_src_stride,\
                   int mvx, int mvy,\
-                  int i_width, int i_height )\
+                  int i_width, int i_height, const x264_weight_t *weight )\
 {\
     int qpel_idx = ((mvy&3)<<2) + (mvx&3);\
     int offset = (mvy>>2)*i_src_stride + (mvx>>2);\
@@ -148,12 +245,13 @@ static void mc_luma_##name( uint8_t *dst,    int i_dst_stride,\
         x264_pixel_avg_wtab_##instr1[i_width>>2](\
                 dst, i_dst_stride, src1, i_src_stride,\
                 src2, i_height );\
+        if( weight->weightfn )\
+            weight->weightfn[i_width>>2]( dst, i_dst_stride, dst, i_dst_stride, weight, i_height );\
     }\
+    else if( weight->weightfn )\
+        weight->weightfn[i_width>>2]( dst, i_dst_stride, src1, i_src_stride, weight, i_height );\
     else\
-    {\
-        x264_mc_copy_wtab_##instr2[i_width>>2](\
-                dst, i_dst_stride, src1, i_src_stride, i_height );\
-    }\
+        x264_mc_copy_wtab_##instr2[i_width>>2](dst, i_dst_stride, src1, i_src_stride, i_height );\
 }
 
 MC_LUMA(mmxext,mmxext,mmx)
@@ -163,12 +261,13 @@ MC_LUMA(cache64_mmxext,cache64_mmxext,mmx)
 #endif
 MC_LUMA(sse2,sse2,sse2)
 MC_LUMA(cache64_sse2,cache64_sse2,sse2)
+MC_LUMA(cache64_ssse3,cache64_ssse3,sse2)
 
 #define GET_REF(name)\
 static uint8_t *get_ref_##name( uint8_t *dst,   int *i_dst_stride,\
                          uint8_t *src[4], int i_src_stride,\
                          int mvx, int mvy,\
-                         int i_width, int i_height )\
+                         int i_width, int i_height, const x264_weight_t *weight )\
 {\
     int qpel_idx = ((mvy&3)<<2) + (mvx&3);\
     int offset = (mvy>>2)*i_src_stride + (mvx>>2);\
@@ -179,6 +278,13 @@ static uint8_t *get_ref_##name( uint8_t *dst,   int *i_dst_stride,\
         x264_pixel_avg_wtab_##name[i_width>>2](\
                 dst, *i_dst_stride, src1, i_src_stride,\
                 src2, i_height );\
+        if( weight->weightfn )\
+            weight->weightfn[i_width>>2]( dst, *i_dst_stride, dst, *i_dst_stride, weight, i_height );\
+        return dst;\
+    }\
+    else if( weight->weightfn )\
+    {\
+        weight->weightfn[i_width>>2]( dst, *i_dst_stride, src1, i_src_stride, weight, i_height );\
         return dst;\
     }\
     else\
@@ -196,6 +302,7 @@ GET_REF(cache64_mmxext)
 GET_REF(sse2)
 GET_REF(sse2_misalign)
 GET_REF(cache64_sse2)
+GET_REF(cache64_ssse3)
 
 #define HPEL(align, cpu, cpuv, cpuc, cpuh)\
 void x264_hpel_filter_v_##cpuv( uint8_t *dst, uint8_t *src, int16_t *buf, int stride, int width);\
@@ -257,6 +364,11 @@ void x264_mc_init_mmx( int cpu, x264_mc_functions_t *pf )
     pf->get_ref = get_ref_mmxext;
     pf->mc_chroma = x264_mc_chroma_mmxext;
 
+    pf->weight = x264_mc_weight_wtab_mmxext;
+    pf->offsetadd = x264_mc_offsetadd_wtab_mmxext;
+    pf->offsetsub = x264_mc_offsetsub_wtab_mmxext;
+    pf->weight_cache = x264_weight_cache_mmxext;
+
     pf->avg[PIXEL_16x16] = x264_pixel_avg_16x16_mmxext;
     pf->avg[PIXEL_16x8]  = x264_pixel_avg_16x8_mmxext;
     pf->avg[PIXEL_8x16]  = x264_pixel_avg_8x16_mmxext;
@@ -296,9 +408,14 @@ void x264_mc_init_mmx( int cpu, x264_mc_functions_t *pf )
     pf->integral_init4v = x264_integral_init4v_sse2;
     pf->integral_init8v = x264_integral_init8v_sse2;
     pf->hpel_filter = x264_hpel_filter_sse2_amd;
+    pf->mbtree_propagate_cost = x264_mbtree_propagate_cost_sse2;
 
     if( cpu&X264_CPU_SSE2_IS_SLOW )
         return;
+
+    pf->weight = x264_mc_weight_wtab_sse2;
+    pf->offsetadd = x264_mc_offsetadd_wtab_sse2;
+    pf->offsetsub = x264_mc_offsetsub_wtab_sse2;
 
     pf->copy[PIXEL_16x16] = x264_mc_copy_w16_aligned_sse2;
     pf->avg[PIXEL_16x16] = x264_pixel_avg_16x16_sse2;
@@ -340,6 +457,16 @@ void x264_mc_init_mmx( int cpu, x264_mc_functions_t *pf )
     pf->hpel_filter = x264_hpel_filter_ssse3;
     pf->frame_init_lowres_core = x264_frame_init_lowres_core_ssse3;
     pf->mc_chroma = x264_mc_chroma_ssse3;
+    if( cpu&X264_CPU_CACHELINE_64 )
+    {
+        pf->mc_chroma = x264_mc_chroma_ssse3_cache64;
+        pf->mc_luma = mc_luma_cache64_ssse3;
+        pf->get_ref = get_ref_cache64_ssse3;
+
+        /* ssse3 weight is slower on Nehalem, so only assign here. */
+        pf->weight_cache = x264_weight_cache_ssse3;
+        pf->weight = x264_mc_weight_wtab_ssse3;
+    }
 
     if( cpu&X264_CPU_SHUFFLE_IS_FAST )
         pf->integral_init4v = x264_integral_init4v_ssse3;

@@ -28,9 +28,8 @@
 
 SECTION_RODATA
 pb_3: times 16 db 3
+pb_shuf8x8c: db 0,0,0,0,2,2,2,2,4,4,4,4,6,6,6,6
 pw_8: times 4 dw 8
-pb_shuf8x8c0: db 0,0,0,0,2,2,2,2
-pb_shuf8x8c1: db 4,4,4,4,6,6,6,6
 sw_64: dd 64
 
 SECTION .text
@@ -352,7 +351,7 @@ cglobal x264_intra_sad_x3_8x8_mmxext, 3,3
     psadbw    m0, m7
     psadbw    m1, m6
     paddw     m0, m1
-    paddw     m0, [pw_8 GLOBAL]
+    paddw     m0, [pw_8]
     psrlw     m0, 4
     punpcklbw m0, m0
     pshufw    m0, m0, 0x0 ;DC prediction
@@ -412,7 +411,7 @@ cglobal x264_intra_sad_x3_8x8c_%1, 3,3
     movq        m6, [r1 - FDEC_STRIDE]
     add         r1, FDEC_STRIDE*4
 %ifidn %1,ssse3
-    movq        m7, [pb_3 GLOBAL]
+    movq        m7, [pb_3]
 %endif
     INTRA_SAD_HV_ITER 0, %1
     INTRA_SAD_HV_ITER 2, %1
@@ -450,16 +449,32 @@ cglobal x264_intra_sad_x3_8x8c_%1, 3,3
     psrlw       m0, 2
     pavgw       m0, m7 ; s0+s2, s1, s3, s1+s3
 %ifidn %1, ssse3
-    movq        m1, m0
-    pshufb      m0, [pb_shuf8x8c0 GLOBAL]
-    pshufb      m1, [pb_shuf8x8c1 GLOBAL]
+    movq2dq   xmm0, m0
+    pshufb    xmm0, [pb_shuf8x8c]
+    movq      xmm1, [r0+FENC_STRIDE*0]
+    movq      xmm2, [r0+FENC_STRIDE*1]
+    movq      xmm3, [r0+FENC_STRIDE*2]
+    movq      xmm4, [r0+FENC_STRIDE*3]
+    movhps    xmm1, [r0+FENC_STRIDE*4]
+    movhps    xmm2, [r0+FENC_STRIDE*5]
+    movhps    xmm3, [r0+FENC_STRIDE*6]
+    movhps    xmm4, [r0+FENC_STRIDE*7]
+    psadbw    xmm1, xmm0
+    psadbw    xmm2, xmm0
+    psadbw    xmm3, xmm0
+    psadbw    xmm4, xmm0
+    paddw     xmm1, xmm2
+    paddw     xmm1, xmm3
+    paddw     xmm1, xmm4
+    movhlps   xmm0, xmm1
+    paddw     xmm1, xmm0
+    movd      [r2], xmm1
 %else
     packuswb    m0, m0
     punpcklbw   m0, m0
     movq        m1, m0
     punpcklbw   m0, m0 ; 4x dc0 4x dc1
     punpckhbw   m1, m1 ; 4x dc2 4x dc3
-%endif
     movq        m2, [r0+FENC_STRIDE*0]
     movq        m3, [r0+FENC_STRIDE*1]
     movq        m4, [r0+FENC_STRIDE*2]
@@ -483,6 +498,7 @@ cglobal x264_intra_sad_x3_8x8c_%1, 3,3
     paddw       m6, m0
     paddw       m2, m6
     movd      [r2], m2
+%endif
     RET
 %endmacro
 
@@ -506,7 +522,7 @@ cglobal x264_intra_sad_x3_16x16_%1,3,5,%2
     paddw   mm0, mm1
     movd    r3d, mm0
 %ifidn %1, ssse3
-    mova  m1, [pb_3 GLOBAL]
+    mova  m1, [pb_3]
 %endif
 %assign x 0
 %rep 16
@@ -1285,10 +1301,10 @@ cglobal x264_pixel_sad_16x%2_cache64_%1
 %endif
 %define sad_w16_addr (sad_w16_align1_%1 + (sad_w16_align1_%1 - sad_w16_align2_%1))
 %ifdef PIC
-    lea     r5, [sad_w16_addr GLOBAL]
+    lea     r5, [sad_w16_addr]
     add     r5, r4
 %else
-    lea     r5, [sad_w16_addr + r4 GLOBAL]
+    lea     r5, [sad_w16_addr + r4]
 %endif
     and     r2, ~15
     mov     r4d, %2/2
@@ -1307,7 +1323,7 @@ cglobal x264_pixel_sad_16x%2_cache64_%1
     jle x264_pixel_sad_%1x%2_mmxext
     and    eax, 7
     shl    eax, 3
-    movd   mm6, [sw_64 GLOBAL]
+    movd   mm6, [sw_64]
     movd   mm7, eax
     psubw  mm6, mm7
     PROLOGUE 4,5

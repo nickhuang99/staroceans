@@ -1,7 +1,9 @@
 /*****************************************************************************
- * matroska.h:
+ * x264dll: x264 DLLMain for win32
  *****************************************************************************
- * Copyright (C) 2005 Mike Matsnev
+ * Copyright (C) 2009 x264 project
+ *
+ * Authors: Anton Mitrofanov <BugMaster@narod.ru>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,24 +20,32 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02111, USA.
  *****************************************************************************/
 
-#ifndef X264_MATROSKA_H
-#define X264_MATROSKA_H
+#include "common/common.h"
+#include <windows.h>
 
-typedef struct mk_Writer mk_Writer;
+/* Callback for our DLL so we can initialize pthread */
+BOOL WINAPI DllMain( HANDLE hinstDLL, DWORD fdwReason, LPVOID lpvReserved )
+{
+#ifdef PTW32_STATIC_LIB
+    switch( fdwReason )
+    {
+        case DLL_PROCESS_ATTACH:
+            pthread_win32_process_attach_np();
 
-mk_Writer *mk_createWriter( const char *filename );
+        case DLL_THREAD_ATTACH:
+            pthread_win32_thread_attach_np();
+            break;
 
-int  mk_writeHeader( mk_Writer *w, const char *writingApp,
-                     const char *codecID,
-                     const void *codecPrivate, unsigned codecPrivateSize,
-                     int64_t default_frame_duration,
-                     int64_t timescale,
-                     unsigned width, unsigned height,
-                     unsigned d_width, unsigned d_height );
+        case DLL_THREAD_DETACH:
+            pthread_win32_thread_detach_np();
+            break;
 
-int  mk_startFrame( mk_Writer *w );
-int  mk_addFrameData( mk_Writer *w, const void *data, unsigned size );
-int  mk_setFrameFlags( mk_Writer *w, int64_t timestamp, int keyframe );
-int  mk_close( mk_Writer *w );
-
+        case DLL_PROCESS_DETACH:
+            pthread_win32_thread_detach_np();
+            pthread_win32_process_detach_np();
+            break;
+    }
 #endif
+
+    return TRUE;
+}

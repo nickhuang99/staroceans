@@ -1,91 +1,88 @@
 #!/usr/bin/make -f
 
-# Uncomment this to turn on verbose mode.
-#export DH_VERBOSE=1
+libx264N := $(shell sed -rn 's/^Package:[[:space:]]*(libx264-[0-9]+)[[:space:]]*$$/\1/p' debian/control)
 
-include /usr/share/quilt/quilt.make
+DEB_BUILD_GNU_TYPE  ?= $(shell dpkg-architecture -qDEB_BUILD_GNU_TYPE)
+DEB_HOST_GNU_TYPE   ?= $(shell dpkg-architecture -qDEB_HOST_GNU_TYPE)
+DEB_HOST_GNU_CPU    ?= $(shell dpkg-architecture -qDEB_HOST_GNU_CPU)
 
-# This has to be exported to make some magic below work.
-export DH_OPTIONS
+DEB_BUILD_OPTIONS_PARALLEL ?= $(patsubst parallel=%,%,$(filter parallel=%,$(DEB_BUILD_OPTIONS)))
+PARALLEL_FLAGS += $(if $(DEB_BUILD_OPTIONS_PARALLEL),-j$(DEB_BUILD_OPTIONS_PARALLEL))
+# will affect concurrency of debian/rules as well
+MAKEFLAGS += $(PARALLEL_FLAGS)
 
-DEB_HOST_GNU_TYPE  ?= $(shell dpkg-architecture -qDEB_HOST_GNU_TYPE)
-DEB_BUILD_GNU_TYPE ?= $(shell dpkg-architecture -qDEB_BUILD_GNU_TYPE)
+include debian/confflags
 
-NCPUS := $(shell getconf _NPROCESSORS_ONLN 2>/dev/null || echo 1)
-ifeq ($(NCPUS),-1)
-	NCPUS:=1
-endif
-ifeq ($(NCPUS),0)
-	NCPUS:=1
-endif
-
-confflags += --enable-debug
-confflags += --enable-pthread
-confflags += --prefix=/usr
-
-shared_confflags += --enable-pic
-shared_confflags += --enable-shared
-shared_confflags += --enable-visualize
-
-CFLAGS += -Wall -g -O$(if $(findstring noopt,$(DEB_BUILD_OPTIONS)),0,2)
+LDFLAGS += -Wl,--as-needed
 
 build: build-stamp
-build-stamp: debian/stamp-patched
+build-stamp:
 	dh_testdir
-
+	# fix version.sh for the debian package
+	mv version.sh version.sh-upstream
+	cp debian/debian-version.sh version.sh
+	chmod +x version.sh
 	# Build static lib
-	CFLAGS="$(CFLAGS)" ./configure $(confflags)
-	$(MAKE) -j $(NCPUS) libx264.a
-
-	# Backup static lib
-	mv libx264.a libx264.a.bak
-
+	LDFLAGS="$(LDFLAGS)" ./configure $(static_confflags)
+	$(MAKE)
+	$(MAKE) install DESTDIR=$(CURDIR)/debian/install/static
+	$(MAKE) distclean
 	# Build shared lib
-	$(MAKE) clean
-	CFLAGS="$(CFLAGS)" ./configure $(confflags) $(shared_confflags)
-	$(MAKE) -j $(NCPUS)
-
-	# Restore static lib
-	mv libx264.a.bak libx264.a
-
+	CFLAGS="$(shared_extra_cflags)" LDFLAGS="$(LDFLAGS)" ./configure $(shared_confflags)
+	$(MAKE)
+	$(MAKE) install DESTDIR=$(CURDIR)/debian/install/shared
+ifeq ($(do_opt),yes)
+	$(MAKE) distclean
+	# Build opt lib
+	LDFLAGS="$(LDFLAGS)" ./configure $(opt_confflags)
+	$(MAKE)
+	$(MAKE) install DESTDIR=$(CURDIR)/debian/install/opt
+endif
+	mv version.sh-upstream version.sh
 	touch $@
 
-clean: clean-real unpatch
-clean-real:
+debian/x264.1: build-stamp
+	help2man -n"fast h264 encoder" -N -s1 -S "Videolan project" -h '--fullhelp' \
+		debian/install/static/usr/bin/x264 > $@
+
+clean:
 	dh_testdir
 	dh_testroot
+	rm -rf debian/install
 	[ ! -f Makefile ] || $(MAKE) distclean
-	dh_clean build-stamp libx264.a.bak
+	[ ! -f version.sh-upstream ] ||  mv version.sh-upstream version.sh
+	dh_clean build-stamp debian/x264.1
 
 install:
 	dh_testdir
 	dh_testroot
 	dh_prep
 	dh_installdirs
-	$(MAKE) install DESTDIR=$(CURDIR)/debian/tmp
-	dh_install --fail-missing --sourcedir=debian/tmp
+	dh_install --list-missing --sourcedir=debian/install
+ifeq ($(do_opt),yes)
+	mkdir -p debian/$(libx264N)$(opt_libdir)
+	cp -a debian/install/opt$(opt_libdir)/*.so.* debian/$(libx264N)$(opt_libdir)
+endif
 
-binary-common:
+binary-arch: build install debian/x264.1
 	dh_testdir
 	dh_testroot
-	dh_installchangelogs
-	dh_installdocs
-	dh_installexamples
-	dh_installman debian/x264.1
-	dh_link
-	dh_strip
-	dh_compress
-	dh_fixperms
-	dh_makeshlibs
-	dh_installdeb
-	dh_shlibdeps
-	dh_gencontrol
-	dh_md5sums
-	dh_builddeb
+	dh_installchangelogs -s
+	dh_installdocs -s
+	dh_installexamples -s
+	dh_installman -s
+	dh_link -s
+	dh_strip -s
+	dh_compress -s
+	dh_fixperms -s
+	dh_makeshlibs -s
+	dh_installdeb -s
+	dh_shlibdeps -s
+	dh_gencontrol -s
+	dh_md5sums -s
+	dh_builddeb -s
 
 binary-indep: build install
-binary-arch: build install
-	$(MAKE) -f debian/rules DH_OPTIONS=-s binary-common
 
 binary: binary-arch binary-indep
 .PHONY: build clean binary-indep binary-arch binary install

@@ -29,6 +29,9 @@
 #ifdef ARCH_PPC
 #include "ppc/mc.h"
 #endif
+#ifdef ARCH_ARM
+#include "arm/mc.h"
+#endif
 
 
 static inline void pixel_avg( uint8_t *dst,  int i_dst_stride,
@@ -117,6 +120,67 @@ PIXEL_AVG_C( pixel_avg_4x2,   4, 2 )
 PIXEL_AVG_C( pixel_avg_2x4,   2, 4 )
 PIXEL_AVG_C( pixel_avg_2x2,   2, 2 )
 
+static void x264_weight_cache( x264_t *h, x264_weight_t *w )
+{
+    w->weightfn = h->mc.weight;
+}
+#define opscale(x) dst[x] = x264_clip_uint8( ((src[x] * weight->i_scale + (1<<(weight->i_denom - 1))) >> weight->i_denom) + weight->i_offset )
+#define opscale_noden(x) dst[x] = x264_clip_uint8( src[x] * weight->i_scale + weight->i_offset )
+static inline void mc_weight( uint8_t *dst, int i_dst_stride, uint8_t *src, int i_src_stride, const x264_weight_t *weight, int i_width, int i_height )
+{
+
+    int x, y;
+    if( weight->i_denom >= 1 )
+    {
+        for( y = 0; y < i_height; y++, dst += i_dst_stride, src += i_src_stride )
+        {
+            for( x = 0; x < i_width; x++ )
+                opscale( x );
+        }
+    }
+    else
+    {
+        for( y = 0; y < i_height; y++, dst += i_dst_stride, src += i_src_stride )
+            for( x = 0; x < i_width; x++ )
+                opscale_noden( x );
+    }
+}
+
+#define MC_WEIGHT_C( name, lx ) \
+    static void name( uint8_t *dst, int i_dst_stride, uint8_t *src, int i_src_stride, const x264_weight_t *weight, int height ) \
+{ \
+    int x, y; \
+    if( weight->i_denom >= 1 ) \
+    { \
+        for( y = 0; y < height; y++, dst += i_dst_stride, src += i_src_stride ) \
+            for( x = 0; x < lx; x++ ) \
+                opscale( x ); \
+    } \
+    else \
+    { \
+        for( y = 0; y < height; y++, dst += i_dst_stride, src += i_src_stride ) \
+            for( x = 0; x < lx; x++ ) \
+                opscale_noden( x ); \
+    } \
+}
+
+MC_WEIGHT_C( mc_weight_w20, 20 )
+MC_WEIGHT_C( mc_weight_w16, 16 )
+MC_WEIGHT_C( mc_weight_w12, 12 )
+MC_WEIGHT_C( mc_weight_w8,   8 )
+MC_WEIGHT_C( mc_weight_w4,   4 )
+MC_WEIGHT_C( mc_weight_w2,   2 )
+
+static weight_fn_t x264_mc_weight_wtab[6] =
+{
+    mc_weight_w2,
+    mc_weight_w4,
+    mc_weight_w8,
+    mc_weight_w12,
+    mc_weight_w16,
+    mc_weight_w20,
+};
+const x264_weight_t weight_none[3] = { {{0}} };
 static void mc_copy( uint8_t *src, int i_src_stride, uint8_t *dst, int i_dst_stride, int i_width, int i_height )
 {
     int y;
@@ -160,7 +224,7 @@ static const int hpel_ref1[16] = {0,0,0,0,2,2,3,2,2,2,3,2,2,2,3,2};
 static void mc_luma( uint8_t *dst,    int i_dst_stride,
                      uint8_t *src[4], int i_src_stride,
                      int mvx, int mvy,
-                     int i_width, int i_height )
+                     int i_width, int i_height, const x264_weight_t *weight )
 {
     int qpel_idx = ((mvy&3)<<2) + (mvx&3);
     int offset = (mvy>>2)*i_src_stride + (mvx>>2);
@@ -171,17 +235,19 @@ static void mc_luma( uint8_t *dst,    int i_dst_stride,
         uint8_t *src2 = src[hpel_ref1[qpel_idx]] + offset + ((mvx&3) == 3);
         pixel_avg( dst, i_dst_stride, src1, i_src_stride,
                    src2, i_src_stride, i_width, i_height );
+        if( weight->weightfn )
+            mc_weight( dst, i_dst_stride, dst, i_dst_stride, weight, i_width, i_height );
     }
+    else if( weight->weightfn )
+        mc_weight( dst, i_dst_stride, src1, i_src_stride, weight, i_width, i_height );
     else
-    {
         mc_copy( src1, i_src_stride, dst, i_dst_stride, i_width, i_height );
-    }
 }
 
 static uint8_t *get_ref( uint8_t *dst,   int *i_dst_stride,
                          uint8_t *src[4], int i_src_stride,
                          int mvx, int mvy,
-                         int i_width, int i_height )
+                         int i_width, int i_height, const x264_weight_t *weight )
 {
     int qpel_idx = ((mvy&3)<<2) + (mvx&3);
     int offset = (mvy>>2)*i_src_stride + (mvx>>2);
@@ -192,6 +258,13 @@ static uint8_t *get_ref( uint8_t *dst,   int *i_dst_stride,
         uint8_t *src2 = src[hpel_ref1[qpel_idx]] + offset + ((mvx&3) == 3);
         pixel_avg( dst, *i_dst_stride, src1, i_src_stride,
                    src2, i_src_stride, i_width, i_height );
+        if( weight->weightfn )
+            mc_weight( dst, *i_dst_stride, dst, *i_dst_stride, weight, i_width, i_height );
+        return dst;
+    }
+    else if( weight->weightfn )
+    {
+        mc_weight( dst, *i_dst_stride, src1, i_src_stride, weight, i_width, i_height );
         return dst;
     }
     else
@@ -314,7 +387,7 @@ void x264_frame_init_lowres( x264_t *h, x264_frame_t *frame )
     // duplicate last row and column so that their interpolation doesn't have to be special-cased
     for( y=0; y<i_height; y++ )
         src[i_width+y*i_stride] = src[i_width-1+y*i_stride];
-    memcpy( src+i_stride*i_height, src+i_stride*(i_height-1), i_width );
+    memcpy( src+i_stride*i_height, src+i_stride*(i_height-1), i_width+1 );
     h->mc.frame_init_lowres_core( src, frame->lowres[0], frame->lowres[1], frame->lowres[2], frame->lowres[3],
                                   i_stride, frame->i_stride_lowres, frame->i_width_lowres, frame->i_lines_lowres );
     x264_frame_expand_border_lowres( frame );
@@ -356,6 +429,33 @@ static void frame_init_lowres_core( uint8_t *src0, uint8_t *dst0, uint8_t *dsth,
     }
 }
 
+#if defined(__GNUC__) && (defined(ARCH_X86) || defined(ARCH_X86_64))
+// gcc isn't smart enough to use the "idiv" instruction
+static ALWAYS_INLINE int32_t div_64_32(int64_t x, int32_t y) {
+    int32_t quotient, remainder;
+    asm("idiv %4"
+        :"=a"(quotient), "=d"(remainder)
+        :"a"((uint32_t)x), "d"((int32_t)(x>>32)), "r"(y)
+    );
+    return quotient;
+}
+#else
+#define div_64_32(x,y) ((x)/(y))
+#endif
+
+/* Estimate the total amount of influence on future quality that could be had if we
+ * were to improve the reference samples used to inter predict any given macroblock. */
+static void mbtree_propagate_cost( int *dst, uint16_t *propagate_in, uint16_t *intra_costs,
+                                   uint16_t *inter_costs, uint16_t *inv_qscales, int len )
+{
+    int i;
+    for( i=0; i<len; i++ )
+    {
+        int propagate_amount = propagate_in[i] + ((intra_costs[i] * inv_qscales[i] + 128)>>8);
+        dst[i] = div_64_32((int64_t)propagate_amount * (intra_costs[i] - inter_costs[i]), intra_costs[i]);
+    }
+}
+
 void x264_mc_init( int cpu, x264_mc_functions_t *pf )
 {
     pf->mc_luma   = mc_luma;
@@ -372,6 +472,11 @@ void x264_mc_init( int cpu, x264_mc_functions_t *pf )
     pf->avg[PIXEL_4x2]  = pixel_avg_4x2;
     pf->avg[PIXEL_2x4]  = pixel_avg_2x4;
     pf->avg[PIXEL_2x2]  = pixel_avg_2x2;
+
+    pf->weight    = x264_mc_weight_wtab;
+    pf->offsetadd = x264_mc_weight_wtab;
+    pf->offsetsub = x264_mc_weight_wtab;
+    pf->weight_cache = x264_weight_cache;
 
     pf->copy_16x16_unaligned = mc_copy_w16;
     pf->copy[PIXEL_16x16] = mc_copy_w16;
@@ -392,12 +497,17 @@ void x264_mc_init( int cpu, x264_mc_functions_t *pf )
     pf->integral_init4v = integral_init4v;
     pf->integral_init8v = integral_init8v;
 
+    pf->mbtree_propagate_cost = mbtree_propagate_cost;
+
 #ifdef HAVE_MMX
     x264_mc_init_mmx( cpu, pf );
 #endif
 #ifdef ARCH_PPC
     if( cpu&X264_CPU_ALTIVEC )
         x264_mc_altivec_init( pf );
+#endif
+#ifdef HAVE_ARMV6
+    x264_mc_init_arm( cpu, pf );
 #endif
 }
 

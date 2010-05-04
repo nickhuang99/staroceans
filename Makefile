@@ -10,9 +10,36 @@ SRCS = common/mc.c common/predict.c common/pixel.c common/macroblock.c \
        common/quant.c common/vlc.c \
        encoder/analyse.c encoder/me.c encoder/ratecontrol.c \
        encoder/set.c encoder/macroblock.c encoder/cabac.c \
-       encoder/cavlc.c encoder/encoder.c
+       encoder/cavlc.c encoder/encoder.c encoder/lookahead.c
 
-SRCCLI = x264.c matroska.c muxers.c
+SRCCLI = x264.c input/yuv.c input/y4m.c output/raw.c \
+         output/matroska.c output/matroska_ebml.c \
+         output/flv.c output/flv_bytestream.c
+
+SRCSO =
+
+CONFIG := $(shell cat config.h)
+
+# Optional muxer module sources
+ifneq ($(findstring AVS_INPUT, $(CONFIG)),)
+SRCCLI += input/avs.c
+endif
+
+ifneq ($(findstring HAVE_PTHREAD, $(CONFIG)),)
+SRCCLI += input/thread.c
+endif
+
+ifneq ($(findstring LAVF_INPUT, $(CONFIG)),)
+SRCCLI += input/lavf.c
+endif
+
+ifneq ($(findstring FFMS_INPUT, $(CONFIG)),)
+SRCCLI += input/ffms.c
+endif
+
+ifneq ($(findstring MP4_OUTPUT, $(CONFIG)),)
+SRCCLI += output/mp4.c
+endif
 
 # Visualization sources
 ifeq ($(VIS),yes)
@@ -48,11 +75,20 @@ endif
 
 # AltiVec optims
 ifeq ($(ARCH),PPC)
-ALTIVECSRC += common/ppc/mc.c common/ppc/pixel.c common/ppc/dct.c \
-              common/ppc/quant.c common/ppc/deblock.c \
-              common/ppc/predict.c
-SRCS += $(ALTIVECSRC)
-$(ALTIVECSRC:%.c=%.o): CFLAGS += $(ALTIVECFLAGS)
+SRCS += common/ppc/mc.c common/ppc/pixel.c common/ppc/dct.c \
+        common/ppc/quant.c common/ppc/deblock.c \
+        common/ppc/predict.c
+endif
+
+# NEON optims
+ifeq ($(ARCH),ARM)
+ifneq ($(AS),)
+ASMSRC += common/arm/cpu-a.S common/arm/pixel-a.S common/arm/mc-a.S \
+          common/arm/dct-a.S common/arm/quant-a.S common/arm/deblock-a.S \
+          common/arm/predict-a.S
+SRCS   += common/arm/mc-c.c common/arm/predict-c.c
+OBJASM  = $(ASMSRC:%.S=%.o)
+endif
 endif
 
 # VIS optims
@@ -65,8 +101,15 @@ ifneq ($(HAVE_GETOPT_LONG),1)
 SRCS += extras/getopt.c
 endif
 
+ifneq ($(SONAME),)
+ifeq ($(SYS),MINGW)
+SRCSO += x264dll.c
+endif
+endif
+
 OBJS = $(SRCS:%.c=%.o)
 OBJCLI = $(SRCCLI:%.c=%.o)
+OBJSO = $(SRCSO:%.c=%.o)
 DEP  = depend
 
 .PHONY: all default fprofiled clean distclean install uninstall dox test testclean
@@ -77,23 +120,26 @@ libx264.a: .depend $(OBJS) $(OBJASM)
 	$(AR) rc libx264.a $(OBJS) $(OBJASM)
 	$(RANLIB) libx264.a
 
-$(SONAME): .depend $(OBJS) $(OBJASM)
-	$(CC) -shared -o $@ $(OBJS) $(OBJASM) $(SOFLAGS) $(LDFLAGS)
+$(SONAME): .depend $(OBJS) $(OBJASM) $(OBJSO)
+	$(CC) -shared -o $@ $(OBJS) $(OBJASM) $(OBJSO) $(SOFLAGS) $(LDFLAGS)
 
-x264$(EXE): $(OBJCLI) libx264.a 
-	$(CC) -o $@ $+ $(LDFLAGS)
+x264$(EXE): $(OBJCLI) libx264.a
+	$(CC) -o $@ $+ $(LDFLAGS) $(LDFLAGSCLI)
 
 checkasm: tools/checkasm.o libx264.a
 	$(CC) -o $@ $+ $(LDFLAGS)
 
 %.o: %.asm
 	$(AS) $(ASFLAGS) -o $@ $<
-# delete local/anonymous symbols, so they don't show up in oprofile
-	-@ $(STRIP) -x $@
+	-@ $(STRIP) -x $@ # delete local/anonymous symbols, so they don't show up in oprofile
+
+%.o: %.S
+	$(AS) $(ASFLAGS) -o $@ $<
+	-@ $(STRIP) -x $@ # delete local/anonymous symbols, so they don't show up in oprofile
 
 .depend: config.mak
-	rm -f .depend
-	$(foreach SRC, $(SRCS) $(SRCCLI), $(CC) $(CFLAGS) $(ALTIVECFLAGS) $(SRC) -MT $(SRC:%.c=%.o) -MM -g0 1>> .depend;)
+	@rm -f .depend
+	@$(foreach SRC, $(SRCS) $(SRCCLI) $(SRCSO), $(CC) $(CFLAGS) $(SRC) -MT $(SRC:%.c=%.o) -MM -g0 1>> .depend;)
 
 config.mak:
 	./configure
@@ -105,12 +151,12 @@ endif
 
 SRC2 = $(SRCS) $(SRCCLI)
 # These should cover most of the important codepaths
-OPT0 = --crf 30 -b1 -m1 -r1 --me dia --no-cabac --direct temporal --no-ssim --no-psnr
-OPT1 = --crf 16 -b2 -m3 -r3 --me hex -8 --direct spatial --no-dct-decimate
-OPT2 = --crf 26 -b2 -m5 -r2 --me hex -8 -w --cqm jvt --nr 100
-OPT3 = --crf 18 -b3 -m9 -r5 --me umh -8 -t1 -A all --mixed-refs -w --b-pyramid --direct auto --no-fast-pskip
-OPT4 = --crf 22 -b3 -m7 -r4 --me esa -8 -t2 -A all --mixed-refs --psy-rd 1.0:1.0
-OPT5 = --frames 50 --crf 24 -b3 -m9 -r3 --me tesa -8 -t1 --mixed-refs
+OPT0 = --crf 30 -b1 -m1 -r1 --me dia --no-cabac --direct temporal --ssim --no-weightb
+OPT1 = --crf 16 -b2 -m3 -r3 --me hex --no-8x8dct --direct spatial --no-dct-decimate -t0  --slice-max-mbs 50
+OPT2 = --crf 26 -b4 -m5 -r2 --me hex --cqm jvt --nr 100 --psnr --no-mixed-refs --b-adapt 2 --slice-max-size 1500
+OPT3 = --crf 18 -b3 -m9 -r5 --me umh -t1 -A all --b-pyramid normal --direct auto --no-fast-pskip --no-mbtree
+OPT4 = --crf 22 -b3 -m7 -r4 --me esa -t2 -A all --psy-rd 1.0:1.0 --slices 4
+OPT5 = --frames 50 --crf 24 -b3 -m10 -r3 --me tesa -t2
 OPT6 = --frames 50 -q0 -m9 -r2 --me hex -Aall
 OPT7 = --frames 50 -q0 -m2 -r1 --me hex --no-cabac
 
@@ -125,7 +171,7 @@ fprofiled:
 	mv config.mak config.mak2
 	sed -e 's/CFLAGS.*/& -fprofile-generate/; s/LDFLAGS.*/& -fprofile-generate/' config.mak2 > config.mak
 	$(MAKE) x264$(EXE)
-	$(foreach V, $(VIDS), $(foreach I, 0 1 2 3 4 5 6 7, ./x264$(EXE) $(OPT$I) $(V) --progress -o $(DEVNULL) ;))
+	$(foreach V, $(VIDS), $(foreach I, 0 1 2 3 4 5 6 7, ./x264$(EXE) $(OPT$I) --threads 1 $(V) -o $(DEVNULL) ;))
 	rm -f $(SRC2:%.c=%.o)
 	sed -e 's/CFLAGS.*/& -fprofile-use/; s/LDFLAGS.*/& -fprofile-use/' config.mak2 > config.mak
 	$(MAKE)
@@ -134,13 +180,13 @@ fprofiled:
 endif
 
 clean:
-	rm -f $(OBJS) $(OBJASM) $(OBJCLI) $(SONAME) *.a x264 x264.exe .depend TAGS
+	rm -f $(OBJS) $(OBJASM) $(OBJCLI) $(OBJSO) $(SONAME) *.a x264 x264.exe .depend TAGS
 	rm -f checkasm checkasm.exe tools/checkasm.o tools/checkasm-a.o
 	rm -f $(SRC2:%.c=%.gcda) $(SRC2:%.c=%.gcno)
 	- sed -e 's/ *-fprofile-\(generate\|use\)//g' config.mak > config.mak2 && mv config.mak2 config.mak
 
 distclean: clean
-	rm -f config.mak config.h x264.pc
+	rm -f config.mak config.h config.log x264.pc
 	rm -rf test/
 
 install: x264$(EXE) $(SONAME)

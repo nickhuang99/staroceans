@@ -181,7 +181,7 @@ static void x264_mc_copy_w16_aligned_altivec( uint8_t *dst, int i_dst,
 static void mc_luma_altivec( uint8_t *dst,    int i_dst_stride,
                              uint8_t *src[4], int i_src_stride,
                              int mvx, int mvy,
-                             int i_width, int i_height )
+                             int i_width, int i_height, const x264_weight_t *weight )
 {
     int qpel_idx = ((mvy&3)<<2) + (mvx&3);
     int offset = (mvy>>2)*i_src_stride + (mvx>>2);
@@ -201,8 +201,11 @@ static void mc_luma_altivec( uint8_t *dst,    int i_dst_stride,
         default:
             x264_pixel_avg2_w16_altivec( dst, i_dst_stride, src1, i_src_stride, src2, i_height );
         }
-
+        if( weight->weightfn )
+            weight->weightfn[i_width>>2]( dst, i_dst_stride, dst, i_dst_stride, weight, i_height );
     }
+    else if( weight->weightfn )
+        weight->weightfn[i_width>>2]( dst, i_dst_stride, src1, i_src_stride, weight, i_height );
     else
     {
         switch(i_width) {
@@ -224,7 +227,7 @@ static void mc_luma_altivec( uint8_t *dst,    int i_dst_stride,
 static uint8_t *get_ref_altivec( uint8_t *dst,   int *i_dst_stride,
                                  uint8_t *src[4], int i_src_stride,
                                  int mvx, int mvy,
-                                 int i_width, int i_height )
+                                 int i_width, int i_height, const x264_weight_t *weight )
 {
     int qpel_idx = ((mvy&3)<<2) + (mvx&3);
     int offset = (mvy>>2)*i_src_stride + (mvx>>2);
@@ -248,6 +251,13 @@ static uint8_t *get_ref_altivec( uint8_t *dst,   int *i_dst_stride,
             x264_pixel_avg2_w20_altivec( dst, *i_dst_stride, src1, i_src_stride, src2, i_height );
             break;
         }
+        if( weight->weightfn )
+            weight->weightfn[i_width>>2]( dst, *i_dst_stride, dst, *i_dst_stride, weight, i_height );
+        return dst;
+    }
+    else if( weight->weightfn )
+    {
+        weight->weightfn[i_width>>2]( dst, *i_dst_stride, src1, i_src_stride, weight, i_height );
         return dst;
     }
     else
@@ -303,7 +313,7 @@ static void mc_chroma_altivec_4xh( uint8_t *dst, int i_dst_stride,
     int d8x = mvx & 0x07;
     int d8y = mvy & 0x07;
 
-    DECLARE_ALIGNED_16( uint16_t coeff[4] );
+    ALIGNED_16( uint16_t coeff[4] );
     coeff[0] = (8-d8x)*(8-d8y);
     coeff[1] = d8x    *(8-d8y);
     coeff[2] = (8-d8x)*d8y;
@@ -384,7 +394,7 @@ static void mc_chroma_altivec_8xh( uint8_t *dst, int i_dst_stride,
     int d8x = mvx & 0x07;
     int d8y = mvy & 0x07;
 
-    DECLARE_ALIGNED_16( uint16_t coeff[4] );
+    ALIGNED_16( uint16_t coeff[4] );
     coeff[0] = (8-d8x)*(8-d8y);
     coeff[1] = d8x    *(8-d8y);
     coeff[2] = (8-d8x)*d8y;

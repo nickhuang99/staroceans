@@ -1,34 +1,60 @@
-x264 (1:0.svn20090621+git364d7d-0debimedia3) unstable; urgency=low
+x264 (2:0.85.1448+git1a6d32-4) lucid; urgency=low
 
-  * Added patch description to debian/patches/01_link.diff.
-  * Fixed binary-control-field-duplicates-source.
-  * Bumped Standards-Version to 3.8.2.
+  * install sse optimized version in /usr/lib/sse2. LP: #550524
 
- -- Fabian Greffrath <fabian@debian-unofficial.org>  Thu, 13 Aug 2009 16:30:55 +0200
+ -- Reinhard Tartler <siretart@tauware.de>  Tue, 30 Mar 2010 22:27:28 +0200
 
-x264 (1:0.svn20090621+git364d7d-0debimedia2) unstable; urgency=low
+x264 (2:0.85.1448+git1a6d32-3) lucid; urgency=low
 
-  [ Fabian Greffrath ]
-  * Append to CFLAGS/LDFLAGS instead of overriding.
-  * Clean up CFLAGS.
-  * Remove -Wl,--as-needed from LDFLAGS. It has become unnecessary since
-    we don't link against GTK+ anymore. Redundant linking of the
-    frontend against -lX11 and -lm doesn't hurt, because the shared
-    library links against them anyway.
-  * Add one confflag per line, makes it easier to track minor changes.
-  * Repeat the last change for the shared_confflags.
-  * Kill some whitespace from debian/rules to improve readability.
+  [ Loïc Minier ]
+  * Finish confflags logic and/or add workarounds
 
   [ Reinhard Tartler ]
-  * prepare upload.
+  * build depend on libgpac-dev to enable mp4 support, LP: #464797
+  * simplify configure line, LP: #538555
+  * generate manpage with help2man to keep it up-to-date, LP: #391281
 
- -- Reinhard Tartler <siretart@tauware.de>  Wed, 01 Jul 2009 08:41:47 +0200
+ -- Reinhard Tartler <siretart@tauware.de>  Sun, 14 Mar 2010 10:10:26 +0100
 
-x264 (1:0.svn20090621+git364d7d-0debimedia1) unstable; urgency=low
+x264 (2:0.85.1448+git1a6d32-2) lucid; urgency=low
 
-  * Target for debian
+  * Add check_c() macro and use it for altivec check
 
- -- Reinhard Tartler <siretart@tauware.de>  Thu, 25 Jun 2009 18:18:58 +0200
+ -- Loïc Minier <loic.minier@ubuntu.com>  Tue, 09 Mar 2010 21:40:23 +0100
+
+x264 (2:0.85.1448+git1a6d32-1) lucid; urgency=low
+
+  [ Loic Minier ]
+  * Drop --enable-pic, let's see what breaks, LP: #524859
+
+  [ Reinhard Tartler ]
+  * New upstream snapshot, no new features, LP: #526396 
+  * remove quilt infrastructure
+  * don't set CFLAGS in debian/rules, upstream build system overrides
+    this anyways
+  
+ -- Reinhard Tartler <siretart@tauware.de>  Sun, 21 Feb 2010 16:57:21 +0100
+
+x264 (2:0.85.1442.1+git781d30-1) lucid; urgency=low
+
+  * use proper upstream version
+    (NB: the first number (85) is the API version,
+         the second the number of git commits so far)
+  * New upstream version should fix: LP: #315697, #463516
+  * Many ARM Neon Optimisations, LP: #388388
+  * this package is properly maintained in ubuntu. Indicate this by using
+    "-N" as versioning scheme.
+  * change versioning scheme as discussed with upstream. Requires bumping
+    epoch, though.
+  * ensure that MP4 output support is enabled, LP: #464797
+
+ -- Reinhard Tartler <siretart@tauware.de>  Thu, 18 Feb 2010 07:39:51 +0100
+
+x264 (1:0.svn20100213+gitfcf70c-0ubuntu1~ppa1) lucid; urgency=low
+
+  * new upstream version test upload.
+
+ -- Reinhard Tartler <siretart@tauware.de>  Sat, 13 Feb 2010 18:07:40 +0100
 
 x264 (1:0.svn20090621+git364d7d-0ubuntu2) karmic; urgency=low
 
