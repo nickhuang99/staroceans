@@ -24,6 +24,13 @@
 #include "muxers.h"
 #include <gpac/isomedia.h>
 
+#if HAVE_GF_MALLOC
+#undef malloc
+#undef free
+#define malloc gf_malloc
+#define free gf_free
+#endif
+
 typedef struct
 {
     GF_ISOFile *p_file;
@@ -31,7 +38,7 @@ typedef struct
     GF_ISOSample *p_sample;
     int i_track;
     uint32_t i_descidx;
-    int i_time_res;
+    uint32_t i_time_res;
     int64_t i_time_inc;
     int i_numframe;
     int i_delay_time;
@@ -39,7 +46,7 @@ typedef struct
 
 static void recompute_bitrate_mp4( GF_ISOFile *p_file, int i_track )
 {
-    u32 i, count, di, timescale, time_wnd, rate;
+    u32 count, di, timescale, time_wnd, rate;
     u64 offset;
     Double br;
     GF_ESD *esd;
@@ -54,7 +61,7 @@ static void recompute_bitrate_mp4( GF_ISOFile *p_file, int i_track )
 
     timescale = gf_isom_get_media_timescale( p_file, i_track );
     count = gf_isom_get_sample_count( p_file, i_track );
-    for( i = 0; i < count; i++ )
+    for( int i = 0; i < count; i++ )
     {
         GF_ISOSample *samp = gf_isom_get_sample_info( p_file, i_track, i+1, &di, &offset );
         if( !samp )
@@ -93,7 +100,6 @@ static void recompute_bitrate_mp4( GF_ISOFile *p_file, int i_track )
 static int close_file( hnd_t handle, int64_t largest_pts, int64_t second_largest_pts )
 {
     mp4_hnd_t *p_mp4 = handle;
-    uint64_t total_duration = 0;
 
     if( !p_mp4 )
         return 0;
@@ -106,6 +112,7 @@ static int close_file( hnd_t handle, int64_t largest_pts, int64_t second_largest
         if( p_mp4->p_sample->data )
             free( p_mp4->p_sample->data );
 
+        p_mp4->p_sample->dataLength = 0;
         gf_isom_sample_del( &p_mp4->p_sample );
     }
 
@@ -116,14 +123,12 @@ static int close_file( hnd_t handle, int64_t largest_pts, int64_t second_largest
          * So, if mdhd duration is equal to the last DTS or less, we give the last composition time delta to the last sample duration.
          * And then, the mdhd duration is updated, but it time-wise doesn't give the actual duration.
          * The tkhd duration is the actual track duration. */
-        uint64_t mdhd_duration = (2 * largest_pts - second_largest_pts - p_mp4->i_delay_time) * p_mp4->i_time_inc;
-        total_duration = gf_isom_get_media_duration( p_mp4->p_file, p_mp4->i_track );
-        if( mdhd_duration != total_duration )
+        uint64_t mdhd_duration = (2 * largest_pts - second_largest_pts) * p_mp4->i_time_inc;
+        if( mdhd_duration != gf_isom_get_media_duration( p_mp4->p_file, p_mp4->i_track ) )
         {
             uint64_t last_dts = gf_isom_get_sample_dts( p_mp4->p_file, p_mp4->i_track, p_mp4->i_numframe );
             uint32_t last_duration = (uint32_t)( mdhd_duration > last_dts ? mdhd_duration - last_dts : (largest_pts - second_largest_pts) * p_mp4->i_time_inc );
             gf_isom_set_last_sample_duration( p_mp4->p_file, p_mp4->i_track, last_duration );
-            total_duration = gf_isom_get_media_duration( p_mp4->p_file, p_mp4->i_track );
         }
 
         /* Write an Edit Box if the first CTS offset is positive.
@@ -131,7 +136,7 @@ static int close_file( hnd_t handle, int64_t largest_pts, int64_t second_largest
          * The reason is that an Edit Box maps the presentation time-line to the media time-line.
          * Any demuxers should follow the Edit Box if it exists. */
         GF_ISOSample *sample = gf_isom_get_sample_info( p_mp4->p_file, p_mp4->i_track, 1, NULL, NULL );
-        if( sample->CTS_Offset > 0 )
+        if( sample && sample->CTS_Offset > 0 )
         {
             uint32_t mvhd_timescale = gf_isom_get_timescale( p_mp4->p_file );
             uint64_t tkhd_duration = (uint64_t)( mdhd_duration * ( (double)mvhd_timescale / p_mp4->i_time_res ) );
@@ -228,13 +233,13 @@ static int write_headers( hnd_t handle, x264_nal_t *p_nal )
     mp4_hnd_t *p_mp4 = handle;
     GF_AVCConfigSlot *p_slot;
 
-    int sei_size = p_nal[0].i_payload;
-    int sps_size = p_nal[1].i_payload - 4;
-    int pps_size = p_nal[2].i_payload - 4;
+    int sps_size = p_nal[0].i_payload - 4;
+    int pps_size = p_nal[1].i_payload - 4;
+    int sei_size = p_nal[2].i_payload;
 
-    uint8_t *sei = p_nal[0].p_payload;
-    uint8_t *sps = p_nal[1].p_payload + 4;
-    uint8_t *pps = p_nal[2].p_payload + 4;
+    uint8_t *sps = p_nal[0].p_payload + 4;
+    uint8_t *pps = p_nal[1].p_payload + 4;
+    uint8_t *sei = p_nal[2].p_payload;
 
     // SPS
 

@@ -38,9 +38,9 @@ typedef struct
     int      i_ref;
     const x264_weight_t *weight;
 
-    uint8_t *p_fref[6];
-    uint8_t *p_fref_w;
-    uint8_t *p_fenc[3];
+    pixel *p_fref[6];
+    pixel *p_fref_w;
+    pixel *p_fenc[3];
     uint16_t *integral;
     int      i_stride[2];
 
@@ -58,8 +58,8 @@ typedef struct {
 } mvsad_t;
 
 void x264_me_search_ref( x264_t *h, x264_me_t *m, int16_t (*mvc)[2], int i_mvc, int *p_fullpel_thresh );
-static inline void x264_me_search( x264_t *h, x264_me_t *m, int16_t (*mvc)[2], int i_mvc )
-    { x264_me_search_ref( h, m, mvc, i_mvc, NULL ); }
+#define x264_me_search( h, m, mvc, i_mvc )\
+    x264_me_search_ref( h, m, mvc, i_mvc, NULL )
 
 void x264_me_refine_qpel( x264_t *h, x264_me_t *m );
 void x264_me_refine_qpel_refdupe( x264_t *h, x264_me_t *m, int *p_halfpel_thresh );
@@ -96,16 +96,6 @@ if((y)<(x))\
     (a)=(b);\
     (c)=(d);\
     (e)=(f);\
-}
-
-#define COPY5_IF_LT(x,y,a,b,c,d,e,f,g,h)\
-if((y)<(x))\
-{\
-    (x)=(y);\
-    (a)=(b);\
-    (c)=(d);\
-    (e)=(f);\
-    (g)=(h);\
 }
 
 #define COPY2_IF_GT(x,y,a,b)\
