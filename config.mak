@@ -1,0 +1,20 @@
+prefix=/usr/local
+exec_prefix=${prefix}
+bindir=${exec_prefix}/bin
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+ARCH=X86
+SYS=LINUX
+CC=gcc
+CFLAGS=-O3 -ffast-math  -Wall -I. -march=i686 -mfpmath=sse -msse -std=gnu99 -s -fomit-frame-pointer
+LDFLAGS= -lm -lpthread -s
+LDFLAGSCLI= -lgpac_static
+AR=ar
+RANLIB=ranlib
+STRIP=strip
+AS=yasm
+ASFLAGS= -O2 -f elf
+EXE=
+VIS=no
+HAVE_GETOPT_LONG=1
+DEVNULL=/dev/null
