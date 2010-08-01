@@ -25,8 +25,13 @@
 #define X264_X86_UTIL_H
 
 #ifdef __GNUC__
+
+#ifdef __SSE__
+#include <xmmintrin.h>
+#endif
+
 #define x264_median_mv x264_median_mv_mmxext
-static inline void x264_median_mv_mmxext( int16_t *dst, int16_t *a, int16_t *b, int16_t *c )
+static ALWAYS_INLINE void x264_median_mv_mmxext( int16_t *dst, int16_t *a, int16_t *b, int16_t *c )
 {
     asm(
         "movd   %1,    %%mm0 \n"
@@ -42,8 +47,9 @@ static inline void x264_median_mv_mmxext( int16_t *dst, int16_t *a, int16_t *b, 
         :"m"(M32( a )), "m"(M32( b )), "m"(M32( c ))
     );
 }
+
 #define x264_predictor_difference x264_predictor_difference_mmxext
-static inline int x264_predictor_difference_mmxext( int16_t (*mvc)[2], intptr_t i_mvc )
+static ALWAYS_INLINE int x264_predictor_difference_mmxext( int16_t (*mvc)[2], intptr_t i_mvc )
 {
     int sum;
     static const uint64_t pw_1 = 0x0001000100010001ULL;
@@ -77,35 +83,76 @@ static inline int x264_predictor_difference_mmxext( int16_t (*mvc)[2], intptr_t 
     );
     return sum;
 }
-#define x264_cabac_amvd_sum x264_cabac_amvd_sum_mmxext
-static ALWAYS_INLINE uint32_t x264_cabac_amvd_sum_mmxext(int16_t *mvdleft, int16_t *mvdtop)
+
+#define x264_cabac_mvd_sum x264_cabac_mvd_sum_mmxext
+static ALWAYS_INLINE uint16_t x264_cabac_mvd_sum_mmxext(uint8_t *mvdleft, uint8_t *mvdtop)
 {
-    static const uint64_t pw_2    = 0x0002000200020002ULL;
-    static const uint64_t pw_28   = 0x001C001C001C001CULL;
-    static const uint64_t pw_2184 = 0x0888088808880888ULL;
-    /* MIN(((x+28)*2184)>>16,2) = (x>2) + (x>32) */
-    /* 2184 = fix16(1/30) */
-    uint32_t amvd;
+    static const uint64_t pb_2    = 0x0202020202020202ULL;
+    static const uint64_t pb_32   = 0x2020202020202020ULL;
+    int amvd;
     asm(
-        "movd      %1, %%mm0 \n"
-        "movd      %2, %%mm1 \n"
-        "pxor   %%mm2, %%mm2 \n"
-        "pxor   %%mm3, %%mm3 \n"
-        "psubw  %%mm0, %%mm2 \n"
-        "psubw  %%mm1, %%mm3 \n"
-        "pmaxsw %%mm2, %%mm0 \n"
-        "pmaxsw %%mm3, %%mm1 \n"
-        "paddw     %3, %%mm0 \n"
-        "paddw  %%mm1, %%mm0 \n"
-        "pmulhuw   %4, %%mm0 \n"
-        "pminsw    %5, %%mm0 \n"
-        "movd   %%mm0, %0    \n"
+        "movd         %1, %%mm0 \n"
+        "movd         %2, %%mm1 \n"
+        "paddb     %%mm1, %%mm0 \n"
+        "pxor      %%mm2, %%mm2 \n"
+        "movq      %%mm0, %%mm1 \n"
+        "pcmpgtb      %3, %%mm0 \n"
+        "pcmpgtb      %4, %%mm1 \n"
+        "psubb     %%mm0, %%mm2 \n"
+        "psubb     %%mm1, %%mm2 \n"
+        "movd      %%mm2, %0    \n"
         :"=r"(amvd)
-        :"m"(M32( mvdleft )),"m"(M32( mvdtop )),
-         "m"(pw_28),"m"(pw_2184),"m"(pw_2)
+        :"m"(M16( mvdleft )),"m"(M16( mvdtop )),
+         "m"(pb_2),"m"(pb_32)
     );
     return amvd;
 }
+
+#define x264_predictor_roundclip x264_predictor_roundclip_mmxext
+static void ALWAYS_INLINE x264_predictor_roundclip_mmxext( int16_t (*dst)[2], int16_t (*mvc)[2], int i_mvc, int mv_x_min, int mv_x_max, int mv_y_min, int mv_y_max )
+{
+    uint32_t mv_min = pack16to32_mask( mv_x_min, mv_y_min );
+    uint32_t mv_max = pack16to32_mask( mv_x_max, mv_y_max );
+    static const uint64_t pw_2 = 0x0002000200020002ULL;
+    intptr_t i = i_mvc;
+    asm(
+        "movd    %2, %%mm5       \n"
+        "movd    %3, %%mm6       \n"
+        "movq    %4, %%mm7       \n"
+        "punpckldq %%mm5, %%mm5  \n"
+        "punpckldq %%mm6, %%mm6  \n"
+        "test $1, %0             \n"
+        "jz 1f                   \n"
+        "movd -4(%6,%0,4), %%mm0 \n"
+        "paddw %%mm7, %%mm0      \n"
+        "psraw $2, %%mm0         \n"
+        "pmaxsw %%mm5, %%mm0     \n"
+        "pminsw %%mm6, %%mm0     \n"
+        "movd %%mm0, -4(%5,%0,4) \n"
+        "dec %0                  \n"
+        "jz 2f                   \n"
+        "1:                      \n"
+        "movq -8(%6,%0,4), %%mm0 \n"
+        "paddw %%mm7, %%mm0      \n"
+        "psraw $2, %%mm0         \n"
+        "pmaxsw %%mm5, %%mm0     \n"
+        "pminsw %%mm6, %%mm0     \n"
+        "movq %%mm0, -8(%5,%0,4) \n"
+        "sub $2, %0              \n"
+        "jnz 1b                  \n"
+        "2:                      \n"
+        :"+r"(i), "=m"(M64( dst ))
+        :"g"(mv_min), "g"(mv_max), "m"(pw_2), "r"(dst), "r"(mvc), "m"(M64( mvc ))
+    );
+}
+
+#ifdef __SSE__
+#undef M128_ZERO
+#define M128_ZERO ((__m128){0,0,0,0})
+#define x264_union128_t x264_union128_sse_t
+typedef union { __m128 i; uint64_t a[2]; uint32_t b[4]; uint16_t c[8]; uint8_t d[16]; } MAY_ALIAS x264_union128_sse_t;
+#endif
+
 #endif
 
 #endif

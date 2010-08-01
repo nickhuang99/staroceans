@@ -6,6 +6,7 @@ Uploaders: Reinhard Tartler <siretart@tauware.de>,
            Fabian Greffrath <fabian@debian-unofficial.org>,
            Andres Mejia <mcitadel@gmail.com>
 Build-Depends: debhelper (>= 7),
+               libavformat-dev (>= 4:0.6-1~),
                help2man,
                yasm [i386 amd64 kfreebsd-amd64 lpia],
                libgpac-dev,
@@ -45,7 +46,8 @@ Description: video encoder for the H.264/MPEG-4 AVC standard
   * parallel encoding on multiple CPUs
   * interlaced streams
 
-Package: libx264-85
+Package: libx264-98
+Section: libs
 Architecture: any
 Depends: ${shlibs:Depends},
          ${misc:Depends}
@@ -58,7 +60,7 @@ Description: x264 video coding library
 Package: libx264-dev
 Section: libdevel
 Architecture: any
-Depends: libx264-85 (= ${binary:Version}),
+Depends: libx264-98 (= ${binary:Version}),
          ${misc:Depends} 
 Description: development files for libx264
  libx264 is an advanced encoding library for creating H.264 (MPEG-4 AVC)

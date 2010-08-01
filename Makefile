@@ -6,13 +6,15 @@ all: default
 
 SRCS = common/mc.c common/predict.c common/pixel.c common/macroblock.c \
        common/frame.c common/dct.c common/cpu.c common/cabac.c \
-       common/common.c common/mdate.c common/set.c \
-       common/quant.c common/vlc.c \
+       common/common.c common/mdate.c common/rectangle.c \
+       common/set.c common/quant.c common/deblock.c common/vlc.c \
+       common/mvpred.c common/bitstream.c \
        encoder/analyse.c encoder/me.c encoder/ratecontrol.c \
        encoder/set.c encoder/macroblock.c encoder/cabac.c \
        encoder/cavlc.c encoder/encoder.c encoder/lookahead.c
 
-SRCCLI = x264.c input/yuv.c input/y4m.c output/raw.c \
+SRCCLI = x264.c input/timecode.c \
+         input/yuv.c input/y4m.c output/raw.c \
          output/matroska.c output/matroska_ebml.c \
          output/flv.c output/flv_bytestream.c
 
@@ -21,7 +23,7 @@ SRCSO =
 CONFIG := $(shell cat config.h)
 
 # Optional muxer module sources
-ifneq ($(findstring AVS_INPUT, $(CONFIG)),)
+ifneq ($(findstring HAVE_AVS, $(CONFIG)),)
 SRCCLI += input/avs.c
 endif
 
@@ -29,15 +31,15 @@ ifneq ($(findstring HAVE_PTHREAD, $(CONFIG)),)
 SRCCLI += input/thread.c
 endif
 
-ifneq ($(findstring LAVF_INPUT, $(CONFIG)),)
+ifneq ($(findstring HAVE_LAVF, $(CONFIG)),)
 SRCCLI += input/lavf.c
 endif
 
-ifneq ($(findstring FFMS_INPUT, $(CONFIG)),)
+ifneq ($(findstring HAVE_FFMS, $(CONFIG)),)
 SRCCLI += input/ffms.c
 endif
 
-ifneq ($(findstring MP4_OUTPUT, $(CONFIG)),)
+ifneq ($(findstring HAVE_GPAC, $(CONFIG)),)
 SRCCLI += output/mp4.c
 endif
 
@@ -48,9 +50,9 @@ endif
 
 # MMX/SSE optims
 ifneq ($(AS),)
-X86SRC0 = cabac-a.asm dct-a.asm deblock-a.asm mc-a.asm mc-a2.asm \
-          pixel-a.asm predict-a.asm quant-a.asm sad-a.asm \
-          cpu-a.asm dct-32.asm
+X86SRC0 = const-a.asm cabac-a.asm dct-a.asm deblock-a.asm mc-a.asm \
+          mc-a2.asm pixel-a.asm predict-a.asm quant-a.asm sad-a.asm \
+          cpu-a.asm dct-32.asm bitstream-a.asm
 X86SRC = $(X86SRC0:%=common/x86/%)
 
 ifeq ($(ARCH),X86)
@@ -75,9 +77,11 @@ endif
 
 # AltiVec optims
 ifeq ($(ARCH),PPC)
+ifneq ($(AS),)
 SRCS += common/ppc/mc.c common/ppc/pixel.c common/ppc/dct.c \
         common/ppc/quant.c common/ppc/deblock.c \
         common/ppc/predict.c
+endif
 endif
 
 # NEON optims
@@ -98,7 +102,7 @@ OBJASM  = $(ASMSRC:%.asm=%.o)
 endif
 
 ifneq ($(HAVE_GETOPT_LONG),1)
-SRCS += extras/getopt.c
+SRCCLI += extras/getopt.c
 endif
 
 ifneq ($(SONAME),)
@@ -190,8 +194,10 @@ distclean: clean
 	rm -rf test/
 
 install: x264$(EXE) $(SONAME)
-	install -d $(DESTDIR)$(bindir) $(DESTDIR)$(includedir)
-	install -d $(DESTDIR)$(libdir) $(DESTDIR)$(libdir)/pkgconfig
+	install -d $(DESTDIR)$(bindir)
+	install -d $(DESTDIR)$(includedir)
+	install -d $(DESTDIR)$(libdir)
+	install -d $(DESTDIR)$(libdir)/pkgconfig
 	install -m 644 x264.h $(DESTDIR)$(includedir)
 	install -m 644 libx264.a $(DESTDIR)$(libdir)
 	install -m 644 x264.pc $(DESTDIR)$(libdir)/pkgconfig
@@ -200,14 +206,14 @@ install: x264$(EXE) $(SONAME)
 ifeq ($(SYS),MINGW)
 	$(if $(SONAME), install -m 755 $(SONAME) $(DESTDIR)$(bindir))
 else
-	$(if $(SONAME), ln -sf $(SONAME) $(DESTDIR)$(libdir)/libx264.$(SOSUFFIX))
+	$(if $(SONAME), ln -f -s $(SONAME) $(DESTDIR)$(libdir)/libx264.$(SOSUFFIX))
 	$(if $(SONAME), install -m 755 $(SONAME) $(DESTDIR)$(libdir))
 endif
 	$(if $(IMPLIBNAME), install -m 644 $(IMPLIBNAME) $(DESTDIR)$(libdir))
 
 uninstall:
 	rm -f $(DESTDIR)$(includedir)/x264.h $(DESTDIR)$(libdir)/libx264.a
-	rm -f $(DESTDIR)$(bindir)/x264 $(DESTDIR)$(libdir)/pkgconfig/x264.pc
+	rm -f $(DESTDIR)$(bindir)/x264$(EXE) $(DESTDIR)$(libdir)/pkgconfig/x264.pc
 	$(if $(SONAME), rm -f $(DESTDIR)$(libdir)/$(SONAME) $(DESTDIR)$(libdir)/libx264.$(SOSUFFIX))
 
 etags: TAGS

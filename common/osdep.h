@@ -31,14 +31,15 @@
 
 #include "config.h"
 
-#ifdef HAVE_STDINT_H
+#if HAVE_STDINT_H
 #include <stdint.h>
 #else
 #include <inttypes.h>
 #endif
 
-#ifndef HAVE_LOG2F
-#define log2f(x) (logf((x))/0.693147180559945f)
+#if !HAVE_LOG2F
+#define log2f(x) (logf(x)/0.693147180559945f)
+#define log2(x) (log(x)/0.693147180559945)
 #endif
 
 #ifdef _WIN32
@@ -46,7 +47,7 @@
 #include <fcntl.h> // _O_BINARY
 #endif
 
-#if (defined(SYS_OPENBSD) && !defined(isfinite)) || defined(SYS_SunOS)
+#if (SYS_OPENBSD && !defined(isfinite)) || SYS_SunOS
 #define isfinite finite
 #endif
 #ifdef _WIN32
@@ -67,7 +68,7 @@
 // - armcc can't either, but is nice enough to actually tell you so
 // - Apple gcc only maintains 4 byte alignment
 // - llvm can align the stack, but only in svn and (unrelated) it exposes bugs in all released GNU binutils...
-#if defined(ARCH_ARM) && defined(SYS_MACOSX)
+#if ARCH_ARM && SYS_MACOSX
 #define ALIGNED_ARRAY_8( type, name, sub1, ... )\
     uint8_t name##_u [sizeof(type sub1 __VA_ARGS__) + 7]; \
     type (*name) __VA_ARGS__ = (void*)((intptr_t)(name##_u+7) & ~7)
@@ -76,7 +77,7 @@
     ALIGNED_8( type name sub1 __VA_ARGS__ )
 #endif
 
-#ifdef ARCH_ARM
+#if ARCH_ARM
 #define ALIGNED_ARRAY_16( type, name, sub1, ... )\
     uint8_t name##_u [sizeof(type sub1 __VA_ARGS__) + 15];\
     type (*name) __VA_ARGS__ = (void*)((intptr_t)(name##_u+15) & ~15)
@@ -91,16 +92,18 @@
 #define NOINLINE __attribute__((noinline))
 #define MAY_ALIAS __attribute__((may_alias))
 #define x264_constant_p(x) __builtin_constant_p(x)
+#define x264_nonconstant_p(x) (!__builtin_constant_p(x))
 #else
 #define UNUSED
 #define ALWAYS_INLINE inline
 #define NOINLINE
 #define MAY_ALIAS
 #define x264_constant_p(x) 0
+#define x264_nonconstant_p(x) 0
 #endif
 
 /* threads */
-#if defined(SYS_BEOS)
+#if SYS_BEOS
 #include <kernel/OS.h>
 #define x264_pthread_t               thread_id
 static inline int x264_pthread_create( x264_pthread_t *t, void *a, void *(*f)(void *), void *d )
@@ -118,9 +121,9 @@ static inline int x264_pthread_create( x264_pthread_t *t, void *a, void *(*f)(vo
 #endif
 #define HAVE_PTHREAD 1
 
-#elif defined(HAVE_PTHREAD)
+#elif HAVE_PTHREAD
 #include <pthread.h>
-#define USE_REAL_PTHREAD
+#define USE_REAL_PTHREAD 1
 
 #else
 #define x264_pthread_t               int
@@ -128,7 +131,7 @@ static inline int x264_pthread_create( x264_pthread_t *t, void *a, void *(*f)(vo
 #define x264_pthread_join(t,s)
 #endif //SYS_*
 
-#ifdef USE_REAL_PTHREAD
+#if USE_REAL_PTHREAD
 #define x264_pthread_t               pthread_t
 #define x264_pthread_create          pthread_create
 #define x264_pthread_join            pthread_join
@@ -169,23 +172,23 @@ static inline int x264_pthread_create( x264_pthread_t *t, void *a, void *(*f)(vo
 
 #if !defined(_WIN64) && !defined(__LP64__)
 #if defined(__INTEL_COMPILER)
-#define BROKEN_STACK_ALIGNMENT /* define it if stack is not mod16 */
+#define BROKEN_STACK_ALIGNMENT 1 /* define it if stack is not mod16 */
 #endif
 #endif
 
-#ifdef WORDS_BIGENDIAN
+#if WORDS_BIGENDIAN
 #define endian_fix(x) (x)
 #define endian_fix64(x) (x)
 #define endian_fix32(x) (x)
 #define endian_fix16(x) (x)
 #else
-#if defined(__GNUC__) && defined(HAVE_MMX)
+#if defined(__GNUC__) && HAVE_MMX
 static ALWAYS_INLINE uint32_t endian_fix32( uint32_t x )
 {
     asm("bswap %0":"+r"(x));
     return x;
 }
-#elif defined(__GNUC__) && defined(HAVE_ARMV6)
+#elif defined(__GNUC__) && HAVE_ARMV6
 static ALWAYS_INLINE uint32_t endian_fix32( uint32_t x )
 {
     asm("rev %0, %0":"+r"(x));
@@ -197,7 +200,7 @@ static ALWAYS_INLINE uint32_t endian_fix32( uint32_t x )
     return (x<<24) + ((x<<8)&0xff0000) + ((x>>8)&0xff00) + (x>>24);
 }
 #endif
-#if defined(__GNUC__) && defined(ARCH_X86_64)
+#if defined(__GNUC__) && ARCH_X86_64
 static ALWAYS_INLINE uint64_t endian_fix64( uint64_t x )
 {
     asm("bswap %0":"+r"(x));
@@ -221,6 +224,7 @@ static ALWAYS_INLINE uint16_t endian_fix16( uint16_t x )
 
 #if defined(__GNUC__) && (__GNUC__ > 3 || __GNUC__ == 3 && __GNUC_MINOR__ > 3)
 #define x264_clz(x) __builtin_clz(x)
+#define x264_ctz(x) __builtin_ctz(x)
 #else
 static int ALWAYS_INLINE x264_clz( uint32_t x )
 {
@@ -233,10 +237,38 @@ static int ALWAYS_INLINE x264_clz( uint32_t x )
     x >>= y^4;
     return z + lut[x];
 }
+
+static int ALWAYS_INLINE x264_ctz( uint32_t x )
+{
+    static uint8_t lut[16] = {4,0,1,0,2,0,1,0,3,0,1,0,2,0,1,0};
+    int y, z = (((x & 0xffff) - 1) >> 27) & 16;
+    x >>= z;
+    z += y = (((x & 0xff) - 1) >> 28) & 8;
+    x >>= y;
+    z += y = (((x & 0xf) - 1) >> 29) & 4;
+    x >>= y;
+    return z + lut[x&0xf];
+}
 #endif
 
-#ifdef USE_REAL_PTHREAD
-#ifdef SYS_MINGW
+#if defined(__GNUC__) && HAVE_MMX
+/* Don't use __builtin_prefetch; even as recent as 4.3.4, GCC seems incapable of
+ * using complex address modes properly unless we use inline asm. */
+static ALWAYS_INLINE void x264_prefetch( void *p )
+{
+    asm volatile( "prefetcht0 %0"::"m"(*(uint8_t*)p) );
+}
+/* We require that prefetch not fault on invalid reads, so we only enable it on
+ * known architectures. */
+#elif defined(__GNUC__) && (__GNUC__ > 3 || __GNUC__ == 3 && __GNUC_MINOR__ > 1) &&\
+      (ARCH_X86 || ARCH_X86_64 || ARCH_ARM || ARCH_PPC)
+#define x264_prefetch(x) __builtin_prefetch(x)
+#else
+#define x264_prefetch(x)
+#endif
+
+#if USE_REAL_PTHREAD
+#if SYS_MINGW
 #define x264_lower_thread_priority(p)\
 {\
     x264_pthread_t handle = pthread_self();\
@@ -258,7 +290,15 @@ static inline uint8_t x264_is_regular_file( FILE *filehandle )
 {
     struct stat file_stat;
     if( fstat( fileno( filehandle ), &file_stat ) )
-        return 0;
+        return -1;
+    return S_ISREG( file_stat.st_mode );
+}
+
+static inline uint8_t x264_is_regular_file_path( const char *filename )
+{
+    struct stat file_stat;
+    if( stat( filename, &file_stat ) )
+        return -1;
     return S_ISREG( file_stat.st_mode );
 }
 

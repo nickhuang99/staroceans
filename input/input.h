@@ -28,8 +28,9 @@
 /* options that are used by only some demuxers */
 typedef struct
 {
-    char *index;
+    char *index_file;
     char *resolution; /* resolution string parsed by raw yuv input */
+    char *timebase;
     int seek;
 } cli_input_opt_t;
 
@@ -37,14 +38,15 @@ typedef struct
 typedef struct
 {
     int csp; /* X264_CSP_YV12 or X264_CSP_I420 */
-    int fps_num;
-    int fps_den;
+    uint32_t fps_num;
+    uint32_t fps_den;
     int height;
     int interlaced;
-    int sar_width;
-    int sar_height;
-    int timebase_num;
-    int timebase_den;
+    uint32_t sar_width;
+    uint32_t sar_height;
+    int tff;
+    uint32_t timebase_num;
+    uint32_t timebase_den;
     int vfr;
     int width;
 } video_info_t;
@@ -66,5 +68,6 @@ extern const cli_input_t avs_input;
 extern cli_input_t thread_input;
 extern const cli_input_t lavf_input;
 extern const cli_input_t ffms_input;
+extern cli_input_t timecode_input;
 
 #endif

@@ -7,12 +7,12 @@ echo ""
 echo "available options:"
 echo ""
 echo "  --help                   print this message"
-echo "  --disable-avs-input      disables avisynth input (win32 only)"
-echo "  --disable-lavf-input     disables libavformat input"
-echo "  --disable-ffms-input     disables ffmpegsource input"
-echo "  --disable-mp4-output     disables mp4 output (using gpac)"
+echo "  --disable-avs            disables avisynth support (windows only)"
+echo "  --disable-lavf           disables libavformat support"
+echo "  --disable-ffms           disables ffmpegsource support"
+echo "  --disable-gpac           disables gpac support"
 echo "  --disable-pthread        disables multithreaded encoding"
-echo "  --disable-asm            disables assembly optimizations on x86 and arm"
+echo "  --disable-asm            disables platform-specific assembly optimizations"
 echo "  --enable-debug           adds -g, doesn't strip"
 echo "  --enable-gprof           adds -pg, doesn't strip"
 echo "  --enable-visualize       enables visualization (X11 only)"
@@ -95,7 +95,7 @@ as_check() {
 }
 
 define() {
-    echo "#define $1$([ -n "$2" ] && echo " $2")" >> config.h
+    echo "#define $1$([ -n "$2" ] && echo " $2" || echo " 1")" >> config.h
 }
 
 die() {
@@ -113,12 +113,12 @@ libdir='${exec_prefix}/lib'
 includedir='${prefix}/include'
 DEVNULL='/dev/null'
 
-avs_input="auto"
-lavf_input="auto"
-ffms_input="auto"
-mp4_output="auto"
+avs="auto"
+lavf="auto"
+ffms="auto"
+gpac="auto"
 pthread="auto"
-asm="yes"
+asm="auto"
 debug="no"
 gprof="no"
 pic="no"
@@ -154,35 +154,20 @@ for opt do
         --includedir=*)
             includedir="$optarg"
             ;;
-        --enable-asm)
-            asm="yes"
-            ;;
         --disable-asm)
             asm="no"
             ;;
-        --enable-avs-input)
-            avs_input="auto"
+        --disable-avs)
+            avs="no"
             ;;
-        --disable-avs-input)
-            avs_input="no"
+        --disable-lavf)
+            lavf="no"
             ;;
-        --enable-lavf-input)
-            lavf_input="auto"
+        --disable-ffms)
+            ffms="no"
             ;;
-        --disable-lavf-input)
-            lavf_input="no"
-            ;;
-        --enable-ffms-input)
-            ffms_input="auto"
-            ;;
-        --disable-ffms-input)
-            ffms_input="no"
-            ;;
-        --enable-mp4-output)
-            mp4_output="yes"
-            ;;
-        --disable-mp4-output)
-            mp4_output="no"
+        --disable-gpac)
+            gpac="no"
             ;;
         --extra-asflags=*)
             ASFLAGS="$ASFLAGS ${opt#--extra-asflags=}"
@@ -192,9 +177,6 @@ for opt do
             ;;
         --extra-ldflags=*)
             LDFLAGS="$LDFLAGS ${opt#--extra-ldflags=}"
-            ;;
-        --enable-pthread)
-            pthread="auto" # can't skip detection, since it differs by OS
             ;;
         --disable-pthread)
             pthread="no"
@@ -214,8 +196,6 @@ for opt do
             shared="yes"
             ;;
         --enable-visualize)
-            LDFLAGS="$LDFLAGS -L/usr/X11R6/lib -lX11"
-            define HAVE_VISUALIZE
             vis="yes"
             ;;
         --host=*)
@@ -317,16 +297,17 @@ case $host_cpu in
     ARCH="X86"
     AS="yasm"
     ASFLAGS="$ASFLAGS -O2"
-    if [[ "$asm" == yes && "$CFLAGS" != *-march* ]]; then
+    if [[ "$asm" == auto && "$CFLAGS" != *-march* ]]; then
       CFLAGS="$CFLAGS -march=i686"
     fi
-    if [[ "$asm" == yes && "$CFLAGS" != *-mfpmath* ]]; then
+    if [[ "$asm" == auto && "$CFLAGS" != *-mfpmath* ]]; then
       CFLAGS="$CFLAGS -mfpmath=sse -msse"
     fi
     if [ "$SYS" = MACOSX ]; then
       ASFLAGS="$ASFLAGS -f macho -DPREFIX"
     elif [ "$SYS" = MINGW ]; then
       ASFLAGS="$ASFLAGS -f win32 -DPREFIX"
+      LDFLAGS="$LDFLAGS -Wl,--large-address-aware"
     else
       ASFLAGS="$ASFLAGS -f elf"
     fi
@@ -348,20 +329,23 @@ case $host_cpu in
     ;;
   powerpc|powerpc64)
     ARCH="PPC"
-    if [ $SYS = MACOSX ]
-    then
-      CFLAGS="$CFLAGS -faltivec -fastf -mcpu=G4"
-    else
-      CFLAGS="$CFLAGS -maltivec -mabi=altivec"
-      define HAVE_ALTIVEC_H
+    if [ $asm = auto ] ; then
+      define HAVE_ALTIVEC
+      AS="${AS-${cross_prefix}gcc}"
+      if [ $SYS = MACOSX ] ; then
+        CFLAGS="$CFLAGS -faltivec -fastf -mcpu=G4"
+      else
+        CFLAGS="$CFLAGS -maltivec -mabi=altivec"
+        define HAVE_ALTIVEC_H
+      fi
     fi
     ;;
   sparc)
-    if test "$(uname -m)" = "sun4u"; then
+    if [ $asm = auto ] && test "$(uname -m)" = "sun4u"; then
       ARCH="UltraSparc"
       CFLAGS="$CFLAGS -mcpu=ultrasparc"
       LDFLAGS="$LDFLAGS -mcpu=ultrasparc"
-      AS="${cross_prefix}as"
+      AS="${AS-${cross_prefix}as}"
       ASFLAGS="$ASFLAGS -xarch=v8plusa"
     else
       ARCH="Sparc"
@@ -390,6 +374,9 @@ case $host_cpu in
   parisc|parisc64)
     ARCH="PARISC"
     ;;
+  ia64)
+    ARCH="IA64"
+    ;;
   *)
     ARCH="$(echo $host_cpu | tr a-z A-Z)"
     ;;
@@ -415,11 +402,11 @@ elif cc_check '' -std=c99 ; then
     CFLAGS="$CFLAGS -std=c99 -D_POSIX_C_SOURCE=200112L -D_BSD_SOURCE"
 fi
 
-if [ $shared = yes -a \( $ARCH = "X86_64" -o $ARCH = "PPC" -o $ARCH = "ALPHA" -o $ARCH = "ARM" \) ] ; then
+if [ $shared = yes -a \( $ARCH = "X86_64" -o $ARCH = "PPC" -o $ARCH = "ALPHA" -o $ARCH = "ARM" -o $ARCH = "IA64" \) ] ; then
     pic="yes"
 fi
 
-if [ $asm = yes -a \( $ARCH = X86 -o $ARCH = X86_64 \) ] ; then
+if [ $asm = auto -a \( $ARCH = X86 -o $ARCH = X86_64 \) ] ; then
     if ! as_check "lzcnt eax, eax" ; then
         VER=`($AS --version || echo no assembler) 2>$DEVNULL | head -n 1`
         echo "Found $VER"
@@ -438,7 +425,7 @@ if [ $asm = yes -a \( $ARCH = X86 -o $ARCH = X86_64 \) ] ; then
     define HAVE_MMX
 fi
 
-if [ $asm = yes -a $ARCH = ARM ] ; then
+if [ $asm = auto -a $ARCH = ARM ] ; then
     # set flags so neon is built by default
     echo $CFLAGS | grep -Eq '(-mcpu|-march|-mfpu|-mfloat-abi)' || CFLAGS="$CFLAGS -mcpu=cortex-a8 -mfpu=neon -mfloat-abi=softfp"
 
@@ -454,7 +441,7 @@ if [ $asm = yes -a $ARCH = ARM ] ; then
 fi
 
 [ $asm = no ] && AS=""
-[ "x$AS" = x ] && asm="no"
+[ "x$AS" = x ] && asm="no" || asm="yes"
 
 define ARCH_$ARCH
 define SYS_$SYS
@@ -510,8 +497,15 @@ if cc_check "math.h" "-Werror" "return log2f(2);" ; then
     define HAVE_LOG2F
 fi
 
-if [ "$lavf_input" = "auto" ] ; then
-    lavf_input="no"
+if [ "$vis" = "yes" ] && cc_check "X11/Xlib.h" "-L/usr/X11R6/lib -lX11" "XOpenDisplay( 0 );" ; then
+    LDFLAGS="-L/usr/X11R6/lib -lX11 $LDFLAGS"
+    define HAVE_VISUALIZE
+else
+    vis="no"
+fi
+
+if [ "$lavf" = "auto" ] ; then
+    lavf="no"
     if ${cross_prefix}pkg-config --exists libavformat libavcodec libswscale 2>$DEVNULL; then
         LAVF_LIBS="$LAVF_LIBS $(${cross_prefix}pkg-config --libs libavformat libavcodec libswscale)"
         LAVF_CFLAGS="$LAVF_CFLAGS $(${cross_prefix}pkg-config --cflags libavformat libavcodec libswscale)"
@@ -527,23 +521,23 @@ if [ "$lavf_input" = "auto" ] ; then
        cc_check libswscale/swscale.h "$LAVF_CFLAGS $LAVF_LIBS" ; then
         # avcodec_decode_video2 is currently the most recently added function that we use; it was added in r18351
         if cc_check libavformat/avformat.h "$LAVF_CFLAGS $LAVF_LIBS" "avcodec_decode_video2( NULL, NULL, NULL, NULL );" ; then
-            lavf_input="yes"
-            define LAVF_INPUT
+            lavf="yes"
+            define HAVE_LAVF
         else
             echo "Warning: libavformat is too old, update to ffmpeg r18351+"
         fi
     fi
 fi
 
-if [ "$ffms_input" = "auto" ] ; then
+if [ "$ffms" = "auto" ] ; then
     ffms_major="2"; ffms_minor="13"; ffms_micro="1"; ffms_bump="0"
 
-    ffms_input="no"
+    ffms="no"
     [ $ffms_micro -gt 0 -o $ffms_bump -gt 0 ] && vmicro=".$ffms_micro"
     [ $ffms_bump -gt 0 ] && vbump=".$ffms_bump"
     if ${cross_prefix}pkg-config --atleast-version="$ffms_major.$ffms_minor$vmicro$vbump" ffms2 2>$DEVNULL; then
         FFMS2_LIBS="$FFMS2_LIBS $(${cross_prefix}pkg-config --libs ffms2)"
-        FFMS2_CFLAGS="$FFMS2_LIBS $(${cross_prefix}pkg-config --cflags ffms2)"
+        FFMS2_CFLAGS="$FFMS2_CFLAGS $(${cross_prefix}pkg-config --cflags ffms2)"
         api_check="no"
     else
         api_check="yes"
@@ -551,13 +545,13 @@ if [ "$ffms_input" = "auto" ] ; then
     [ -z "$FFMS2_LIBS" ] && FFMS2_LIBS="-lffms2"
 
     if cc_check ffms.h "$FFMS2_CFLAGS $FFMS2_LIBS" "FFMS_DestroyVideoSource(0);" ; then
-        ffms_input="yes"
+        ffms="yes"
     elif cc_check ffms.h "$FFMS2_CFLAGS $FFMS2_LIBS -lstdc++ $LAVF_LIBS" "FFMS_DestroyVideoSource(0);" ; then
-        ffms_input="yes"
+        ffms="yes"
         FFMS2_LIBS="$FFMS2_LIBS -lstdc++ $LAVF_LIBS"
     fi
 
-    if [ $api_check = "yes" -a $ffms_input = "yes" ]; then
+    if [ $api_check = "yes" -a $ffms = "yes" ]; then
         log_check "whether ffms2 version is at least $ffms_major.$ffms_minor$vmicro$vbump"
         $CC $CFLAGS $FFMS2_CFLAGS -c -o conftest -x c - >$DEVNULL 2>&1 <<EOF
 #include <ffms.h>
@@ -565,47 +559,50 @@ if [ "$ffms_input" = "auto" ] ; then
 #error Requires ffms2 version 2.13.1
 #endif
 EOF
-        [ $? = 0 ] && log_ok || { ffms_input="no"; log_fail; }
+        [ $? = 0 ] && log_ok || { ffms="no"; log_fail; }
     fi
 fi
 
-if [ "$ffms_input" = "yes" ]; then
+if [ "$ffms" = "yes" ]; then
     LDFLAGSCLI="$FFMS2_LIBS $LDFLAGSCLI"
     [ -n "$FFMS2_CFLAGS" ] && CFLAGS="$CFLAGS $FFMS2_CFLAGS"
-    define FFMS_INPUT
-elif [ "$lavf_input" = "yes" ]; then
+    define HAVE_FFMS
+elif [ "$lavf" = "yes" ]; then
     LDFLAGSCLI="$LAVF_LIBS $LDFLAGSCLI"
     [ -n "$LAVF_CFLAGS" ] && CFLAGS="$CFLAGS $LAVF_CFLAGS"
 fi
 
-MP4_LDFLAGS="-lgpac_static"
+GPAC_LIBS="-lgpac_static"
 if [ $SYS = MINGW ]; then
-    MP4_LDFLAGS="$MP4_LDFLAGS -lwinmm"
+    GPAC_LIBS="$GPAC_LIBS -lwinmm"
 fi
-if [ "$mp4_output" = "auto" ] ; then
-    mp4_output="no"
-    if cc_check gpac/isomedia.h "$MP4_LDFLAGS" ; then
-        if cc_check gpac/isomedia.h "$MP4_LDFLAGS" "gf_isom_set_pixel_aspect_ratio(0,0,0,0,0);" ; then
-            mp4_output="yes"
+if [ "$gpac" = "auto" ] ; then
+    gpac="no"
+    if cc_check gpac/isomedia.h "$GPAC_LIBS" ; then
+        if cc_check gpac/isomedia.h "$GPAC_LIBS" "gf_isom_set_pixel_aspect_ratio(0,0,0,0,0);" ; then
+            gpac="yes"
         else
             echo "Warning: gpac is too old, update to 2007-06-21 UTC or later"
         fi
     fi
 fi
-if [ "$mp4_output" = "yes" ] ; then
-    define MP4_OUTPUT
-    LDFLAGSCLI="$LDFLAGSCLI $MP4_LDFLAGS"
+if [ "$gpac" = "yes" ] ; then
+    define HAVE_GPAC
+    if cc_check gpac/isomedia.h "-Werror $GPAC_LIBS" "gf_malloc(1); gf_free(NULL);" ; then
+        define HAVE_GF_MALLOC
+    fi
+    LDFLAGSCLI="$LDFLAGSCLI $GPAC_LIBS"
 fi
 
-if [ "$avs_input" = "auto" ] ; then
-    avs_input=no
+if [ "$avs" = "auto" ] ; then
+    avs=no
     if [ $SYS = MINGW ] && cc_check avisynth_c.h ; then
-        avs_input="yes"
-        define AVS_INPUT
+        avs="yes"
+        define HAVE_AVS
         define HAVE_AVISYNTH_C_H
     elif [ $SYS = MINGW ] && cc_check extras/avisynth_c.h ; then
-        avs_input="yes"
-        define AVS_INPUT
+        avs="yes"
+        define HAVE_AVS
     fi
 fi
 
@@ -631,12 +628,20 @@ else
     CFLAGS="-O3 -ffast-math $CFLAGS"
 fi
 
+if cc_check '' -fno-tree-vectorize ; then
+    CFLAGS="$CFLAGS -fno-tree-vectorize"
+fi
+
 if cc_check "stdio.h" "" "fseeko(stdin,0,0);" ; then
     define fseek fseeko
     define ftell ftello
 elif cc_check "stdio.h" "" "fseeko64(stdin,0,0);" ; then
     define fseek fseeko64
     define ftell ftello64
+fi
+
+if cc_check '' -Wshadow ; then
+    CFLAGS="-Wshadow $CFLAGS"
 fi
 
 rm -f conftest*
@@ -688,7 +693,7 @@ if [ "$shared" = "yes" ]; then
     echo 'default: $(SONAME)' >> config.mak
 fi
 
-./version.sh
+./version.sh >> config.h
 
 pclibs="-L$libdir -lx264 $libpthread"
 
@@ -709,10 +714,10 @@ cat > conftest.log <<EOF
 Platform:   $ARCH
 System:     $SYS
 asm:        $asm
-avs input:  $avs_input
-lavf input: $lavf_input
-ffms input: $ffms_input
-mp4 output: $mp4_output
+avs:        $avs
+lavf:       $lavf
+ffms:       $ffms
+gpac:       $gpac
 pthread:    $pthread
 debug:      $debug
 gprof:      $gprof

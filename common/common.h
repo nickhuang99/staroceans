@@ -36,6 +36,7 @@
 #define XCHG(type,a,b) do{ type t = a; a = b; b = t; } while(0)
 #define IS_DISPOSABLE(type) ( type == X264_TYPE_B )
 #define FIX8(f) ((int)(f*(1<<8)+.5))
+#define ALIGN(x,a) (((x)+((a)-1))&~((a)-1))
 
 #define CHECKED_MALLOC( var, size )\
 do {\
@@ -67,6 +68,9 @@ do {\
 
 #define X264_WEIGHTP_FAKE (-1)
 
+#define NALU_OVERHEAD 5 // startcode + NAL type costs 5 bytes per frame
+#define FILLER_OVERHEAD (NALU_OVERHEAD+1)
+
 /****************************************************************************
  * Includes
  ****************************************************************************/
@@ -85,15 +89,68 @@ do {\
 typedef union { uint16_t i; uint8_t  c[2]; } MAY_ALIAS x264_union16_t;
 typedef union { uint32_t i; uint16_t b[2]; uint8_t  c[4]; } MAY_ALIAS x264_union32_t;
 typedef union { uint64_t i; uint32_t a[2]; uint16_t b[4]; uint8_t c[8]; } MAY_ALIAS x264_union64_t;
+typedef struct { uint64_t i[2]; } x264_uint128_t;
+typedef union { x264_uint128_t i; uint64_t a[2]; uint32_t b[4]; uint16_t c[8]; uint8_t d[16]; } MAY_ALIAS x264_union128_t;
 #define M16(src) (((x264_union16_t*)(src))->i)
 #define M32(src) (((x264_union32_t*)(src))->i)
 #define M64(src) (((x264_union64_t*)(src))->i)
+#define M128(src) (((x264_union128_t*)(src))->i)
+#define M128_ZERO ((x264_uint128_t){{0,0}})
 #define CP16(dst,src) M16(dst) = M16(src)
 #define CP32(dst,src) M32(dst) = M32(src)
 #define CP64(dst,src) M64(dst) = M64(src)
+#define CP128(dst,src) M128(dst) = M128(src)
+
+typedef uint8_t pixel;
+typedef uint32_t pixel4;
+typedef int16_t dctcoef;
+
+#define PIXEL_SPLAT_X4(x) ((x)*0x01010101U)
+#define MPIXEL_X4(src) M32(src)
+#define CPPIXEL_X4(dst,src) CP32(dst,src)
+#define CPPIXEL_X8(dst,src) CP64(dst,src)
+#define MDCT_X2(dct) M32(dct)
+#define CPDCT_X2(dst,src) CP32(dst,src)
+#define CPDCT_X4(dst,src) CP64(dst,src)
+
+#define X264_SCAN8_SIZE (6*8)
+#define X264_SCAN8_LUMA_SIZE (5*8)
+#define X264_SCAN8_0 (4+1*8)
+
+static const int x264_scan8[16+2*4+3] =
+{
+    /* Luma */
+    4+1*8, 5+1*8, 4+2*8, 5+2*8,
+    6+1*8, 7+1*8, 6+2*8, 7+2*8,
+    4+3*8, 5+3*8, 4+4*8, 5+4*8,
+    6+3*8, 7+3*8, 6+4*8, 7+4*8,
+
+    /* Cb */
+    1+1*8, 2+1*8,
+    1+2*8, 2+2*8,
+
+    /* Cr */
+    1+4*8, 2+4*8,
+    1+5*8, 2+5*8,
+
+    /* Luma DC */
+    4+5*8,
+
+    /* Chroma DC */
+    6+5*8, 7+5*8
+};
+/*
+   0 1 2 3 4 5 6 7
+ 0
+ 1   B B   L L L L
+ 2   B B   L L L L
+ 3         L L L L
+ 4   R R   L L L L
+ 5   R R   Dy  DuDv
+*/
 
 #include "x264.h"
-#include "bs.h"
+#include "bitstream.h"
 #include "set.h"
 #include "predict.h"
 #include "pixel.h"
@@ -102,6 +159,7 @@ typedef union { uint64_t i; uint32_t a[2]; uint16_t b[4]; uint8_t c[8]; } MAY_AL
 #include "dct.h"
 #include "cabac.h"
 #include "quant.h"
+#include "cpu.h"
 
 /****************************************************************************
  * General functions
@@ -121,30 +179,29 @@ int64_t x264_mdate( void );
  * the encoding options */
 char *x264_param2string( x264_param_t *p, int b_res );
 
-int x264_nal_encode( uint8_t *dst, int b_annexb, x264_nal_t *nal );
-
 /* log */
 void x264_log( x264_t *h, int i_level, const char *psz_fmt, ... );
 
-void x264_reduce_fraction( int *n, int *d );
+void x264_reduce_fraction( uint32_t *n, uint32_t *d );
+void x264_reduce_fraction64( uint64_t *n, uint64_t *d );
 void x264_init_vlc_tables();
 
-static inline uint8_t x264_clip_uint8( int x )
+static ALWAYS_INLINE pixel x264_clip_pixel( int x )
 {
     return x&(~255) ? (-x)>>31 : x;
 }
 
-static inline int x264_clip3( int v, int i_min, int i_max )
+static ALWAYS_INLINE int x264_clip3( int v, int i_min, int i_max )
 {
     return ( (v < i_min) ? i_min : (v > i_max) ? i_max : v );
 }
 
-static inline double x264_clip3f( double v, double f_min, double f_max )
+static ALWAYS_INLINE double x264_clip3f( double v, double f_min, double f_max )
 {
     return ( (v < f_min) ? f_min : (v > f_max) ? f_max : v );
 }
 
-static inline int x264_median( int a, int b, int c )
+static ALWAYS_INLINE int x264_median( int a, int b, int c )
 {
     int t = (a-b)&((a-b)>>31);
     a -= t;
@@ -154,16 +211,16 @@ static inline int x264_median( int a, int b, int c )
     return b;
 }
 
-static inline void x264_median_mv( int16_t *dst, int16_t *a, int16_t *b, int16_t *c )
+static ALWAYS_INLINE void x264_median_mv( int16_t *dst, int16_t *a, int16_t *b, int16_t *c )
 {
     dst[0] = x264_median( a[0], b[0], c[0] );
     dst[1] = x264_median( a[1], b[1], c[1] );
 }
 
-static inline int x264_predictor_difference( int16_t (*mvc)[2], intptr_t i_mvc )
+static ALWAYS_INLINE int x264_predictor_difference( int16_t (*mvc)[2], intptr_t i_mvc )
 {
-    int sum = 0, i;
-    for( i = 0; i < i_mvc-1; i++ )
+    int sum = 0;
+    for( int i = 0; i < i_mvc-1; i++ )
     {
         sum += abs( mvc[i][0] - mvc[i+1][0] )
              + abs( mvc[i][1] - mvc[i+1][1] );
@@ -171,13 +228,24 @@ static inline int x264_predictor_difference( int16_t (*mvc)[2], intptr_t i_mvc )
     return sum;
 }
 
-static inline uint32_t x264_cabac_amvd_sum( int16_t *mvdleft, int16_t *mvdtop )
+static ALWAYS_INLINE uint16_t x264_cabac_mvd_sum( uint8_t *mvdleft, uint8_t *mvdtop )
 {
     int amvd0 = abs(mvdleft[0]) + abs(mvdtop[0]);
     int amvd1 = abs(mvdleft[1]) + abs(mvdtop[1]);
     amvd0 = (amvd0 > 2) + (amvd0 > 32);
     amvd1 = (amvd1 > 2) + (amvd1 > 32);
-    return amvd0 + (amvd1<<16);
+    return amvd0 + (amvd1<<8);
+}
+
+static void ALWAYS_INLINE x264_predictor_roundclip( int16_t (*dst)[2], int16_t (*mvc)[2], int i_mvc, int mv_x_min, int mv_x_max, int mv_y_min, int mv_y_max )
+{
+    for( int i = 0; i < i_mvc; i++ )
+    {
+        int mx = (mvc[i][0] + 2) >> 2;
+        int my = (mvc[i][1] + 2) >> 2;
+        dst[i][0] = x264_clip3( mx, mv_x_min, mv_x_max );
+        dst[i][1] = x264_clip3( my, mv_y_min, mv_y_max );
+    }
 }
 
 extern const uint8_t x264_exp2_lut[64];
@@ -214,6 +282,17 @@ enum slice_type_e
 
 static const char slice_type_to_char[] = { 'P', 'B', 'I', 'S', 'S' };
 
+enum sei_payload_type_e
+{
+    SEI_BUFFERING_PERIOD       = 0,
+    SEI_PIC_TIMING             = 1,
+    SEI_PAN_SCAN_RECT          = 2,
+    SEI_FILLER                 = 3,
+    SEI_USER_DATA_REGISTERED   = 4,
+    SEI_USER_DATA_UNREGISTERED = 5,
+    SEI_RECOVERY_POINT         = 6,
+};
+
 typedef struct
 {
     x264_sps_t *sps;
@@ -233,7 +312,7 @@ typedef struct
 
     int i_idr_pic_id;   /* -1 if nal_type != 5 */
 
-    int i_poc_lsb;
+    int i_poc;
     int i_delta_poc_bottom;
 
     int i_delta_poc[2];
@@ -291,43 +370,6 @@ typedef struct x264_lookahead_t
     x264_synch_frame_list_t       ofbuf;
 } x264_lookahead_t;
 
-/* From ffmpeg
- */
-#define X264_SCAN8_SIZE (6*8)
-#define X264_SCAN8_0 (4+1*8)
-
-static const int x264_scan8[16+2*4+3] =
-{
-    /* Luma */
-    4+1*8, 5+1*8, 4+2*8, 5+2*8,
-    6+1*8, 7+1*8, 6+2*8, 7+2*8,
-    4+3*8, 5+3*8, 4+4*8, 5+4*8,
-    6+3*8, 7+3*8, 6+4*8, 7+4*8,
-
-    /* Cb */
-    1+1*8, 2+1*8,
-    1+2*8, 2+2*8,
-
-    /* Cr */
-    1+4*8, 2+4*8,
-    1+5*8, 2+5*8,
-
-    /* Luma DC */
-    4+5*8,
-
-    /* Chroma DC */
-    5+5*8, 6+5*8
-};
-/*
-   0 1 2 3 4 5 6 7
- 0
- 1   B B   L L L L
- 2   B B   L L L L
- 3         L L L L
- 4   R R   L L L L
- 5   R R   DyDuDv
-*/
-
 typedef struct x264_ratecontrol_t   x264_ratecontrol_t;
 
 struct x264_t
@@ -367,6 +409,17 @@ struct x264_t
     int             i_nal_type;
     int             i_nal_ref_idc;
 
+    int             i_disp_fields;  /* Number of displayed fields (both coded and implied via pic_struct) */
+    int             i_disp_fields_last_frame;
+    int             i_prev_duration; /* Duration of previous frame */
+    int             i_coded_fields; /* Number of coded fields (both coded and implied via pic_struct) */
+    int             i_cpb_delay;    /* Equal to number of fields preceding this field
+                                     * since last buffering_period SEI */
+    int             i_coded_fields_lookahead; /* Use separate counters for lookahead */
+    int             i_cpb_delay_lookahead;
+
+    int             b_queued_intra_refresh;
+
     /* We use only one SPS and one PPS */
     x264_sps_t      sps_array[1];
     x264_sps_t      *sps;
@@ -396,10 +449,6 @@ struct x264_t
     uint16_t *cost_mv_fpel[92][4];
 
     const uint8_t   *chroma_qp_table; /* includes both the nonlinear luma->chroma mapping and chroma_qp_offset */
-
-    ALIGNED_16( uint32_t nr_residual_sum[2][64] );
-    ALIGNED_16( uint16_t nr_offset[2][64] );
-    uint32_t        nr_count[2];
 
     /* Slice header */
     x264_slice_header_t sh;
@@ -431,7 +480,9 @@ struct x264_t
         int     i_bframe_delay;
         int64_t i_bframe_delay_time;
         int64_t i_init_delta;
-        int64_t i_prev_dts[2];
+        int64_t i_prev_reordered_pts[2];
+        int64_t i_largest_pts;
+        int64_t i_second_largest_pts;
         int b_have_lowres;  /* Whether 1/2 resolution luma planes are being used */
         int b_have_sub8x8_esa;
     } frames;
@@ -449,21 +500,26 @@ struct x264_t
     x264_frame_t    *fref1[16+3];     /* ref list 1 */
     int             b_ref_reorder[2];
 
-
+    /* hrd */
+    int initial_cpb_removal_delay;
+    int initial_cpb_removal_delay_offset;
+    int64_t i_reordered_pts_delay;
 
     /* Current MB DCT coeffs */
     struct
     {
-        ALIGNED_16( int16_t luma16x16_dc[16] );
-        ALIGNED_16( int16_t chroma_dc[2][4] );
+        ALIGNED_16( dctcoef luma16x16_dc[16] );
+        ALIGNED_16( dctcoef chroma_dc[2][4] );
         // FIXME share memory?
-        ALIGNED_16( int16_t luma8x8[4][64] );
-        ALIGNED_16( int16_t luma4x4[16+8][16] );
+        ALIGNED_16( dctcoef luma8x8[4][64] );
+        ALIGNED_16( dctcoef luma4x4[16+8][16] );
     } dct;
 
     /* MB table and cache for current frame/mb */
     struct
     {
+        int     i_mb_width;
+        int     i_mb_height;
         int     i_mb_count;                 /* number of mbs in a frame */
 
         /* Strides */
@@ -506,12 +562,16 @@ struct x264_t
         unsigned int i_neighbour8[4];       /* neighbours of each 8x8 or 4x4 block that are available */
         unsigned int i_neighbour4[16];      /* at the time the block is coded */
         unsigned int i_neighbour_intra;     /* for constrained intra pred */
+        unsigned int i_neighbour_frame;     /* ignoring slice boundaries */
         int     i_mb_type_top;
         int     i_mb_type_left;
         int     i_mb_type_topleft;
         int     i_mb_type_topright;
         int     i_mb_prev_xy;
+        int     i_mb_left_xy;
         int     i_mb_top_xy;
+        int     i_mb_topleft_xy;
+        int     i_mb_topright_xy;
 
         /**** thread synchronization ends here ****/
         /* subsequent variables are either thread-local or constant,
@@ -519,6 +579,7 @@ struct x264_t
 
         /* mb table */
         int8_t  *type;                      /* mb type */
+        uint8_t *partition;                 /* mb partition */
         int8_t  *qp;                        /* mb qp */
         int16_t *cbp;                       /* mb cbp: 0x0?: luma, 0x?0: chroma, 0x100: luma dc, 0x0200 and 0x0400: chroma dc  (all set for PCM)*/
         int8_t  (*intra4x4_pred_mode)[8];   /* intra4x4 pred mode. for non I4x4 set to I_PRED_4x4_DC(2) */
@@ -526,15 +587,16 @@ struct x264_t
         uint8_t (*non_zero_count)[16+4+4];  /* nzc. for I_PCM set to 16 */
         int8_t  *chroma_pred_mode;          /* chroma_pred_mode. cabac only. for non intra I_PRED_CHROMA_DC(0) */
         int16_t (*mv[2])[2];                /* mb mv. set to 0 for intra mb */
-        int16_t (*mvd[2])[2];               /* mb mv difference with predict. set to 0 if intra. cabac only */
+        uint8_t (*mvd[2])[8][2];            /* absolute value of mb mv difference with predict, clipped to [0,33]. set to 0 if intra. cabac only */
         int8_t   *ref[2];                   /* mb ref. set to -1 if non used (intra or Lx only) */
         int16_t (*mvr[2][32])[2];           /* 16x16 mv for each possible ref */
         int8_t  *skipbp;                    /* block pattern for SKIP or DIRECT (sub)mbs. B-frames + cabac only */
         int8_t  *mb_transform_size;         /* transform_size_8x8_flag of each mb */
-        uint8_t *intra_border_backup[2][3]; /* bottom pixels of the previous mb row, used for intra prediction after the framebuffer has been deblocked */
+        uint16_t *slice_table;              /* sh->first_mb of the slice that the indexed mb is part of
+                                             * NOTE: this will fail on resolutions above 2^16 MBs... */
 
          /* buffer for weighted versions of the reference frames */
-        uint8_t *p_weight_buf[16];
+        pixel *p_weight_buf[16];
 
         /* current value */
         int     i_type;
@@ -565,41 +627,39 @@ struct x264_t
             /* space for p_fenc and p_fdec */
 #define FENC_STRIDE 16
 #define FDEC_STRIDE 32
-            ALIGNED_16( uint8_t fenc_buf[24*FENC_STRIDE] );
-            ALIGNED_16( uint8_t fdec_buf[27*FDEC_STRIDE] );
+            ALIGNED_16( pixel fenc_buf[24*FENC_STRIDE] );
+            ALIGNED_16( pixel fdec_buf[27*FDEC_STRIDE] );
 
             /* i4x4 and i8x8 backup data, for skipping the encode stage when possible */
-            ALIGNED_16( uint8_t i4x4_fdec_buf[16*16] );
-            ALIGNED_16( uint8_t i8x8_fdec_buf[16*16] );
-            ALIGNED_16( int16_t i8x8_dct_buf[3][64] );
-            ALIGNED_16( int16_t i4x4_dct_buf[15][16] );
+            ALIGNED_16( pixel i4x4_fdec_buf[16*16] );
+            ALIGNED_16( pixel i8x8_fdec_buf[16*16] );
+            ALIGNED_16( dctcoef i8x8_dct_buf[3][64] );
+            ALIGNED_16( dctcoef i4x4_dct_buf[15][16] );
             uint32_t i4x4_nnz_buf[4];
             uint32_t i8x8_nnz_buf[4];
             int i4x4_cbp;
             int i8x8_cbp;
 
             /* Psy trellis DCT data */
-            ALIGNED_16( int16_t fenc_dct8[4][64] );
-            ALIGNED_16( int16_t fenc_dct4[16][16] );
+            ALIGNED_16( dctcoef fenc_dct8[4][64] );
+            ALIGNED_16( dctcoef fenc_dct4[16][16] );
 
-            /* Psy RD SATD scores */
-            int fenc_satd[4][4];
-            int fenc_satd_sum;
-            int fenc_sa8d[2][2];
-            int fenc_sa8d_sum;
+            /* Psy RD SATD/SA8D scores cache */
+            ALIGNED_16( uint64_t fenc_hadamard_cache[9] );
+            ALIGNED_16( uint32_t fenc_satd_cache[32] );
 
             /* pointer over mb of the frame to be compressed */
-            uint8_t *p_fenc[3];
+            pixel *p_fenc[3];
             /* pointer to the actual source frame, not a block copy */
-            uint8_t *p_fenc_plane[3];
+            pixel *p_fenc_plane[3];
 
             /* pointer over mb of the frame to be reconstructed  */
-            uint8_t *p_fdec[3];
+            pixel *p_fdec[3];
 
             /* pointer over mb of the references */
             int i_fref[2];
-            uint8_t *p_fref[2][32][4+2]; /* last: lN, lH, lV, lHV, cU, cV */
-            uint8_t *p_fref_w[32];  /* weighted fullpel luma */
+            pixel *p_fref[2][32][4+2]; /* last: lN, lH, lV, lHV, cU, cV */
+            pixel *p_fref_w[32];  /* weighted fullpel luma */
             uint16_t *p_integral[2][16];
 
             /* fref stride */
@@ -610,23 +670,24 @@ struct x264_t
         struct
         {
             /* real intra4x4_pred_mode if I_4X4 or I_8X8, I_PRED_4x4_DC if mb available, -1 if not */
-            ALIGNED_8( int8_t intra4x4_pred_mode[X264_SCAN8_SIZE] );
+            ALIGNED_8( int8_t intra4x4_pred_mode[X264_SCAN8_LUMA_SIZE] );
 
             /* i_non_zero_count if available else 0x80 */
-            ALIGNED_4( uint8_t non_zero_count[X264_SCAN8_SIZE] );
+            ALIGNED_16( uint8_t non_zero_count[X264_SCAN8_SIZE] );
 
             /* -1 if unused, -2 if unavailable */
-            ALIGNED_4( int8_t ref[2][X264_SCAN8_SIZE] );
+            ALIGNED_4( int8_t ref[2][X264_SCAN8_LUMA_SIZE] );
 
             /* 0 if not available */
-            ALIGNED_16( int16_t mv[2][X264_SCAN8_SIZE][2] );
-            ALIGNED_8( int16_t mvd[2][X264_SCAN8_SIZE][2] );
+            ALIGNED_16( int16_t mv[2][X264_SCAN8_LUMA_SIZE][2] );
+            ALIGNED_8( uint8_t mvd[2][X264_SCAN8_LUMA_SIZE][2] );
 
             /* 1 if SKIP or DIRECT. set only for B-frames + CABAC */
-            ALIGNED_4( int8_t skip[X264_SCAN8_SIZE] );
+            ALIGNED_4( int8_t skip[X264_SCAN8_LUMA_SIZE] );
 
             ALIGNED_4( int16_t direct_mv[2][4][2] );
             ALIGNED_4( int8_t  direct_ref[2][4] );
+            int     direct_partition;
             ALIGNED_4( int16_t pskip_mv[2] );
 
             /* number of neighbors (top and left) that used 8x8 dct */
@@ -662,6 +723,8 @@ struct x264_t
 #define map_col_to_list0(col) h->mb.map_col_to_list0[(col)+2]
         int8_t  map_col_to_list0[18];
         int ref_blind_dupe; /* The index of the blind reference frame duplicate. */
+        int8_t deblock_ref_table[32+2];
+#define deblock_ref_table(x) h->mb.deblock_ref_table[(x)+2]
     } mb;
 
     /* rate control encoding only */
@@ -688,7 +751,7 @@ struct x264_t
             int i_mb_count_ref[2][32];
             int i_mb_partition[17];
             int i_mb_cbp[6];
-            int i_mb_pred_mode[3][13];
+            int i_mb_pred_mode[4][13];
             /* Adaptive direct mv pred */
             int i_direct_score[2];
             /* Metrics */
@@ -716,7 +779,7 @@ struct x264_t
         int64_t i_mb_count_8x8dct[2];
         int64_t i_mb_count_ref[2][2][32];
         int64_t i_mb_cbp[6];
-        int64_t i_mb_pred_mode[3][13];
+        int64_t i_mb_pred_mode[4][13];
         /* */
         int     i_direct_score[2];
         int     i_direct_frames[2];
@@ -725,7 +788,14 @@ struct x264_t
 
     } stat;
 
+    ALIGNED_16( uint32_t nr_residual_sum[2][64] );
+    ALIGNED_16( uint16_t nr_offset[2][64] );
+    uint32_t        nr_count[2];
+
+    /* Buffers that are allocated per-thread even in sliced threads. */
     void *scratch_buffer; /* for any temporary storage that doesn't want repeated malloc */
+    pixel *intra_border_backup[2][3]; /* bottom pixels of the previous mb row, used for intra prediction after the framebuffer has been deblocked */
+    uint8_t (*deblock_strength[2])[2][4][4];
 
     /* CPU functions dependents */
     x264_predict_t      predict_16x16[4+3];
@@ -740,8 +810,9 @@ struct x264_t
     x264_zigzag_function_t zigzagf;
     x264_quant_function_t quantf;
     x264_deblock_function_t loopf;
+    x264_bitstream_function_t bsf;
 
-#ifdef HAVE_VISUALIZE
+#if HAVE_VISUALIZE
     struct visualize_t *visualize;
 #endif
     x264_lookahead_t *lookahead;
@@ -749,8 +820,9 @@ struct x264_t
 
 // included at the end because it needs x264_t
 #include "macroblock.h"
+#include "rectangle.h"
 
-#ifdef HAVE_MMX
+#if HAVE_MMX
 #include "x86/util.h"
 #endif
 

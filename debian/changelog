@@ -1,3 +1,12 @@
+x264 (2:0.98.1653+git88b90d9-1) maverick; urgency=low
+
+  * require libavformat-dev from 0.6 or better
+  * remove conflicts/replaces to ancient package x264-bin (dapper!
+    times)
+  * new upstream release
+
+ -- Reinhard Tartler <siretart@tauware.de>  Sun, 04 Jul 2010 16:23:51 -0400
+
 x264 (2:0.85.1448+git1a6d32-5) unstable; urgency=low
 
   * Prepare new upload for Debian.
