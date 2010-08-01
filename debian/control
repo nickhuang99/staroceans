@@ -9,7 +9,6 @@ Build-Depends: debhelper (>= 7),
                libavformat-dev (>= 4:0.6-1~),
                help2man,
                yasm [i386 amd64 kfreebsd-amd64 lpia],
-               libgpac-dev,
                libx11-dev
 Standards-Version: 3.8.4
 Vcs-Git: git://git.debian.org/git/pkg-multimedia/x264.git
