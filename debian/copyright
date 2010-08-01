@@ -1,7 +1,7 @@
 This package was debianized by Sam Hocevar (Debian packages)
 <sam+deb@zoy.org> on Fri, 9 Mar 2007 22:59:37 +0100.
 
-It was downloaded from svn://svn.videolan.org/x264/trunk/
+It was downloaded from http://git.videolan.org/?p=x264.git;a=shortlog;h=refs/heads/stable
 
 encoder/eval.c, extras/getopt.c:
   Copyright (C) 2002 Michael Niedermayer <michaelni@gmx.at>
