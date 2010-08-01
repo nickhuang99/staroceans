@@ -1,6 +1,9 @@
-x264 (2:0.98.1653+git88b90d9-2) unstable; urgency=low
+x264 (2:0.98.1653+git88b90d9-2) experimental; urgency=low
 
-  * Upload to unstable. Closes: #354667, #405212
+  * Upload to Debian. Closes: #354667, #405212
+  * update download site in debian/copyright
+  * avoid running configure on distclean
+  * remove libgpac-dev from build-depends, not available in debian yet.
 
  -- Reinhard Tartler <siretart@tauware.de>  Sat, 31 Jul 2010 20:57:46 -0400
 
