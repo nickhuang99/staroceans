@@ -10,7 +10,7 @@ Build-Depends: debhelper (>= 7),
                help2man,
                yasm [i386 amd64 kfreebsd-amd64 lpia],
                libx11-dev
-Standards-Version: 3.8.4
+Standards-Version: 3.9.1
 Vcs-Git: git://git.debian.org/git/pkg-multimedia/x264.git
 Vcs-Browser: http://git.debian.org/?p=pkg-multimedia/x264.git
 Homepage: http://www.videolan.org/developers/x264.html
