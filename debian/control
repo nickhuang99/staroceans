@@ -6,7 +6,7 @@ Uploaders: Reinhard Tartler <siretart@tauware.de>,
            Fabian Greffrath <fabian@debian-unofficial.org>,
            Andres Mejia <mcitadel@gmail.com>
 Build-Depends: debhelper (>= 7),
-               libavformat-dev (>= 4:0.6-1~),
+               libavformat-dev (>= 4:0.5),
                help2man,
                yasm [i386 amd64 kfreebsd-amd64 lpia],
                libx11-dev
