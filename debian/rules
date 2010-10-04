@@ -51,7 +51,7 @@ clean:
 	dh_testdir
 	dh_testroot
 	rm -rf debian/install
-	[ ! -f Makefile ] || $(MAKE) distclean
+	$(MAKE) -o config.mak distclean
 	[ ! -f version.sh-upstream ] ||  mv version.sh-upstream version.sh
 	$(MAKE) -f debian/rules unpatch
 	dh_clean build-stamp debian/x264.1

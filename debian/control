@@ -2,17 +2,20 @@ Source: x264
 Section: libs
 Priority: extra
 Maintainer: Debian multimedia packages maintainers <pkg-multimedia-maintainers@lists.alioth.debian.org>
-Uploaders: Reinhard Tartler <siretart@tauware.de>
+Uploaders: Reinhard Tartler <siretart@tauware.de>,
+           Fabian Greffrath <fabian+debian@greffrath.com>,
+           Andres Mejia <mcitadel@gmail.com>
 Build-Depends: debhelper (>= 7),
-               libavformat-dev (>= 4:0.6-1~),
+               libavformat-dev (>= 4:0.5),
                help2man,
                yasm [i386 amd64 kfreebsd-amd64 lpia],
                libgpac-dev,
                libx11-dev,
                quilt
-Standards-Version: 3.8.4
+Standards-Version: 3.9.1
 Vcs-Git: git://git.debian.org/git/pkg-multimedia/x264.git
 Vcs-Browser: http://git.debian.org/?p=pkg-multimedia/x264.git
+Homepage: http://www.videolan.org/developers/x264.html
 
 Package: x264
 Section: graphics
@@ -45,7 +48,6 @@ Description: video encoder for the H.264/MPEG-4 AVC standard
   * interlaced streams
 
 Package: libx264-98
-Section: libs
 Architecture: any
 Depends: ${shlibs:Depends},
          ${misc:Depends}
