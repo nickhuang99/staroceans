@@ -1,0 +1,30 @@
+From: Jason Garrett-Glaser <darkshikari@gmail.com>
+Date: Thu, 15 Jul 2010 01:47:14 +0000 (-0700)
+Subject: Fix 8x8dct+slices+no sliced threads+cavlc+deblock
+X-Git-Url: http://git.videolan.org/?p=x264.git;a=commitdiff_plain;h=c953140b3b622b33e892c1a3d327d35b74762293;hp=d6228aea4f0adf29be8526b8ce1d9d1237d23975
+
+Fix 8x8dct+slices+no sliced threads+cavlc+deblock
+Deblocking was done slightly incorrectly.
+Regression in r1612.
+---
+
+diff --git a/common/macroblock.c b/common/macroblock.c
+index f0a624f..ebff1c5 100644
+--- a/common/macroblock.c
++++ b/common/macroblock.c
+@@ -929,6 +929,7 @@ void x264_macroblock_cache_load_deblock( x264_t *h )
+         int mb_x = h->mb.i_mb_x;
+         int mb_y = h->mb.i_mb_y;
+         x264_macroblock_cache_load_neighbours_deblock( h, mb_x, mb_y );
++        int new_neighbour = h->mb.i_neighbour;
+         h->mb.i_neighbour &= ~old_neighbour;
+         if( h->mb.i_neighbour )
+         {
+@@ -984,6 +985,7 @@ void x264_macroblock_cache_load_deblock( x264_t *h )
+                 }
+             }
+         }
++        h->mb.i_neighbour = new_neighbour;
+     }
+ 
+     if( h->param.analyse.i_weighted_pred && h->sh.i_type == SLICE_TYPE_P )

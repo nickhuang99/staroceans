@@ -7,7 +7,8 @@
 *.o
 *.pc
 *.pot
-*.so*
+*.so.*
+*.so
 .*.swp
 .depend
 config.h
