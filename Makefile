@@ -13,22 +13,30 @@ SRCS = common/mc.c common/predict.c common/pixel.c common/macroblock.c \
        encoder/set.c encoder/macroblock.c encoder/cabac.c \
        encoder/cavlc.c encoder/encoder.c encoder/lookahead.c
 
-SRCCLI = x264.c input/timecode.c \
-         input/yuv.c input/y4m.c output/raw.c \
-         output/matroska.c output/matroska_ebml.c \
-         output/flv.c output/flv_bytestream.c
+SRCCLI = x264.c input/input.c input/timecode.c input/raw.c input/y4m.c \
+         output/raw.c output/matroska.c output/matroska_ebml.c \
+         output/flv.c output/flv_bytestream.c filters/filters.c \
+         filters/video/video.c filters/video/source.c filters/video/internal.c \
+         filters/video/resize.c filters/video/cache.c filters/video/fix_vfr_pts.c \
+         filters/video/select_every.c filters/video/crop.c filters/video/depth.c
 
 SRCSO =
 
 CONFIG := $(shell cat config.h)
 
-# Optional muxer module sources
+# GPL-only files
+ifeq ($(GPL),yes)
+SRCCLI +=
+endif
+
+# Optional module sources
 ifneq ($(findstring HAVE_AVS, $(CONFIG)),)
 SRCCLI += input/avs.c
 endif
 
 ifneq ($(findstring HAVE_PTHREAD, $(CONFIG)),)
 SRCCLI += input/thread.c
+SRCS   += common/threadpool.c
 endif
 
 ifneq ($(findstring HAVE_LAVF, $(CONFIG)),)
@@ -128,7 +136,7 @@ $(SONAME): .depend $(OBJS) $(OBJASM) $(OBJSO)
 	$(CC) -shared -o $@ $(OBJS) $(OBJASM) $(OBJSO) $(SOFLAGS) $(LDFLAGS)
 
 x264$(EXE): $(OBJCLI) libx264.a
-	$(CC) -o $@ $+ $(LDFLAGS) $(LDFLAGSCLI)
+	$(CC) -o $@ $+ $(LDFLAGSCLI) $(LDFLAGS)
 
 checkasm: tools/checkasm.o libx264.a
 	$(CC) -o $@ $+ $(LDFLAGS)
@@ -220,20 +228,3 @@ etags: TAGS
 
 TAGS:
 	etags $(SRCS)
-
-dox:
-	doxygen Doxyfile
-
-ifeq (,$(VIDS))
-test:
-	@echo 'usage: make test VIDS="infile1 infile2 ..."'
-	@echo 'where infiles are anything that x264 understands,'
-	@echo 'i.e. YUV with resolution in the filename, y4m, or avisynth.'
-else
-test:
-	perl tools/regression-test.pl --version=head,current --options='$(OPT0)' --options='$(OPT1)' --options='$(OPT2)' $(VIDS:%=--input=%)
-endif
-
-testclean:
-	rm -f test/*.log test/*.264
-	$(foreach DIR, $(wildcard test/x264-r*/), cd $(DIR) ; make clean ; cd ../.. ;)

@@ -1,7 +1,7 @@
 ;*****************************************************************************
-;* cpu-a.asm: h264 encoder library
+;* cpu-a.asm: x86 cpu utilities
 ;*****************************************************************************
-;* Copyright (C) 2003-2008 x264 project
+;* Copyright (C) 2003-2010 x264 project
 ;*
 ;* Authors: Laurent Aimar <fenrir@via.ecp.fr>
 ;*          Loren Merritt <lorenm@u.washington.edu>
@@ -20,6 +20,9 @@
 ;* You should have received a copy of the GNU General Public License
 ;* along with this program; if not, write to the Free Software
 ;* Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02111, USA.
+;*
+;* This program is also available under a commercial proprietary license.
+;* For more information, contact us at licensing@x264.com.
 ;*****************************************************************************
 
 %include "x86inc.asm"
@@ -96,13 +99,15 @@ cglobal cpu_cpuid, 0,6
 cglobal stack_align
     push ebp
     mov  ebp, esp
-    sub  esp, 8
+    sub  esp, 12
     and  esp, ~15
     mov  ecx, [ebp+8]
     mov  edx, [ebp+12]
     mov  [esp], edx
     mov  edx, [ebp+16]
     mov  [esp+4], edx
+    mov  edx, [ebp+20]
+    mov  [esp+8], edx
     call ecx
     leave
     ret

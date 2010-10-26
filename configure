@@ -11,13 +11,16 @@ echo "  --disable-avs            disables avisynth support (windows only)"
 echo "  --disable-lavf           disables libavformat support"
 echo "  --disable-ffms           disables ffmpegsource support"
 echo "  --disable-gpac           disables gpac support"
+echo "  --disable-gpl            disables GPL-only features"
 echo "  --disable-pthread        disables multithreaded encoding"
+echo "  --disable-swscale        disables swscale support"
 echo "  --disable-asm            disables platform-specific assembly optimizations"
 echo "  --enable-debug           adds -g, doesn't strip"
 echo "  --enable-gprof           adds -pg, doesn't strip"
 echo "  --enable-visualize       enables visualization (X11 only)"
 echo "  --enable-pic             build position-independent code"
 echo "  --enable-shared          build libx264.so"
+echo "  --bit-depth=BIT_DEPTH    sets output bit depth (8-10), default 8"
 echo "  --extra-asflags=EASFLAGS add EASFLAGS to ASFLAGS"
 echo "  --extra-cflags=ECFLAGS   add ECFLAGS to CFLAGS"
 echo "  --extra-ldflags=ELDFLAGS add ELDFLAGS to LDFLAGS"
@@ -61,7 +64,7 @@ cc_check() {
     rm -f conftest.c
     [ -n "$1" ] && echo "#include <$1>" > conftest.c
     echo "int main () { $3 return 0; }" >> conftest.c
-    if $CC conftest.c $CFLAGS $LDFLAGS $LDFLAGSCLI $2 -o conftest >conftest.log 2>&1; then
+    if $CC conftest.c $CFLAGS $2 $LDFLAGSCLI $LDFLAGS -o conftest >conftest.log 2>&1; then
         res=$?
         log_ok
     else
@@ -69,7 +72,26 @@ cc_check() {
         log_fail
         log_msg "Failed commandline was:"
         log_msg "--------------------------------------------------"
-        log_msg "$CC conftest.c $CFLAGS $LDFLAGS $LDFLAGSCLI $2"
+        log_msg "$CC conftest.c $CFLAGS $2 $LDFLAGSCLI $LDFLAGS"
+        cat conftest.log >> config.log
+        log_msg "--------------------------------------------------"
+    fi
+    return $res
+}
+
+cpp_check() {
+    log_check "whether $3 is true"
+    rm -f conftest.c
+    [ -n "$1" ] && echo "#include <$1>" > conftest.c
+    echo -e "#if !($3) \n#error $4 \n#endif " >> conftest.c
+
+    if $CC conftest.c $CFLAGS $2 -E -o conftest >conftest.log 2>&1; then
+        res=$?
+        log_ok
+    else
+        res=$?
+        log_fail
+        log_msg "--------------------------------------------------"
         cat conftest.log >> config.log
         log_msg "--------------------------------------------------"
     fi
@@ -117,13 +139,16 @@ avs="auto"
 lavf="auto"
 ffms="auto"
 gpac="auto"
+gpl="yes"
 pthread="auto"
+swscale="auto"
 asm="auto"
 debug="no"
 gprof="no"
 pic="no"
 vis="no"
 shared="no"
+bit_depth="8"
 
 CFLAGS="$CFLAGS -Wall -I."
 LDFLAGS="$LDFLAGS"
@@ -169,6 +194,9 @@ for opt do
         --disable-gpac)
             gpac="no"
             ;;
+        --disable-gpl)
+            gpl="no"
+            ;;
         --extra-asflags=*)
             ASFLAGS="$ASFLAGS ${opt#--extra-asflags=}"
             ;;
@@ -180,6 +208,9 @@ for opt do
             ;;
         --disable-pthread)
             pthread="no"
+            ;;
+        --disable-swscale)
+            swscale="no"
             ;;
         --enable-debug)
             debug="yes"
@@ -207,6 +238,14 @@ for opt do
         --sysroot=*)
             CFLAGS="$CFLAGS --sysroot=${opt#--sysroot=}"
             LDFLAGS="$LDFLAGS --sysroot=${opt#--sysroot=}"
+            ;;
+        --bit-depth=*)
+            bit_depth="${opt#--bit-depth=}"
+            if [ "$bit_depth" -lt "8" -o "$bit_depth" -gt "10" ]; then
+                echo "Supplied bit depth must be in range [8,10]."
+                exit 1
+            fi
+            bit_depth=`expr $bit_depth + 0`
             ;;
         *)
             echo "Unknown option $opt, ignored"
@@ -259,7 +298,6 @@ case $host_os in
     ;;
   openbsd*)
     SYS="OPENBSD"
-    CFLAGS="$CFLAGS -I/usr/X11R6/include"
     LDFLAGS="$LDFLAGS -lm"
     ;;
   *linux*)
@@ -322,7 +360,8 @@ case $host_cpu in
         LDFLAGS="$LDFLAGS -arch x86_64"
       fi
     elif [ "$SYS" = MINGW ]; then
-      ASFLAGS="$ASFLAGS -f win32 -m amd64 -DPREFIX"
+      ASFLAGS="$ASFLAGS -f win32 -m amd64"
+      cc_check "" "-S" && grep -q "_main:" conftest && ASFLAGS="$ASFLAGS -DPREFIX"
     else
       ASFLAGS="$ASFLAGS -f elf -m amd64"
     fi
@@ -497,50 +536,77 @@ if cc_check "math.h" "-Werror" "return log2f(2);" ; then
     define HAVE_LOG2F
 fi
 
-if [ "$vis" = "yes" ] && cc_check "X11/Xlib.h" "-L/usr/X11R6/lib -lX11" "XOpenDisplay( 0 );" ; then
-    LDFLAGS="-L/usr/X11R6/lib -lX11 $LDFLAGS"
-    define HAVE_VISUALIZE
-else
-    vis="no"
+if [ "$vis" = "yes" ] ; then
+    save_CFLAGS="$CFLAGS"
+    CFLAGS="$CFLAGS -I/usr/X11R6/include"
+    if cc_check "X11/Xlib.h" "-L/usr/X11R6/lib -lX11" "XOpenDisplay(0);" ; then
+        LDFLAGS="-L/usr/X11R6/lib -lX11 $LDFLAGS"
+        define HAVE_VISUALIZE
+    else
+        vis="no"
+        CFLAGS="$save_CFLAGS"
+   fi
+fi
+
+if [ "$swscale" = "auto" ] ; then
+    swscale="no"
+    if ${cross_prefix}pkg-config --exists libswscale 2>$DEVNULL; then
+        SWSCALE_LIBS="$SWSCALE_LIBS $(${cross_prefix}pkg-config --libs libswscale)"
+        SWSCALE_CFLAGS="$SWSCALE_CFLAGS $(${cross_prefix}pkg-config --cflags libswscale)"
+    fi
+    [ -z "$SWSCALE_LIBS" ] && SWSCALE_LIBS="-lswscale -lavutil"
+
+    error="swscale must be at least version 0.9.0"
+    if cc_check "libswscale/swscale.h" "$SWSCALE_CFLAGS $SWSCALE_LIBS" "sws_getContext(0,0,0,0,0,0,0,0,0,0);" ; then
+        if cpp_check "libswscale/swscale.h" "$SWSCALE_CFLAGS" "LIBSWSCALE_VERSION_INT >= AV_VERSION_INT(0,9,0)" "$error"; then
+            # we use colorspaces that were defined in libavutil r19775
+            if cc_check "libavutil/pixfmt.h" "$SWSCALE_CFLAGS" "enum PixelFormat pixfmt = PIX_FMT_YUV422P16LE;" ; then
+                define HAVE_SWSCALE
+                swscale="yes"
+            else
+                echo "Warning: libavutil is too old, update to ffmpeg r19775+"
+            fi
+        else
+            echo "Warning: ${error}"
+        fi
+    fi
 fi
 
 if [ "$lavf" = "auto" ] ; then
     lavf="no"
     if ${cross_prefix}pkg-config --exists libavformat libavcodec libswscale 2>$DEVNULL; then
-        LAVF_LIBS="$LAVF_LIBS $(${cross_prefix}pkg-config --libs libavformat libavcodec libswscale)"
-        LAVF_CFLAGS="$LAVF_CFLAGS $(${cross_prefix}pkg-config --cflags libavformat libavcodec libswscale)"
+        LAVF_LIBS="$LAVF_LIBS $(${cross_prefix}pkg-config --libs libavformat libavcodec libavutil libswscale)"
+        LAVF_CFLAGS="$LAVF_CFLAGS $(${cross_prefix}pkg-config --cflags libavformat libavcodec libavutil libswscale)"
     fi
     if [ -z "$LAVF_LIBS" -a -z "$LAVF_CFLAGS" ]; then
-        LAVF_LIBS="-lavformat -lswscale"
-        for lib in -lpostproc -lavcodec -lavutil -lm -lz -lbz2 $libpthread -lavifil32; do
+        LAVF_LIBS="-lavformat"
+        for lib in -lpostproc -lavcodec -lavcore -lswscale -lavutil -lm -lz -lbz2 $libpthread -lavifil32; do
             cc_check "" $lib && LAVF_LIBS="$LAVF_LIBS $lib"
         done
     fi
     LAVF_LIBS="-L. $LAVF_LIBS"
-    if cc_check libavformat/avformat.h "$LAVF_CFLAGS $LAVF_LIBS" && \
-       cc_check libswscale/swscale.h "$LAVF_CFLAGS $LAVF_LIBS" ; then
-        # avcodec_decode_video2 is currently the most recently added function that we use; it was added in r18351
-        if cc_check libavformat/avformat.h "$LAVF_CFLAGS $LAVF_LIBS" "avcodec_decode_video2( NULL, NULL, NULL, NULL );" ; then
-            lavf="yes"
-            define HAVE_LAVF
+    if cc_check libavformat/avformat.h "$LAVF_CFLAGS $LAVF_LIBS" "avcodec_decode_video2(0,0,0,0);" ; then
+        # libvautil/pixdesc.h included the private header intreadwrite.h until r21854
+        if cc_check libavutil/pixdesc.h "$LAVF_CFLAGS $LAVF_LIBS" ; then
+            if [ "$swscale" = "yes" ]; then
+                lavf="yes"
+                define HAVE_LAVF
+            else
+                echo "Warning: libavformat is not supported without swscale support"
+            fi
         else
-            echo "Warning: libavformat is too old, update to ffmpeg r18351+"
+            echo "Warning: libavutil is too old, update to ffmpeg r21854+"
         fi
     fi
 fi
 
 if [ "$ffms" = "auto" ] ; then
     ffms_major="2"; ffms_minor="13"; ffms_micro="1"; ffms_bump="0"
-
     ffms="no"
-    [ $ffms_micro -gt 0 -o $ffms_bump -gt 0 ] && vmicro=".$ffms_micro"
-    [ $ffms_bump -gt 0 ] && vbump=".$ffms_bump"
-    if ${cross_prefix}pkg-config --atleast-version="$ffms_major.$ffms_minor$vmicro$vbump" ffms2 2>$DEVNULL; then
+
+    if ${cross_prefix}pkg-config --exists ffms2 2>$DEVNULL; then
         FFMS2_LIBS="$FFMS2_LIBS $(${cross_prefix}pkg-config --libs ffms2)"
         FFMS2_CFLAGS="$FFMS2_CFLAGS $(${cross_prefix}pkg-config --cflags ffms2)"
-        api_check="no"
-    else
-        api_check="yes"
     fi
     [ -z "$FFMS2_LIBS" ] && FFMS2_LIBS="-lffms2"
 
@@ -551,25 +617,27 @@ if [ "$ffms" = "auto" ] ; then
         FFMS2_LIBS="$FFMS2_LIBS -lstdc++ $LAVF_LIBS"
     fi
 
-    if [ $api_check = "yes" -a $ffms = "yes" ]; then
-        log_check "whether ffms2 version is at least $ffms_major.$ffms_minor$vmicro$vbump"
-        $CC $CFLAGS $FFMS2_CFLAGS -c -o conftest -x c - >$DEVNULL 2>&1 <<EOF
-#include <ffms.h>
-#if FFMS_VERSION < (($ffms_major << 24) | ($ffms_minor << 16) | ($ffms_micro << 8) | $ffms_bump)
-#error Requires ffms2 version 2.13.1
-#endif
-EOF
-        [ $? = 0 ] && log_ok || { ffms="no"; log_fail; }
+    error="ffms must be at least version $ffms_major.$ffms_minor.$ffms_micro.$ffms_bump"
+    if [ $ffms = "yes" ] && ! cpp_check "ffms.h" "$FFMS2_CFLAGS" "FFMS_VERSION >= (($ffms_major << 24) | ($ffms_minor << 16) | ($ffms_micro << 8) | $ffms_bump)" "$error"; then
+       ffms="no"
+       echo "Warning: $error"
+    fi
+    if [ "$ffms" = "yes" -a "$swscale" = "no" ]; then
+        echo "Warning: ffms is not supported without swscale support"
+        ffms="no"
     fi
 fi
 
 if [ "$ffms" = "yes" ]; then
     LDFLAGSCLI="$FFMS2_LIBS $LDFLAGSCLI"
-    [ -n "$FFMS2_CFLAGS" ] && CFLAGS="$CFLAGS $FFMS2_CFLAGS"
+    CFLAGS="$CFLAGS $FFMS2_CFLAGS"
     define HAVE_FFMS
 elif [ "$lavf" = "yes" ]; then
     LDFLAGSCLI="$LAVF_LIBS $LDFLAGSCLI"
-    [ -n "$LAVF_CFLAGS" ] && CFLAGS="$CFLAGS $LAVF_CFLAGS"
+    CFLAGS="$CFLAGS $LAVF_CFLAGS"
+elif [ "$swscale" = "yes" ]; then
+    LDFLAGSCLI="$SWSCALE_LIBS $LDFLAGSCLI"
+    CFLAGS="$CFLAGS $SWSCALE_CFLAGS"
 fi
 
 GPAC_LIBS="-lgpac_static"
@@ -591,16 +659,12 @@ if [ "$gpac" = "yes" ] ; then
     if cc_check gpac/isomedia.h "-Werror $GPAC_LIBS" "gf_malloc(1); gf_free(NULL);" ; then
         define HAVE_GF_MALLOC
     fi
-    LDFLAGSCLI="$LDFLAGSCLI $GPAC_LIBS"
+    LDFLAGSCLI="$GPAC_LIBS $LDFLAGSCLI"
 fi
 
 if [ "$avs" = "auto" ] ; then
-    avs=no
-    if [ $SYS = MINGW ] && cc_check avisynth_c.h ; then
-        avs="yes"
-        define HAVE_AVS
-        define HAVE_AVISYNTH_C_H
-    elif [ $SYS = MINGW ] && cc_check extras/avisynth_c.h ; then
+    avs="no"
+    if [ $SYS = MINGW ] && cc_check extras/avisynth_c.h ; then
         avs="yes"
         define HAVE_AVS
     fi
@@ -644,6 +708,18 @@ if cc_check '' -Wshadow ; then
     CFLAGS="-Wshadow $CFLAGS"
 fi
 
+if [ "$bit_depth" -gt "8" ]; then
+    define X264_HIGH_BIT_DEPTH
+fi
+
+define BIT_DEPTH $bit_depth
+
+if [ $gpl = yes ]; then
+    define HAVE_GPL 1
+else
+    define HAVE_GPL 0
+fi
+
 rm -f conftest*
 
 # generate config files
@@ -669,6 +745,7 @@ EXE=$EXE
 VIS=$vis
 HAVE_GETOPT_LONG=$HAVE_GETOPT_LONG
 DEVNULL=$DEVNULL
+GPL=$gpl
 EOF
 
 if [ "$shared" = "yes" ]; then
@@ -710,6 +787,11 @@ Libs: $pclibs
 Cflags: -I$includedir
 EOF
 
+filters="crop select_every"
+gpl_filters=""
+[ $swscale = yes ] && filters="resize $filters"
+[ $gpl = yes ] && filters="$filters $gpl_filters"
+
 cat > conftest.log <<EOF
 Platform:   $ARCH
 System:     $SYS
@@ -718,12 +800,15 @@ avs:        $avs
 lavf:       $lavf
 ffms:       $ffms
 gpac:       $gpac
+gpl:        $gpl
 pthread:    $pthread
+filters:    $filters
 debug:      $debug
 gprof:      $gprof
 PIC:        $pic
 shared:     $shared
 visualize:  $vis
+bit depth:  $bit_depth
 EOF
 
 echo >> config.log

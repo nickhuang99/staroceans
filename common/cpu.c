@@ -1,7 +1,7 @@
 /*****************************************************************************
- * cpu.c: h264 encoder library
+ * cpu.c: cpu detection
  *****************************************************************************
- * Copyright (C) 2003-2008 x264 project
+ * Copyright (C) 2003-2010 x264 project
  *
  * Authors: Loren Merritt <lorenm@u.washington.edu>
  *          Laurent Aimar <fenrir@via.ecp.fr>
@@ -20,6 +20,9 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02111, USA.
+ *
+ * This program is also available under a commercial proprietary license.
+ * For more information, contact us at licensing@x264.com.
  *****************************************************************************/
 
 #define _GNU_SOURCE // for sched_getaffinity
@@ -356,18 +359,18 @@ int x264_cpu_num_processors( void )
     return info.cpu_count;
 
 #elif SYS_MACOSX || SYS_FREEBSD || SYS_OPENBSD
-    int numberOfCPUs;
-    size_t length = sizeof( numberOfCPUs );
+    int ncpu;
+    size_t length = sizeof( ncpu );
 #if SYS_OPENBSD
     int mib[2] = { CTL_HW, HW_NCPU };
-    if( sysctl(mib, 2, &numberOfCPUs, &length, NULL, 0) )
+    if( sysctl(mib, 2, &ncpu, &length, NULL, 0) )
 #else
-    if( sysctlbyname("hw.ncpu", &numberOfCPUs, &length, NULL, 0) )
+    if( sysctlbyname("hw.ncpu", &ncpu, &length, NULL, 0) )
 #endif
     {
-        numberOfCPUs = 1;
+        ncpu = 1;
     }
-    return numberOfCPUs;
+    return ncpu;
 
 #else
     return 1;

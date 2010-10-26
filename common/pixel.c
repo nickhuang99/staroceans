@@ -1,10 +1,11 @@
 /*****************************************************************************
- * pixel.c: h264 encoder
+ * pixel.c: pixel metrics
  *****************************************************************************
- * Copyright (C) 2003-2008 x264 project
+ * Copyright (C) 2003-2010 x264 project
  *
  * Authors: Loren Merritt <lorenm@u.washington.edu>
  *          Laurent Aimar <fenrir@via.ecp.fr>
+ *          Jason Garrett-Glaser <darkshikari@gmail.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,6 +20,9 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02111, USA.
+ *
+ * This program is also available under a commercial proprietary license.
+ * For more information, contact us at licensing@x264.com.
  *****************************************************************************/
 
 #include "common.h"
@@ -96,9 +100,9 @@ PIXEL_SSD_C( x264_pixel_ssd_8x4,    8,  4 )
 PIXEL_SSD_C( x264_pixel_ssd_4x8,    4,  8 )
 PIXEL_SSD_C( x264_pixel_ssd_4x4,    4,  4 )
 
-int64_t x264_pixel_ssd_wxh( x264_pixel_function_t *pf, pixel *pix1, int i_pix1, pixel *pix2, int i_pix2, int i_width, int i_height )
+uint64_t x264_pixel_ssd_wxh( x264_pixel_function_t *pf, pixel *pix1, int i_pix1, pixel *pix2, int i_pix2, int i_width, int i_height )
 {
-    int64_t i_ssd = 0;
+    uint64_t i_ssd = 0;
     int y;
     int align = !(((intptr_t)pix1 | (intptr_t)pix2 | i_pix1 | i_pix2) & 15);
 
@@ -136,6 +140,31 @@ int64_t x264_pixel_ssd_wxh( x264_pixel_function_t *pf, pixel *pix1, int i_pix1, 
     return i_ssd;
 }
 
+static uint64_t pixel_ssd_nv12_core( pixel *pixuv1, int stride1, pixel *pixuv2, int stride2, int width, int height )
+{
+    uint32_t ssd_u=0, ssd_v=0;
+    for( int y = 0; y < height; y++, pixuv1+=stride1, pixuv2+=stride2 )
+        for( int x = 0; x < width; x++ )
+        {
+            int du = pixuv1[2*x]   - pixuv2[2*x];
+            int dv = pixuv1[2*x+1] - pixuv2[2*x+1];
+            ssd_u += du*du;
+            ssd_v += dv*dv;
+        }
+    return ssd_u + ((uint64_t)ssd_v<<32);
+}
+
+// SSD in uint32 (i.e. packing two into uint64) can potentially overflow on
+// image widths >= 11008 (or 6604 if interlaced), since this is called on blocks
+// of height up to 12 (resp 20). Though it will probably take significantly more
+// than that at sane distortion levels.
+uint64_t x264_pixel_ssd_nv12( x264_pixel_function_t *pf, pixel *pix1, int i_pix1, pixel *pix2, int i_pix2, int i_width, int i_height )
+{
+    uint64_t ssd = pf->ssd_nv12_core( pix1, i_pix1, pix2, i_pix2, i_width&~7, i_height );
+    if( i_width&7 )
+        ssd += pixel_ssd_nv12_core( pix1+(i_width&~7), i_pix1, pix2+(i_width&~7), i_pix2, i_width&7, i_height );
+    return ssd;
+}
 
 /****************************************************************************
  * pixel_var_wxh
@@ -177,7 +206,7 @@ static int pixel_var2_8x8( pixel *pix1, int i_stride1, pixel *pix2, int i_stride
         pix2 += i_stride2;
     }
     sum = abs(sum);
-    var = sqr - (sum * sum >> 6);
+    var = sqr - ((uint64_t)sum * sum >> 6);
     *ssd = sqr;
     return var;
 }
@@ -406,12 +435,14 @@ SAD_X( 8x4 )
 SAD_X( 4x8 )
 SAD_X( 4x4 )
 
+#if !X264_HIGH_BIT_DEPTH
 #if ARCH_UltraSparc
 SAD_X( 16x16_vis )
 SAD_X( 16x8_vis )
 SAD_X( 8x16_vis )
 SAD_X( 8x8_vis )
 #endif
+#endif // !X264_HIGH_BIT_DEPTH
 
 /****************************************************************************
  * pixel_satd_x4
@@ -444,6 +475,7 @@ SATD_X_DECL6( cpu )\
 SATD_X( 4x4, cpu )
 
 SATD_X_DECL7()
+#if !X264_HIGH_BIT_DEPTH
 #if HAVE_MMX
 SATD_X_DECL7( _mmxext )
 SATD_X_DECL6( _sse2 )
@@ -454,6 +486,7 @@ SATD_X_DECL7( _sse4 )
 #if HAVE_ARMV6
 SATD_X_DECL7( _neon )
 #endif
+#endif // !X264_HIGH_BIT_DEPTH
 
 #define INTRA_MBCMP_8x8( mbcmp )\
 void x264_intra_##mbcmp##_x3_8x8( pixel *fenc, pixel edge[33], int res[3] )\
@@ -520,8 +553,8 @@ static void ssim_4x4x2_core( const pixel *pix1, int stride1,
 
 static float ssim_end1( int s1, int s2, int ss, int s12 )
 {
-    static const int ssim_c1 = (int)(.01*.01*255*255*64 + .5);
-    static const int ssim_c2 = (int)(.03*.03*255*255*64*63 + .5);
+    static const int ssim_c1 = (int)(.01*.01*PIXEL_MAX*PIXEL_MAX*64 + .5);
+    static const int ssim_c2 = (int)(.03*.03*PIXEL_MAX*PIXEL_MAX*64*63 + .5);
     int vars = ss*64 - s1*s1 - s2*s2;
     int covar = s12*64 - s1*s2;
     return (float)(2*s1*s2 + ssim_c1) * (float)(2*covar + ssim_c2)
@@ -665,6 +698,7 @@ void x264_pixel_init( int cpu, x264_pixel_function_t *pixf )
     pixf->var[PIXEL_16x16] = x264_pixel_var_16x16;
     pixf->var[PIXEL_8x8]   = x264_pixel_var_8x8;
 
+    pixf->ssd_nv12_core = pixel_ssd_nv12_core;
     pixf->ssim_4x4x2_core = ssim_4x4x2_core;
     pixf->ssim_end4 = ssim_end4;
     pixf->var2_8x8 = pixel_var2_8x8;
@@ -678,6 +712,7 @@ void x264_pixel_init( int cpu, x264_pixel_function_t *pixf )
     pixf->intra_sad_x3_16x16  = x264_intra_sad_x3_16x16;
     pixf->intra_satd_x3_16x16 = x264_intra_satd_x3_16x16;
 
+#if !X264_HIGH_BIT_DEPTH
 #if HAVE_MMX
     if( cpu&X264_CPU_MMX )
     {
@@ -697,6 +732,7 @@ void x264_pixel_init( int cpu, x264_pixel_function_t *pixf )
         INIT_ADS( _mmxext );
         pixf->var[PIXEL_16x16] = x264_pixel_var_16x16_mmxext;
         pixf->var[PIXEL_8x8]   = x264_pixel_var_8x8_mmxext;
+        pixf->ssd_nv12_core    = x264_pixel_ssd_nv12_core_mmxext;
 #if ARCH_X86
         pixf->sa8d[PIXEL_16x16] = x264_pixel_sa8d_16x16_mmxext;
         pixf->sa8d[PIXEL_8x8]   = x264_pixel_sa8d_8x8_mmxext;
@@ -742,6 +778,7 @@ void x264_pixel_init( int cpu, x264_pixel_function_t *pixf )
         INIT5( ssd, _sse2slow );
         INIT2_NAME( sad_aligned, sad, _sse2_aligned );
         pixf->var[PIXEL_16x16] = x264_pixel_var_16x16_sse2;
+        pixf->ssd_nv12_core    = x264_pixel_ssd_nv12_core_sse2;
         pixf->ssim_4x4x2_core  = x264_pixel_ssim_4x4x2_core_sse2;
         pixf->ssim_end4        = x264_pixel_ssim_end4_sse2;
         pixf->sa8d[PIXEL_16x16] = x264_pixel_sa8d_16x16_sse2;
@@ -856,6 +893,9 @@ void x264_pixel_init( int cpu, x264_pixel_function_t *pixf )
         }
         pixf->sa8d[PIXEL_16x16]= x264_pixel_sa8d_16x16_sse4;
         pixf->sa8d[PIXEL_8x8]  = x264_pixel_sa8d_8x8_sse4;
+        pixf->intra_sad_x3_4x4 = x264_intra_sad_x3_4x4_sse4;
+        /* Slower on Conroe, so only enable under SSE4 */
+        pixf->intra_sad_x3_8x8  = x264_intra_sad_x3_8x8_ssse3;
     }
 #endif //HAVE_MMX
 
@@ -900,17 +940,20 @@ void x264_pixel_init( int cpu, x264_pixel_function_t *pixf )
         }
     }
 #endif
+#endif // !X264_HIGH_BIT_DEPTH
 #if HAVE_ALTIVEC
     if( cpu&X264_CPU_ALTIVEC )
     {
         x264_pixel_altivec_init( pixf );
     }
 #endif
+#if !X264_HIGH_BIT_DEPTH
 #if ARCH_UltraSparc
     INIT4( sad, _vis );
     INIT4( sad_x3, _vis );
     INIT4( sad_x4, _vis );
 #endif
+#endif // !X264_HIGH_BIT_DEPTH
 
     pixf->ads[PIXEL_8x16] =
     pixf->ads[PIXEL_8x4] =

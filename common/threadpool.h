@@ -1,10 +1,9 @@
 /*****************************************************************************
- * muxers.h: h264 file i/o modules
+ * threadpool.h: thread pooling
  *****************************************************************************
- * Copyright (C) 2003-2009 x264 project
+ * Copyright (C) 2010 x264 project
  *
- * Authors: Laurent Aimar <fenrir@via.ecp.fr>
- *          Loren Merritt <lorenm@u.washington.edu>
+ * Authors: Steven Walters <kemuri9@gmail.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,43 +18,27 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02111, USA.
+ *
+ * This program is also available under a commercial proprietary license.
+ * For more information, contact us at licensing@x264.com.
  *****************************************************************************/
 
-#ifndef X264_MUXERS_H
-#define X264_MUXERS_H
+#ifndef X264_THREADPOOL_H
+#define X264_THREADPOOL_H
 
-#include "common/common.h"
-#include "x264.h"
+typedef struct x264_threadpool_t x264_threadpool_t;
 
-typedef void *hnd_t;
-
-static inline int64_t gcd( int64_t a, int64_t b )
-{
-    while( 1 )
-    {
-        int64_t c = a % b;
-        if( !c )
-            return b;
-        a = b;
-        b = c;
-    }
-}
-
-static inline int64_t lcm( int64_t a, int64_t b )
-{
-    return ( a / gcd( a, b ) ) * b;
-}
-
-static inline char *get_filename_extension( char *filename )
-{
-    char *ext = filename + strlen( filename );
-    while( *ext != '.' && ext > filename )
-        ext--;
-    ext += *ext == '.';
-    return ext;
-}
-
-#include "input/input.h"
-#include "output/output.h"
+#if HAVE_PTHREAD
+int   x264_threadpool_init( x264_threadpool_t **p_pool, int threads,
+                            void (*init_func)(void *), void *init_arg );
+void  x264_threadpool_run( x264_threadpool_t *pool, void *(*func)(void *), void *arg );
+void *x264_threadpool_wait( x264_threadpool_t *pool, void *arg );
+void  x264_threadpool_delete( x264_threadpool_t *pool );
+#else
+#define x264_threadpool_init(p,t,f,a) -1
+#define x264_threadpool_run(p,f,a)
+#define x264_threadpool_wait(p,a)     NULL
+#define x264_threadpool_delete(p)
+#endif
 
 #endif

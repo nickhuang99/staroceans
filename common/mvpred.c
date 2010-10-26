@@ -1,7 +1,7 @@
 /*****************************************************************************
- * mvpred.c: h264 encoder library
+ * mvpred.c: motion vector prediction
  *****************************************************************************
- * Copyright (C) 2003-2008 x264 project
+ * Copyright (C) 2003-2010 x264 project
  *
  * Authors: Loren Merritt <lorenm@u.washington.edu>
  *          Jason Garrett-Glaser <darkshikari@gmail.com>
@@ -20,6 +20,9 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02111, USA.
+ *
+ * This program is also available under a commercial proprietary license.
+ * For more information, contact us at licensing@x264.com.
  *****************************************************************************/
 
 #include "common.h"
@@ -409,29 +412,24 @@ void x264_mb_predict_mv_ref16x16( x264_t *h, int i_list, int i_ref, int16_t mvc[
 
     if( i_ref == 0 && h->frames.b_have_lowres )
     {
-        int16_t (*lowres_mv)[2] = i_list ? h->fenc->lowres_mvs[1][h->fref1[0]->i_frame-h->fenc->i_frame-1]
-                                         : h->fenc->lowres_mvs[0][h->fenc->i_frame-h->fref0[0]->i_frame-1];
-        if( lowres_mv[0][0] != 0x7fff )
+        int idx = i_list ? h->fref1[0]->i_frame-h->fenc->i_frame-1
+                         : h->fenc->i_frame-h->fref0[0]->i_frame-1;
+        if( idx <= h->param.i_bframe )
         {
-            M32( mvc[i] ) = (M32( lowres_mv[h->mb.i_mb_xy] )*2)&0xfffeffff;
-            i++;
+            int16_t (*lowres_mv)[2] = h->fenc->lowres_mvs[i_list][idx];
+            if( lowres_mv[0][0] != 0x7fff )
+            {
+                M32( mvc[i] ) = (M32( lowres_mv[h->mb.i_mb_xy] )*2)&0xfffeffff;
+                i++;
+            }
         }
     }
 
     /* spatial predictors */
-    if( h->mb.i_neighbour_frame & MB_LEFT )
-    {
-        SET_MVP( mvr[h->mb.i_mb_left_xy] );
-    }
-    if( h->mb.i_neighbour_frame & MB_TOP )
-    {
-        SET_MVP( mvr[h->mb.i_mb_top_xy] );
-
-        if( h->mb.i_neighbour_frame & MB_TOPLEFT )
-            SET_MVP( mvr[h->mb.i_mb_topleft_xy] );
-        if( h->mb.i_neighbour_frame & MB_TOPRIGHT )
-            SET_MVP( mvr[h->mb.i_mb_topright_xy] );
-    }
+    SET_MVP( mvr[h->mb.i_mb_left_xy] );
+    SET_MVP( mvr[h->mb.i_mb_top_xy] );
+    SET_MVP( mvr[h->mb.i_mb_topleft_xy] );
+    SET_MVP( mvr[h->mb.i_mb_topright_xy] );
 #undef SET_MVP
 
     /* temporal predictors */

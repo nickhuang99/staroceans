@@ -1,7 +1,7 @@
 /*****************************************************************************
- * common.c: h264 library
+ * common.c: misc common functions
  *****************************************************************************
- * Copyright (C) 2003-2008 x264 project
+ * Copyright (C) 2003-2010 x264 project
  *
  * Authors: Loren Merritt <lorenm@u.washington.edu>
  *          Laurent Aimar <fenrir@via.ecp.fr>
@@ -19,6 +19,9 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02111, USA.
+ *
+ * This program is also available under a commercial proprietary license.
+ * For more information, contact us at licensing@x264.com.
  *****************************************************************************/
 
 #include "common.h"
@@ -29,6 +32,8 @@
 #if HAVE_MALLOC_H
 #include <malloc.h>
 #endif
+
+const int x264_bit_depth = BIT_DEPTH;
 
 static void x264_log_default( void *, int, const char *, va_list );
 
@@ -91,10 +96,10 @@ void x264_param_default( x264_param_t *param )
     param->rc.i_vbv_max_bitrate = 0;
     param->rc.i_vbv_buffer_size = 0;
     param->rc.f_vbv_buffer_init = 0.9;
-    param->rc.i_qp_constant = 23;
-    param->rc.f_rf_constant = 23;
+    param->rc.i_qp_constant = 23 + QP_BD_OFFSET;
+    param->rc.f_rf_constant = 23 + QP_BD_OFFSET;
     param->rc.i_qp_min = 10;
-    param->rc.i_qp_max = 51;
+    param->rc.i_qp_max = QP_MAX;
     param->rc.i_qp_step = 4;
     param->rc.f_ip_factor = 1.4;
     param->rc.f_pb_factor = 1.3;
@@ -184,6 +189,7 @@ static int x264_param_apply_preset( x264_param_t *param, const char *preset )
         param->rc.b_mb_tree = 0;
         param->analyse.i_weighted_pred = X264_WEIGHTP_NONE;
         param->analyse.b_weighted_bipred = 0;
+        param->rc.i_lookahead = 0;
     }
     else if( !strcasecmp( preset, "superfast" ) )
     {
@@ -195,6 +201,7 @@ static int x264_param_apply_preset( x264_param_t *param, const char *preset )
         param->analyse.i_trellis = 0;
         param->rc.b_mb_tree = 0;
         param->analyse.i_weighted_pred = X264_WEIGHTP_NONE;
+        param->rc.i_lookahead = 0;
     }
     else if( !strcasecmp( preset, "veryfast" ) )
     {
@@ -203,8 +210,8 @@ static int x264_param_apply_preset( x264_param_t *param, const char *preset )
         param->i_frame_reference = 1;
         param->analyse.b_mixed_references = 0;
         param->analyse.i_trellis = 0;
-        param->rc.b_mb_tree = 0;
         param->analyse.i_weighted_pred = X264_WEIGHTP_NONE;
+        param->rc.i_lookahead = 10;
     }
     else if( !strcasecmp( preset, "faster" ) )
     {
@@ -355,6 +362,7 @@ static int x264_param_apply_tune( x264_param_t *param, const char *tune )
             param->i_bframe = 0;
             param->b_sliced_threads = 1;
             param->b_vfr_input = 0;
+            param->rc.b_mb_tree = 0;
         }
         else if( !strncasecmp( s, "touhou", 6 ) )
         {
@@ -415,6 +423,15 @@ int x264_param_apply_profile( x264_param_t *param, const char *profile )
     if( !profile )
         return 0;
 
+#if BIT_DEPTH > 8
+    if( !strcasecmp( profile, "baseline" ) || !strcasecmp( profile, "main" ) ||
+        !strcasecmp( profile, "high" ) )
+    {
+        x264_log( NULL, X264_LOG_ERROR, "%s profile doesn't support a bit depth of %d.\n", profile, BIT_DEPTH );
+        return -1;
+    }
+#endif
+
     if( !strcasecmp( profile, "baseline" ) )
     {
         param->analyse.b_transform_8x8 = 0;
@@ -438,7 +455,7 @@ int x264_param_apply_profile( x264_param_t *param, const char *profile )
         param->analyse.b_transform_8x8 = 0;
         param->i_cqm_preset = X264_CQM_FLAT;
     }
-    else if( !strcasecmp( profile, "high" ) )
+    else if( !strcasecmp( profile, "high" ) || !strcasecmp( profile, "high10" ) )
     {
         /* Default */
     }
@@ -591,7 +608,9 @@ int x264_param_parse( x264_param_t *p, const char *name, const char *value )
         p->b_deterministic = atobool(value);
     OPT2("level", "level-idc")
     {
-        if( atof(value) < 6 )
+        if( !strcmp(value, "1b") )
+            p->i_level_idc = 9;
+        else if( atof(value) < 6 )
             p->i_level_idc = (int)(10*atof(value)+.5);
         else
             p->i_level_idc = atoi(value);
@@ -631,11 +650,14 @@ int x264_param_parse( x264_param_t *p, const char *name, const char *value )
     }
     OPT2("ref", "frameref")
         p->i_frame_reference = atoi(value);
+    OPT("dpb-size")
+        p->i_dpb_size = atoi(value);
     OPT("keyint")
     {
-        p->i_keyint_max = atoi(value);
-        if( p->i_keyint_min > p->i_keyint_max )
-            p->i_keyint_min = p->i_keyint_max;
+        if( strstr( value, "infinite" ) )
+            p->i_keyint_max = X264_KEYINT_MAX_INFINITE;
+        else
+            p->i_keyint_max = atoi(value);
     }
     OPT2("min-keyint", "keyint-min")
     {
@@ -674,6 +696,15 @@ int x264_param_parse( x264_param_t *p, const char *name, const char *value )
         {
             b_error = 0;
             p->i_bframe_pyramid = atoi(value);
+        }
+    }
+    OPT("open-gop")
+    {
+        b_error |= parse_enum( value, x264_open_gop_names, &p->i_open_gop );
+        if( b_error )
+        {
+            b_error = 0;
+            p->i_open_gop = atoi(value);
         }
     }
     OPT("nf")
@@ -1012,17 +1043,27 @@ void x264_picture_init( x264_picture_t *pic )
  ****************************************************************************/
 int x264_picture_alloc( x264_picture_t *pic, int i_csp, int i_width, int i_height )
 {
+    int csp = i_csp & X264_CSP_MASK;
+    if( csp <= X264_CSP_NONE || csp >= X264_CSP_MAX )
+        return -1;
     x264_picture_init( pic );
     pic->img.i_csp = i_csp;
-    pic->img.i_plane = 3;
-    pic->img.plane[0] = x264_malloc( 3 * i_width * i_height / 2 );
+    pic->img.i_plane = csp == X264_CSP_NV12 ? 2 : 3;
+    int depth_factor = i_csp & X264_CSP_HIGH_DEPTH ? 2 : 1;
+    pic->img.plane[0] = x264_malloc( 3 * i_width * i_height / 2 * depth_factor );
     if( !pic->img.plane[0] )
         return -1;
-    pic->img.plane[1] = pic->img.plane[0] + i_width * i_height;
-    pic->img.plane[2] = pic->img.plane[1] + i_width * i_height / 4;
-    pic->img.i_stride[0] = i_width;
-    pic->img.i_stride[1] = i_width / 2;
-    pic->img.i_stride[2] = i_width / 2;
+    pic->img.plane[1] = pic->img.plane[0] + i_width * i_height * depth_factor;
+    if( csp != X264_CSP_NV12 )
+        pic->img.plane[2] = pic->img.plane[1] + i_width * i_height / 4 * depth_factor;
+    pic->img.i_stride[0] = i_width * depth_factor;
+    if( csp == X264_CSP_NV12 )
+        pic->img.i_stride[1] = i_width * depth_factor;
+    else
+    {
+        pic->img.i_stride[1] = i_width / 2 * depth_factor;
+        pic->img.i_stride[2] = i_width / 2 * depth_factor;
+    }
     return 0;
 }
 
@@ -1190,14 +1231,18 @@ char *x264_param2string( x264_param_t *p, int b_res )
     s += sprintf( s, " bframes=%d", p->i_bframe );
     if( p->i_bframe )
     {
-        s += sprintf( s, " b_pyramid=%d b_adapt=%d b_bias=%d direct=%d weightb=%d",
+        s += sprintf( s, " b_pyramid=%d b_adapt=%d b_bias=%d direct=%d weightb=%d open_gop=%d",
                       p->i_bframe_pyramid, p->i_bframe_adaptive, p->i_bframe_bias,
-                      p->analyse.i_direct_mv_pred, p->analyse.b_weighted_bipred );
+                      p->analyse.i_direct_mv_pred, p->analyse.b_weighted_bipred, p->i_open_gop );
     }
     s += sprintf( s, " weightp=%d", p->analyse.i_weighted_pred > 0 ? p->analyse.i_weighted_pred : 0 );
 
-    s += sprintf( s, " keyint=%d keyint_min=%d scenecut=%d intra_refresh=%d",
-                  p->i_keyint_max, p->i_keyint_min, p->i_scenecut_threshold, p->b_intra_refresh );
+    if( p->i_keyint_max == X264_KEYINT_MAX_INFINITE )
+        s += sprintf( s, " keyint=infinite" );
+    else
+        s += sprintf( s, " keyint=%d", p->i_keyint_max );
+    s += sprintf( s, " keyint_min=%d scenecut=%d intra_refresh=%d",
+                  p->i_keyint_min, p->i_scenecut_threshold, p->b_intra_refresh );
 
     if( p->rc.b_mb_tree || p->rc.i_vbv_buffer_size )
         s += sprintf( s, " rc_lookahead=%d", p->rc.i_lookahead );

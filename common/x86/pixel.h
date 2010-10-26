@@ -1,10 +1,11 @@
 /*****************************************************************************
- * pixel.h: h264 encoder library
+ * pixel.h: x86 pixel metrics
  *****************************************************************************
- * Copyright (C) 2003-2008 x264 project
+ * Copyright (C) 2003-2010 x264 project
  *
  * Authors: Laurent Aimar <fenrir@via.ecp.fr>
  *          Loren Merritt <lorenm@u.washington.edu>
+ *          Jason Garrett-Glaser <darkshikari@gmail.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,6 +20,9 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02111, USA.
+ *
+ * This program is also available under a commercial proprietary license.
+ * For more information, contact us at licensing@x264.com.
  *****************************************************************************/
 
 #ifndef X264_I386_PIXEL_H
@@ -80,6 +84,7 @@ DECL_PIXELS( uint64_t, hadamard_ac, sse4,   ( uint8_t *pix, int i_stride ))
 void x264_intra_satd_x3_4x4_mmxext  ( uint8_t *, uint8_t *, int * );
 void x264_intra_satd_x3_4x4_ssse3   ( uint8_t *, uint8_t *, int * );
 void x264_intra_sad_x3_4x4_mmxext   ( uint8_t *, uint8_t *, int * );
+void x264_intra_sad_x3_4x4_sse4     ( uint8_t *, uint8_t *, int * );
 void x264_intra_satd_x3_8x8c_mmxext ( uint8_t *, uint8_t *, int * );
 void x264_intra_satd_x3_8x8c_ssse3  ( uint8_t *, uint8_t *, int * );
 void x264_intra_sad_x3_8x8c_mmxext  ( uint8_t *, uint8_t *, int * );
@@ -93,10 +98,15 @@ void x264_intra_sa8d_x3_8x8_mmxext  ( uint8_t *, uint8_t *, int * );
 void x264_intra_sa8d_x3_8x8_sse2    ( uint8_t *, uint8_t *, int * );
 void x264_intra_sa8d_x3_8x8_ssse3   ( uint8_t *, uint8_t *, int * );
 void x264_intra_sad_x3_8x8_mmxext   ( uint8_t *, uint8_t *, int * );
+void x264_intra_sad_x3_8x8_ssse3    ( uint8_t *, uint8_t *, int * );
 void x264_intra_sa8d_x3_8x8_core_mmxext( uint8_t *, int16_t [2][8], int * );
 void x264_intra_sa8d_x3_8x8_core_sse2  ( uint8_t *, int16_t [2][8], int * );
 void x264_intra_sa8d_x3_8x8_core_ssse3 ( uint8_t *, int16_t [2][8], int * );
 
+uint64_t x264_pixel_ssd_nv12_core_mmxext( uint8_t *pixuv1, int stride1,
+                                          uint8_t *pixuv2, int stride2, int width, int height );
+uint64_t x264_pixel_ssd_nv12_core_sse2( uint8_t *pixuv1, int stride1,
+                                        uint8_t *pixuv2, int stride2, int width, int height );
 void x264_pixel_ssim_4x4x2_core_mmxext( const uint8_t *pix1, int stride1,
                                         const uint8_t *pix2, int stride2, int sums[2][4] );
 void x264_pixel_ssim_4x4x2_core_sse2( const uint8_t *pix1, int stride1,

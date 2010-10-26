@@ -1,7 +1,7 @@
 /*****************************************************************************
- * macroblock.c: h264 encoder library
+ * macroblock.c: macroblock encoding
  *****************************************************************************
- * Copyright (C) 2003-2008 x264 project
+ * Copyright (C) 2003-2010 x264 project
  *
  * Authors: Laurent Aimar <fenrir@via.ecp.fr>
  *          Loren Merritt <lorenm@u.washington.edu>
@@ -20,6 +20,9 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02111, USA.
+ *
+ * This program is also available under a commercial proprietary license.
+ * For more information, contact us at licensing@x264.com.
  *****************************************************************************/
 
 #include "common/common.h"
@@ -78,11 +81,11 @@ static inline void dct2x2dc( dctcoef d[4], dctcoef dct4x4[4][16] )
     dct4x4[3][0] = 0;
 }
 
-static ALWAYS_INLINE int x264_quant_4x4( x264_t *h, dctcoef dct[16], int i_qp, int i_ctxBlockCat, int b_intra, int idx )
+static ALWAYS_INLINE int x264_quant_4x4( x264_t *h, dctcoef dct[16], int i_qp, int ctx_block_cat, int b_intra, int idx )
 {
     int i_quant_cat = b_intra ? CQM_4IY : CQM_4PY;
     if( h->mb.b_trellis )
-        return x264_quant_4x4_trellis( h, dct, i_quant_cat, i_qp, i_ctxBlockCat, b_intra, 0, idx );
+        return x264_quant_4x4_trellis( h, dct, i_quant_cat, i_qp, ctx_block_cat, b_intra, 0, idx );
     else
         return h->quantf.quant_4x4( dct, h->quant4_mf[i_quant_cat][i_qp], h->quant4_bias[i_quant_cat][i_qp] );
 }
@@ -492,25 +495,16 @@ static void x264_macroblock_encode_pskip( x264_t *h )
 
         /* Special case for mv0, which is (of course) very common in P-skip mode. */
         if( mvx | mvy )
-        {
-            h->mc.mc_chroma( h->mb.pic.p_fdec[1],       FDEC_STRIDE,
+            h->mc.mc_chroma( h->mb.pic.p_fdec[1], h->mb.pic.p_fdec[2], FDEC_STRIDE,
                              h->mb.pic.p_fref[0][0][4], h->mb.pic.i_stride[1],
                              mvx, mvy, 8, 8 );
-            h->mc.mc_chroma( h->mb.pic.p_fdec[2],       FDEC_STRIDE,
-                             h->mb.pic.p_fref[0][0][5], h->mb.pic.i_stride[2],
-                             mvx, mvy, 8, 8 );
-        }
         else
-        {
-            h->mc.copy[PIXEL_8x8]( h->mb.pic.p_fdec[1], FDEC_STRIDE, h->mb.pic.p_fref[0][0][4], h->mb.pic.i_stride[1], 8 );
-            h->mc.copy[PIXEL_8x8]( h->mb.pic.p_fdec[2], FDEC_STRIDE, h->mb.pic.p_fref[0][0][5], h->mb.pic.i_stride[2], 8 );
-        }
+            h->mc.load_deinterleave_8x8x2_fdec( h->mb.pic.p_fdec[1], h->mb.pic.p_fref[0][0][4], h->mb.pic.i_stride[1] );
 
         if( h->sh.weight[0][1].weightfn )
             h->sh.weight[0][1].weightfn[8>>2]( h->mb.pic.p_fdec[1], FDEC_STRIDE,
                                                h->mb.pic.p_fdec[1], FDEC_STRIDE,
                                                &h->sh.weight[0][1], 8 );
-
         if( h->sh.weight[0][2].weightfn )
             h->sh.weight[0][2].weightfn[8>>2]( h->mb.pic.p_fdec[2], FDEC_STRIDE,
                                                h->mb.pic.p_fdec[2], FDEC_STRIDE,
@@ -524,25 +518,21 @@ static void x264_macroblock_encode_pskip( x264_t *h )
  * Intra prediction for predictive lossless mode.
  *****************************************************************************/
 
-/* Note that these functions take a shortcut (mc.copy instead of actual pixel prediction) which assumes
- * that the edge pixels of the reconstructed frame are the same as that of the source frame.  This means
- * they will only work correctly if the neighboring blocks are losslessly coded.  In practice, this means
- * lossless mode cannot be mixed with lossy mode within a frame. */
-/* This can be resolved by explicitly copying the edge pixels after doing the mc.copy, but this doesn't
- * need to be done unless we decide to allow mixing lossless and lossy compression. */
-
 void x264_predict_lossless_8x8_chroma( x264_t *h, int i_mode )
 {
-    int stride = h->fenc->i_stride[1] << h->mb.b_interlaced;
     if( i_mode == I_PRED_CHROMA_V )
     {
-        h->mc.copy[PIXEL_8x8]( h->mb.pic.p_fdec[1], FDEC_STRIDE, h->mb.pic.p_fenc_plane[1]-stride, stride, 8 );
-        h->mc.copy[PIXEL_8x8]( h->mb.pic.p_fdec[2], FDEC_STRIDE, h->mb.pic.p_fenc_plane[2]-stride, stride, 8 );
+        h->mc.copy[PIXEL_8x8]( h->mb.pic.p_fdec[1], FDEC_STRIDE, h->mb.pic.p_fenc[1]-FENC_STRIDE, FENC_STRIDE, 8 );
+        h->mc.copy[PIXEL_8x8]( h->mb.pic.p_fdec[2], FDEC_STRIDE, h->mb.pic.p_fenc[2]-FENC_STRIDE, FENC_STRIDE, 8 );
+        memcpy( h->mb.pic.p_fdec[1], h->mb.pic.p_fdec[1]-FDEC_STRIDE, 8*sizeof(pixel) );
+        memcpy( h->mb.pic.p_fdec[2], h->mb.pic.p_fdec[2]-FDEC_STRIDE, 8*sizeof(pixel) );
     }
     else if( i_mode == I_PRED_CHROMA_H )
     {
-        h->mc.copy[PIXEL_8x8]( h->mb.pic.p_fdec[1], FDEC_STRIDE, h->mb.pic.p_fenc_plane[1]-1, stride, 8 );
-        h->mc.copy[PIXEL_8x8]( h->mb.pic.p_fdec[2], FDEC_STRIDE, h->mb.pic.p_fenc_plane[2]-1, stride, 8 );
+        h->mc.copy[PIXEL_8x8]( h->mb.pic.p_fdec[1], FDEC_STRIDE, h->mb.pic.p_fenc[1]-1, FENC_STRIDE, 8 );
+        h->mc.copy[PIXEL_8x8]( h->mb.pic.p_fdec[2], FDEC_STRIDE, h->mb.pic.p_fenc[2]-1, FENC_STRIDE, 8 );
+        x264_copy_column8( h->mb.pic.p_fdec[1]+4*FDEC_STRIDE, h->mb.pic.p_fdec[1]+4*FDEC_STRIDE-1 );
+        x264_copy_column8( h->mb.pic.p_fdec[2]+4*FDEC_STRIDE, h->mb.pic.p_fdec[2]+4*FDEC_STRIDE-1 );
     }
     else
     {
@@ -752,7 +742,7 @@ void x264_macroblock_encode( x264_t *h )
         else if( h->mb.b_transform_8x8 )
         {
             ALIGNED_ARRAY_16( dctcoef, dct8x8,[4],[64] );
-            b_decimate &= !h->mb.b_trellis; // 8x8 trellis is inherently optimal decimation
+            b_decimate &= !h->mb.b_trellis || !h->param.b_cabac; // 8x8 trellis is inherently optimal decimation for CABAC
             h->dctf.sub16x16_dct8( dct8x8, h->mb.pic.p_fenc[0], h->mb.pic.p_fdec[0] );
             h->nr_count[1] += h->mb.b_noise_reduction * 4;
 
@@ -965,28 +955,26 @@ int x264_macroblock_probe_skip( x264_t *h, int b_bidir )
     i_qp = h->mb.i_chroma_qp;
     thresh = (x264_lambda2_tab[i_qp] + 32) >> 6;
 
+    if( !b_bidir )
+    {
+        /* Special case for mv0, which is (of course) very common in P-skip mode. */
+        if( M32( mvp ) )
+            h->mc.mc_chroma( h->mb.pic.p_fdec[1], h->mb.pic.p_fdec[2], FDEC_STRIDE,
+                             h->mb.pic.p_fref[0][0][4], h->mb.pic.i_stride[1],
+                             mvp[0], mvp[1], 8, 8 );
+        else
+            h->mc.load_deinterleave_8x8x2_fdec( h->mb.pic.p_fdec[1], h->mb.pic.p_fref[0][0][4], h->mb.pic.i_stride[1] );
+    }
+
     for( int ch = 0; ch < 2; ch++ )
     {
         pixel *p_src = h->mb.pic.p_fenc[1+ch];
         pixel *p_dst = h->mb.pic.p_fdec[1+ch];
 
-        if( !b_bidir )
-        {
-            /* Special case for mv0, which is (of course) very common in P-skip mode. */
-            if( M32( mvp ) )
-            {
-                h->mc.mc_chroma( h->mb.pic.p_fdec[1+ch],       FDEC_STRIDE,
-                                 h->mb.pic.p_fref[0][0][4+ch], h->mb.pic.i_stride[1+ch],
-                                 mvp[0], mvp[1], 8, 8 );
-            }
-            else
-                h->mc.copy[PIXEL_8x8]( h->mb.pic.p_fdec[1+ch], FDEC_STRIDE, h->mb.pic.p_fref[0][0][4+ch], h->mb.pic.i_stride[1+ch], 8 );
-
-            if( h->sh.weight[0][1+ch].weightfn )
-                h->sh.weight[0][1+ch].weightfn[8>>2]( h->mb.pic.p_fdec[1+ch], FDEC_STRIDE,
-                                                      h->mb.pic.p_fdec[1+ch], FDEC_STRIDE,
-                                                      &h->sh.weight[0][1+ch], 8 );
-        }
+        if( !b_bidir && h->sh.weight[0][1+ch].weightfn )
+            h->sh.weight[0][1+ch].weightfn[8>>2]( h->mb.pic.p_fdec[1+ch], FDEC_STRIDE,
+                                                  h->mb.pic.p_fdec[1+ch], FDEC_STRIDE,
+                                                  &h->sh.weight[0][1+ch], 8 );
 
         /* there is almost never a termination during chroma, but we can't avoid the check entirely */
         /* so instead we check SSD and skip the actual check if the score is low enough. */

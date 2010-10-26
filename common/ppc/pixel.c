@@ -1,7 +1,7 @@
 /*****************************************************************************
- * pixel.c: h264 encoder
+ * pixel.c: ppc pixel metrics
  *****************************************************************************
- * Copyright (C) 2003-2008 x264 project
+ * Copyright (C) 2003-2010 x264 project
  *
  * Authors: Eric Petit <eric.petit@lapsus.org>
  *          Guillaume Poirier <gpoirier@mplayerhq.hu>
@@ -19,11 +19,15 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02111, USA.
+ *
+ * This program is also available under a commercial proprietary license.
+ * For more information, contact us at licensing@x264.com.
  *****************************************************************************/
 
 #include "common/common.h"
 #include "ppccommon.h"
 
+#if !X264_HIGH_BIT_DEPTH
 /***********************************************************************
  * SAD routines
  **********************************************************************/
@@ -1979,12 +1983,14 @@ static void ssim_4x4x2_core_altivec( const uint8_t *pix1, int stride1,
     sums[0][3] = temp[0];
     sums[1][3] = temp[1];
 }
+#endif // !X264_HIGH_BIT_DEPTH
 
 /****************************************************************************
  * x264_pixel_init:
  ****************************************************************************/
 void x264_pixel_altivec_init( x264_pixel_function_t *pixf )
 {
+#if !X264_HIGH_BIT_DEPTH
     pixf->sad[PIXEL_16x16]  = pixel_sad_16x16_altivec;
     pixf->sad[PIXEL_8x16]   = pixel_sad_8x16_altivec;
     pixf->sad[PIXEL_16x8]   = pixel_sad_16x8_altivec;
@@ -2023,4 +2029,5 @@ void x264_pixel_altivec_init( x264_pixel_function_t *pixf )
     pixf->hadamard_ac[PIXEL_8x8]   = x264_pixel_hadamard_ac_8x8_altivec;
 
     pixf->ssim_4x4x2_core = ssim_4x4x2_core_altivec;
+#endif // !X264_HIGH_BIT_DEPTH
 }

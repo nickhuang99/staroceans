@@ -1,7 +1,7 @@
 /*****************************************************************************
- * bitstream.c: h264 encoder library
+ * bitstream.c: bitstream writing
  *****************************************************************************
- * Copyright (C) 2010 x264 project
+ * Copyright (C) 2003-2010 x264 project
  *
  * Authors: Laurent Aimar <fenrir@via.ecp.fr>
  *          Jason Garrett-Glaser <darkshikari@gmail.com>
@@ -19,6 +19,9 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02111, USA.
+ *
+ * This program is also available under a commercial proprietary license.
+ * For more information, contact us at licensing@x264.com.
  *****************************************************************************/
 
 #include "common.h"
@@ -44,7 +47,7 @@ uint8_t *x264_nal_escape_sse2( uint8_t *dst, uint8_t *src, uint8_t *end );
 /****************************************************************************
  * x264_nal_encode:
  ****************************************************************************/
-int x264_nal_encode( x264_t *h, uint8_t *dst, x264_nal_t *nal, int b_long_startcode )
+void x264_nal_encode( x264_t *h, uint8_t *dst, x264_nal_t *nal )
 {
     uint8_t *src = nal->p_payload;
     uint8_t *end = nal->p_payload + nal->i_payload;
@@ -52,7 +55,7 @@ int x264_nal_encode( x264_t *h, uint8_t *dst, x264_nal_t *nal, int b_long_startc
 
     if( h->param.b_annexb )
     {
-        if( b_long_startcode )
+        if( nal->b_long_startcode )
             *dst++ = 0x00;
         *dst++ = 0x00;
         *dst++ = 0x00;
@@ -77,7 +80,9 @@ int x264_nal_encode( x264_t *h, uint8_t *dst, x264_nal_t *nal, int b_long_startc
         orig_dst[3] = size>> 0;
     }
 
-    return size+4;
+    nal->i_payload = size+4;
+    nal->p_payload = orig_dst;
+    x264_emms();
 }
 
 void x264_bitstream_init( int cpu, x264_bitstream_function_t *pf )
