@@ -3,10 +3,7 @@
 # configure flags logic
 
 # Set CFLAGS from DEB_CFLAGS if defined, otherwise simply add -Wall
-CFLAGS = $(shell test -z "$$DEB_CFLAGS" || echo "$$DEB_CFLAGS")
-ifeq (,$(CFLAGS))
-  CFLAGS = -Wall
-endif
+CFLAGS = $(or $(DEB_CFLAGS),-Wall)
 
 common_confflags += --prefix=/usr
 ifeq (,$(filter nostrip,$(DEB_BUILD_OPTIONS)))
