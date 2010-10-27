@@ -2,6 +2,12 @@
 # vi:syntax=make
 # configure flags logic
 
+# Set CFLAGS from DEB_CFLAGS if defined, otherwise simply add -Wall
+CFLAGS = $(shell test -z "$$DEB_CFLAGS" || echo "$$DEB_CFLAGS")
+ifeq (,$(CFLAGS))
+  CFLAGS = -Wall
+endif
+
 common_confflags += \
 	--prefix=/usr \
 	--enable-debug
