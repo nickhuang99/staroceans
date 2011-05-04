@@ -20,10 +20,6 @@ LDFLAGS += -Wl,--as-needed
 build: build-stamp
 build-stamp: debian/stamp-patched
 	dh_testdir
-	# fix version.sh for the debian package
-	mv version.sh version.sh-upstream
-	cp debian/debian-version.sh version.sh
-	chmod +x version.sh
 	# Build static lib
 	LDFLAGS="$(LDFLAGS)" ./configure $(static_confflags)
 	$(MAKE)
@@ -40,7 +36,6 @@ ifeq ($(do_opt),yes)
 	$(MAKE)
 	$(MAKE) install DESTDIR=$(CURDIR)/debian/install/opt
 endif
-	mv version.sh-upstream version.sh
 	touch $@
 
 debian/x264.1: build-stamp
@@ -52,7 +47,6 @@ clean:
 	dh_testroot
 	rm -rf debian/install
 	$(MAKE) -o config.mak distclean
-	[ ! -f version.sh-upstream ] ||  mv version.sh-upstream version.sh
 	$(MAKE) -f debian/rules unpatch
 	dh_clean build-stamp debian/x264.1 config.mak2
 
