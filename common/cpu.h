@@ -1,7 +1,7 @@
 /*****************************************************************************
  * cpu.h: cpu detection
  *****************************************************************************
- * Copyright (C) 2004-2010 x264 project
+ * Copyright (C) 2004-2011 x264 project
  *
  * Authors: Loren Merritt <lorenm@u.washington.edu>
  *
@@ -53,9 +53,10 @@ int x264_stack_align( void (*func)(), ... );
 #define x264_stack_align(func,...) func(__VA_ARGS__)
 #endif
 
-typedef struct {
+typedef struct
+{
     const char name[16];
-    int flags;
+    uint32_t flags;
 } x264_cpu_name_t;
 extern const x264_cpu_name_t x264_cpu_names[];
 

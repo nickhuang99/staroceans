@@ -1,7 +1,7 @@
 /*****************************************************************************
  * cavlc.c: cavlc bitstream writing
  *****************************************************************************
- * Copyright (C) 2003-2010 x264 project
+ * Copyright (C) 2003-2011 x264 project
  *
  * Authors: Laurent Aimar <fenrir@via.ecp.fr>
  *          Loren Merritt <lorenm@u.washington.edu>
@@ -100,9 +100,8 @@ static inline int block_residual_write_cavlc_escape( x264_t *h, int i_suffix_len
                 /* Weight highly against overflows. */
                 s->i_bits_encoded += 2000;
 #else
-                x264_log(h, X264_LOG_WARNING, "OVERFLOW levelcode=%d is only allowed in High Profile\n", i_level_code );
-                /* clip level, preserving sign */
-                i_level_code = (1<<12) - 2 + (i_level_code & 1);
+                /* We've had an overflow; note it down and re-encode the MB later. */
+                h->mb.b_overflow = 1;
 #endif
             }
         }
@@ -222,10 +221,10 @@ static void cavlc_qp_delta( x264_t *h )
 
     if( i_dqp )
     {
-        if( i_dqp < -(QP_MAX+1)/2 )
-            i_dqp += QP_MAX+1;
-        else if( i_dqp > QP_MAX/2 )
-            i_dqp -= QP_MAX+1;
+        if( i_dqp < -(QP_MAX_SPEC+1)/2 )
+            i_dqp += QP_MAX_SPEC+1;
+        else if( i_dqp > QP_MAX_SPEC/2 )
+            i_dqp -= QP_MAX_SPEC+1;
     }
     bs_write_se( s, i_dqp );
 }

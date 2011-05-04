@@ -1,7 +1,7 @@
 /*****************************************************************************
  * ffms.c: ffmpegsource input
  *****************************************************************************
- * Copyright (C) 2009-2010 x264 project
+ * Copyright (C) 2009-2011 x264 project
  *
  * Authors: Mike Gurlitz <mike.gurlitz@gmail.com>
  *          Steven Walters <kemuri9@gmail.com>
@@ -45,12 +45,18 @@ typedef struct
     int reduce_pts;
     int vfr_input;
     int num_frames;
+    int64_t time;
 } ffms_hnd_t;
 
 static int FFMS_CC update_progress( int64_t current, int64_t total, void *private )
 {
-    if( current % 10 )
+    int64_t *update_time = private;
+    int64_t oldtime = *update_time;
+    int64_t newtime = x264_mdate();
+    if( oldtime && newtime - oldtime < UPDATE_INTERVAL )
         return 0;
+    *update_time = newtime;
+
     char buf[200];
     sprintf( buf, "ffms [info]: indexing input file [%.1f%%]", 100.0 * current / total );
     fprintf( stderr, "%s  \r", buf+5 );
@@ -64,7 +70,7 @@ static int open_file( char *psz_filename, hnd_t *p_handle, video_info_t *info, c
     ffms_hnd_t *h = calloc( 1, sizeof(ffms_hnd_t) );
     if( !h )
         return -1;
-    FFMS_Init( 0 );
+    FFMS_Init( 0, 0 );
     FFMS_ErrorInfo e;
     e.BufferSize = 0;
     int seekmode = opt->seek ? FFMS_SEEK_NORMAL : FFMS_SEEK_LINEAR_NO_RW;
@@ -79,8 +85,13 @@ static int open_file( char *psz_filename, hnd_t *p_handle, video_info_t *info, c
     }
     if( !idx )
     {
-        idx = FFMS_MakeIndex( psz_filename, 0, 0, NULL, NULL, 0, update_progress, NULL, &e );
-        fprintf( stderr, "                                            \r" );
+        if( opt->progress )
+        {
+            idx = FFMS_MakeIndex( psz_filename, 0, 0, NULL, NULL, 0, update_progress, &h->time, &e );
+            fprintf( stderr, "                                            \r" );
+        }
+        else
+            idx = FFMS_MakeIndex( psz_filename, 0, 0, NULL, NULL, 0, NULL, NULL, &e );
         FAIL_IF_ERROR( !idx, "could not create index\n" )
         if( opt->index_file && FFMS_WriteIndex( opt->index_file, idx, &e ) )
             x264_cli_log( "ffms", X264_LOG_WARNING, "could not write index file\n" );

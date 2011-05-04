@@ -1,7 +1,7 @@
 /*****************************************************************************
  * lavf.c: libavformat input
  *****************************************************************************
- * Copyright (C) 2009-2010 x264 project
+ * Copyright (C) 2009-2011 x264 project
  *
  * Authors: Mike Gurlitz <mike.gurlitz@gmail.com>
  *          Steven Walters <kemuri9@gmail.com>
@@ -38,6 +38,12 @@ typedef struct
     int vfr_input;
     cli_pic_t *first_pic;
 } lavf_hnd_t;
+
+#define x264_free_packet( pkt )\
+{\
+    av_free_packet( pkt );\
+    av_init_packet( pkt );\
+}
 
 static int read_frame_internal( cli_pic_t *p_pic, lavf_hnd_t *h, int i_frame, video_info_t *info )
 {
@@ -81,6 +87,9 @@ static int read_frame_internal( cli_pic_t *p_pic, lavf_hnd_t *h, int i_frame, vi
                 if( avcodec_decode_video2( c, &frame, &finished, pkt ) < 0 )
                     x264_cli_log( "lavf", X264_LOG_WARNING, "video decoding failed on frame %d\n", h->next_frame );
             }
+            /* if the packet successfully decoded but the data from it is not desired, free it */
+            else if( ret >= 0 )
+                x264_free_packet( pkt );
         } while( !finished && ret >= 0 );
 
         if( !finished )
@@ -138,13 +147,18 @@ static int open_file( char *psz_filename, hnd_t *p_handle, video_info_t *info, c
         param->pix_fmt = opt->colorspace ? av_get_pix_fmt( opt->colorspace ) : PIX_FMT_YUV420P;
     }
 
-    FAIL_IF_ERROR( av_open_input_file( &h->lavf, psz_filename, NULL, 0, param ), "could not open input file\n" )
+    /* specify the input format. this is helpful when lavf fails to guess */
+    AVInputFormat *format = NULL;
+    if( opt->format )
+        FAIL_IF_ERROR( !(format = av_find_input_format( opt->format )), "unknown file format: %s\n", opt->format );
+
+    FAIL_IF_ERROR( av_open_input_file( &h->lavf, psz_filename, format, 0, param ), "could not open input file\n" )
     if( param )
         free( param );
     FAIL_IF_ERROR( av_find_stream_info( h->lavf ) < 0, "could not find input stream info\n" )
 
     int i = 0;
-    while( i < h->lavf->nb_streams && h->lavf->streams[i]->codec->codec_type != CODEC_TYPE_VIDEO )
+    while( i < h->lavf->nb_streams && h->lavf->streams[i]->codec->codec_type != AVMEDIA_TYPE_VIDEO )
         i++;
     FAIL_IF_ERROR( i == h->lavf->nb_streams, "could not find video stream\n" )
     h->stream_id       = i;
@@ -203,8 +217,7 @@ static int read_frame( cli_pic_t *pic, hnd_t handle, int i_frame )
 
 static int release_frame( cli_pic_t *pic, hnd_t handle )
 {
-    av_free_packet( pic->opaque );
-    av_init_packet( pic->opaque );
+    x264_free_packet( pic->opaque );
     return 0;
 }
 

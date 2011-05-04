@@ -1,7 +1,7 @@
 /*****************************************************************************
  * raw.c: raw input
  *****************************************************************************
- * Copyright (C) 2003-2010 x264 project
+ * Copyright (C) 2003-2011 x264 project
  *
  * Authors: Laurent Aimar <fenrir@via.ecp.fr>
  *          Loren Merritt <lorenm@u.washington.edu>
@@ -47,11 +47,11 @@ static int open_file( char *psz_filename, hnd_t *p_handle, video_info_t *info, c
     {
         /* try to parse the file name */
         for( char *p = psz_filename; *p; p++ )
-            if( *p >= '0' && *p <= '9' && sscanf( p, "%ux%u", &info->width, &info->height ) == 2 )
+            if( *p >= '0' && *p <= '9' && sscanf( p, "%dx%d", &info->width, &info->height ) == 2 )
                 break;
     }
     else
-        sscanf( opt->resolution, "%ux%u", &info->width, &info->height );
+        sscanf( opt->resolution, "%dx%d", &info->width, &info->height );
     FAIL_IF_ERROR( !info->width || !info->height, "raw input requires a resolution.\n" )
     if( opt->colorspace )
     {

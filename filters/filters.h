@@ -1,7 +1,7 @@
 /*****************************************************************************
  * filters.h: common filter functions
  *****************************************************************************
- * Copyright (C) 2010 x264 project
+ * Copyright (C) 2010-2011 x264 project
  *
  * Authors: Diogo Franco <diogomfranco@gmail.com>
  *          Steven Walters <kemuri9@gmail.com>
@@ -30,7 +30,7 @@
 #include "x264cli.h"
 #include "filters/video/video.h"
 
-char **x264_split_string( char *string, char *sep, uint32_t limit );
+char **x264_split_string( char *string, char *sep, int limit );
 void   x264_free_string_array( char **array );
 
 char **x264_split_options( const char *opt_str, const char *options[] );

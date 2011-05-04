@@ -1,7 +1,7 @@
 /*****************************************************************************
  * set.c: quantization init
  *****************************************************************************
- * Copyright (C) 2005-2010 x264 project
+ * Copyright (C) 2005-2011 x264 project
  *
  * Authors: Loren Merritt <lorenm@u.washington.edu>
  *
@@ -23,6 +23,7 @@
  * For more information, contact us at licensing@x264.com.
  *****************************************************************************/
 
+#define _ISOC99_SOURCE
 #include "common.h"
 
 #define SHIFT(x,s) ((s)<=0 ? (x)<<-(s) : ((x)+(1<<((s)-1)))>>(s))
@@ -100,7 +101,7 @@ int x264_cqm_init( x264_t *h )
         }
         else
         {
-            CHECKED_MALLOC( h->  quant4_mf[i], (QP_MAX+1)*size*sizeof(uint16_t) );
+            CHECKED_MALLOC( h->  quant4_mf[i], (QP_MAX+1)*size*sizeof(udctcoef) );
             CHECKED_MALLOC( h->dequant4_mf[i],  6*size*sizeof(int) );
             CHECKED_MALLOC( h->unquant4_mf[i], (QP_MAX+1)*size*sizeof(int) );
         }
@@ -112,7 +113,7 @@ int x264_cqm_init( x264_t *h )
         if( j < i )
             h->quant4_bias[i] = h->quant4_bias[j];
         else
-            CHECKED_MALLOC( h->quant4_bias[i], (QP_MAX+1)*size*sizeof(uint16_t) );
+            CHECKED_MALLOC( h->quant4_bias[i], (QP_MAX+1)*size*sizeof(udctcoef) );
     }
 
     for( int q = 0; q < 6; q++ )
@@ -171,7 +172,9 @@ int x264_cqm_init( x264_t *h )
                 for( int i = 0; i < 64; i++ )
                 {
                     h->unquant8_mf[i_list][q][i] = (1ULL << (q/6 + 16 + 8)) / quant8_mf[i_list][q%6][i];
-                    h->quant8_mf[i_list][q][i] = j = SHIFT(quant8_mf[i_list][q%6][i], q/6);
+                    j = SHIFT(quant8_mf[i_list][q%6][i], q/6);
+                    h->quant8_mf[i_list][q][i] = (uint16_t)j;
+
                     if( !j )
                     {
                         min_qp_err = X264_MIN( min_qp_err, q );
@@ -183,23 +186,65 @@ int x264_cqm_init( x264_t *h )
                 }
     }
 
-    if( !h->mb.b_lossless && max_qp_err >= h->param.rc.i_qp_min )
+    /* Emergency mode denoising. */
+    x264_emms();
+    CHECKED_MALLOC( h->nr_offset_emergency, sizeof(*h->nr_offset_emergency)*(QP_MAX-QP_MAX_SPEC) );
+    for( int q = 0; q < QP_MAX - QP_MAX_SPEC; q++ )
+        for( int cat = 0; cat <= 2; cat++ )
+        {
+            int dct8x8 = cat == 1;
+            int size = dct8x8 ? 64 : 16;
+            udctcoef *nr_offset = h->nr_offset_emergency[q][cat];
+            /* Denoise chroma first (due to h264's chroma QP offset), then luma, then DC. */
+            int dc_threshold =    (QP_MAX-QP_MAX_SPEC)*2/3;
+            int luma_threshold =  (QP_MAX-QP_MAX_SPEC)*2/3;
+            int chroma_threshold = 0;
+
+            for( int i = 0; i < size; i++ )
+            {
+                int max = (1 << (7 + BIT_DEPTH)) - 1;
+                /* True "emergency mode": remove all DCT coefficients */
+                if( q == QP_MAX - QP_MAX_SPEC - 1 )
+                {
+                    nr_offset[i] = max;
+                    continue;
+                }
+
+                int thresh = i == 0 ? dc_threshold : cat == 2 ? chroma_threshold : luma_threshold;
+                if( q < thresh )
+                {
+                    nr_offset[i] = 0;
+                    continue;
+                }
+                double pos = (double)(q-thresh+1) / (QP_MAX - QP_MAX_SPEC - thresh);
+
+                /* XXX: this math is largely tuned for /dev/random input. */
+                double start = dct8x8 ? h->unquant8_mf[CQM_8PY][QP_MAX_SPEC][i]
+                                      : h->unquant4_mf[CQM_4PY][QP_MAX_SPEC][i];
+                /* Formula chosen as an exponential scale to vaguely mimic the effects
+                 * of a higher quantizer. */
+                double bias = (pow( 2, pos*(QP_MAX - QP_MAX_SPEC)/10. )*0.003-0.003) * start;
+                nr_offset[i] = X264_MIN( bias + 0.5, max );
+            }
+        }
+
+    if( !h->mb.b_lossless )
     {
-        x264_log( h, X264_LOG_ERROR, "Quantization overflow.  Your CQM is incompatible with QP < %d,\n", max_qp_err+1 );
-        x264_log( h, X264_LOG_ERROR, "but min QP is set to %d.\n", h->param.rc.i_qp_min );
-        return -1;
-    }
-    if( !h->mb.b_lossless && max_chroma_qp_err >= h->chroma_qp_table[h->param.rc.i_qp_min] )
-    {
-        x264_log( h, X264_LOG_ERROR, "Quantization overflow.  Your CQM is incompatible with QP < %d,\n", max_chroma_qp_err+1 );
-        x264_log( h, X264_LOG_ERROR, "but min chroma QP is implied to be %d.\n", h->chroma_qp_table[h->param.rc.i_qp_min] );
-        return -1;
-    }
-    if( !h->mb.b_lossless && min_qp_err <= h->param.rc.i_qp_max )
-    {
-        x264_log( h, X264_LOG_ERROR, "Quantization underflow.  Your CQM is incompatible with QP > %d,\n", min_qp_err-1 );
-        x264_log( h, X264_LOG_ERROR, "but max QP is implied to be %d.\n", h->param.rc.i_qp_max );
-        return -1;
+        while( h->chroma_qp_table[h->param.rc.i_qp_min] <= max_chroma_qp_err )
+            h->param.rc.i_qp_min++;
+        if( min_qp_err <= h->param.rc.i_qp_max )
+            h->param.rc.i_qp_max = min_qp_err-1;
+        if( max_qp_err >= h->param.rc.i_qp_min )
+            h->param.rc.i_qp_min = max_qp_err+1;
+        /* If long level-codes aren't allowed, we need to allow QP high enough to avoid them. */
+        if( !h->param.b_cabac && h->sps->i_profile_idc < PROFILE_HIGH )
+            while( h->chroma_qp_table[SPEC_QP(h->param.rc.i_qp_max)] <= 12 || h->param.rc.i_qp_max <= 12 )
+                h->param.rc.i_qp_max++;
+        if( h->param.rc.i_qp_min > h->param.rc.i_qp_max )
+        {
+            x264_log( h, X264_LOG_ERROR, "Impossible QP constraints for CQM (min=%d, max=%d)\n", h->param.rc.i_qp_min, h->param.rc.i_qp_max );
+            return -1;
+        }
     }
     return 0;
 fail:
@@ -231,6 +276,7 @@ void x264_cqm_delete( x264_t *h )
 {
     CQM_DELETE( 4, 4 );
     CQM_DELETE( 8, 2 );
+    x264_free( h->nr_offset_emergency );
 }
 
 static int x264_cqm_parse_jmlist( x264_t *h, const char *buf, const char *name,

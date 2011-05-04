@@ -1,7 +1,7 @@
 /*****************************************************************************
  * frame.c: frame handling
  *****************************************************************************
- * Copyright (C) 2003-2010 x264 project
+ * Copyright (C) 2003-2011 x264 project
  *
  * Authors: Laurent Aimar <fenrir@via.ecp.fr>
  *          Loren Merritt <lorenm@u.washington.edu>
@@ -78,7 +78,7 @@ x264_frame_t *x264_frame_new( x264_t *h, int b_fdec )
 
     frame->i_poc = -1;
     frame->i_type = X264_TYPE_AUTO;
-    frame->i_qpplus1 = 0;
+    frame->i_qpplus1 = X264_QP_AUTO;
     frame->i_pts = -1;
     frame->i_frame = -1;
     frame->i_frame_num = -1;
@@ -263,7 +263,7 @@ int x264_frame_copy_picture( x264_t *h, x264_frame_t *dst, x264_picture_t *src )
         return -1;
     }
 
-#if X264_HIGH_BIT_DEPTH
+#if HIGH_BIT_DEPTH
     if( !(src->img.i_csp & X264_CSP_HIGH_DEPTH) )
     {
         x264_log( h, X264_LOG_ERROR, "This build of x264 requires high depth input. Rebuild to support 8-bit input.\n" );
@@ -287,20 +287,21 @@ int x264_frame_copy_picture( x264_t *h, x264_frame_t *dst, x264_picture_t *src )
     uint8_t *pix[3];
     int stride[3];
     get_plane_ptr( h, src, &pix[0], &stride[0], 0, 0, 0 );
-    h->mc.plane_copy( dst->plane[0], dst->i_stride[0], pix[0], stride[0],
-                      h->param.i_width, h->param.i_height );
+    h->mc.plane_copy( dst->plane[0], dst->i_stride[0], (pixel*)pix[0],
+                      stride[0]/sizeof(pixel), h->param.i_width, h->param.i_height );
     if( i_csp == X264_CSP_NV12 )
     {
         get_plane_ptr( h, src, &pix[1], &stride[1], 1, 0, 1 );
-        h->mc.plane_copy( dst->plane[1], dst->i_stride[1], pix[1], stride[1],
-                          h->param.i_width, h->param.i_height>>1 );
+        h->mc.plane_copy( dst->plane[1], dst->i_stride[1], (pixel*)pix[1],
+                          stride[1]/sizeof(pixel), h->param.i_width, h->param.i_height>>1 );
     }
     else
     {
         get_plane_ptr( h, src, &pix[1], &stride[1], i_csp==X264_CSP_I420 ? 1 : 2, 1, 1 );
         get_plane_ptr( h, src, &pix[2], &stride[2], i_csp==X264_CSP_I420 ? 2 : 1, 1, 1 );
         h->mc.plane_copy_interleave( dst->plane[1], dst->i_stride[1],
-                                     pix[1], stride[1], pix[2], stride[2],
+                                     (pixel*)pix[1], stride[1]/sizeof(pixel),
+                                     (pixel*)pix[2], stride[2]/sizeof(pixel),
                                      h->param.i_width>>1, h->param.i_height>>1 );
     }
     return 0;

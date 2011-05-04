@@ -1,7 +1,7 @@
 /*****************************************************************************
  * matroska.c: matroska muxer
  *****************************************************************************
- * Copyright (C) 2005-2010 x264 project
+ * Copyright (C) 2005-2011 x264 project
  *
  * Authors: Mike Matsnev <mike@haali.su>
  *
@@ -42,7 +42,7 @@ typedef struct
 
 } mkv_hnd_t;
 
-static int open_file( char *psz_filename, hnd_t *p_handle )
+static int open_file( char *psz_filename, hnd_t *p_handle, cli_output_opt_t *opt )
 {
     mkv_hnd_t *p_mkv;
 
@@ -202,7 +202,7 @@ static int close_file( hnd_t handle, int64_t largest_pts, int64_t second_largest
     int ret;
     int64_t i_last_delta;
 
-    i_last_delta = (int64_t)(((largest_pts - second_largest_pts) * p_mkv->i_timebase_num / p_mkv->i_timebase_den) + 0.5);
+    i_last_delta = p_mkv->i_timebase_den ? (int64_t)(((largest_pts - second_largest_pts) * p_mkv->i_timebase_num / p_mkv->i_timebase_den) + 0.5) : 0;
 
     ret = mk_close( p_mkv->w, i_last_delta );
 

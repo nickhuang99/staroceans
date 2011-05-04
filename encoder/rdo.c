@@ -1,7 +1,7 @@
 /*****************************************************************************
  * rdo.c: rate-distortion optimization
  *****************************************************************************
- * Copyright (C) 2005-2010 x264 project
+ * Copyright (C) 2005-2011 x264 project
  *
  * Authors: Loren Merritt <lorenm@u.washington.edu>
  *          Jason Garrett-Glaser <darkshikari@gmail.com>
@@ -92,7 +92,7 @@ static ALWAYS_INLINE int cached_satd( x264_t *h, int size, int x, int y )
     static const uint8_t satd_shift_x[3] = {3,   2,   2};
     static const uint8_t satd_shift_y[3] = {2-1, 3-2, 2-2};
     static const uint8_t  satd_offset[3] = {0,   8,   16};
-    ALIGNED_16( static pixel zero[16] );
+    ALIGNED_16( static pixel zero[16] ) = {0};
     int cache_index = (x >> satd_shift_x[size - PIXEL_8x4]) + (y >> satd_shift_y[size - PIXEL_8x4])
                     + satd_offset[size - PIXEL_8x4];
     int res = h->mb.pic.fenc_satd_cache[cache_index];
@@ -119,7 +119,7 @@ static ALWAYS_INLINE int cached_satd( x264_t *h, int size, int x, int y )
 
 static inline int ssd_plane( x264_t *h, int size, int p, int x, int y )
 {
-    ALIGNED_16(static pixel zero[16]);
+    ALIGNED_16( static pixel zero[16] ) = {0};
     int satd = 0;
     pixel *fdec = h->mb.pic.p_fdec[p] + x + y*FDEC_STRIDE;
     pixel *fenc = h->mb.pic.p_fenc[p] + x + y*FENC_STRIDE;
@@ -387,7 +387,8 @@ void x264_rdo_init( void )
     }
 }
 
-typedef struct {
+typedef struct
+{
     int64_t score;
     int level_idx; // index into level_tree[]
     uint8_t cabac_state[10]; //just the contexts relevant to coding abs_level_m1
@@ -415,7 +416,7 @@ typedef struct {
 
 static ALWAYS_INLINE
 int quant_trellis_cabac( x264_t *h, dctcoef *dct,
-                         const uint16_t *quant_mf, const int *unquant_mf,
+                         const udctcoef *quant_mf, const int *unquant_mf,
                          const int *coef_weight, const uint8_t *zigzag,
                          int ctx_block_cat, int i_lambda2, int b_ac,
                          int dc, int i_coefs, int idx )
@@ -435,7 +436,8 @@ int quant_trellis_cabac( x264_t *h, dctcoef *dct,
     // (# of coefs) * (# of ctx) * (# of levels tried) = 1024
     // we don't need to keep all of those: (# of coefs) * (# of ctx) would be enough,
     // but it takes more time to remove dead states than you gain in reduced memory.
-    struct {
+    struct
+    {
         uint16_t abs_level;
         uint16_t next;
     } level_tree[64*8*2];
@@ -659,7 +661,7 @@ int quant_trellis_cabac( x264_t *h, dctcoef *dct,
  *  such a way that trailing ones and suffix length isn't affected. */
 static ALWAYS_INLINE
 int quant_trellis_cavlc( x264_t *h, dctcoef *dct,
-                         const uint16_t *quant_mf, const int *unquant_mf,
+                         const udctcoef *quant_mf, const int *unquant_mf,
                          const int *coef_weight, const uint8_t *zigzag,
                          int ctx_block_cat, int i_lambda2, int b_ac,
                          int dc, int i_coefs, int idx, int b_8x8 )

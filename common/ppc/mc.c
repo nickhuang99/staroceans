@@ -1,7 +1,7 @@
 /*****************************************************************************
  * mc.c: ppc motion compensation
  *****************************************************************************
- * Copyright (C) 2003-2010 x264 project
+ * Copyright (C) 2003-2011 x264 project
  *
  * Authors: Eric Petit <eric.petit@lapsus.org>
  *          Guillaume Poirier <gpoirier@mplayerhq.hu>
@@ -36,7 +36,7 @@
 #include "mc.h"
 #include "ppccommon.h"
 
-#if !X264_HIGH_BIT_DEPTH
+#if !HIGH_BIT_DEPTH
 typedef void (*pf_mc_t)( uint8_t *src, int i_src,
                          uint8_t *dst, int i_dst, int i_height );
 
@@ -460,8 +460,8 @@ static void mc_chroma_altivec_8xh( uint8_t *dstu, uint8_t *dstv, int i_dst_strid
         dstv_16h = vec_sr( dstv_16h, shiftv );
         dstv_16l = vec_sr( dstv_16l, shiftv );
 
-        dstuv = vec_perm( dstv_16h, dstv_16l, perm0v );
-        dstvv = vec_perm( dstv_16h, dstv_16l, perm1v );
+        dstuv = (vec_u8_t)vec_perm( dstv_16h, dstv_16l, perm0v );
+        dstvv = (vec_u8_t)vec_perm( dstv_16h, dstv_16l, perm1v );
 
         VEC_STORE8( dstuv, dstu );
         VEC_STORE8( dstvv, dstv );
@@ -498,8 +498,8 @@ static void mc_chroma_altivec_8xh( uint8_t *dstu, uint8_t *dstv, int i_dst_strid
         dstv_16h = vec_sr( dstv_16h, shiftv );
         dstv_16l = vec_sr( dstv_16l, shiftv );
 
-        dstuv = vec_perm( dstv_16h, dstv_16l, perm0v );
-        dstvv = vec_perm( dstv_16h, dstv_16l, perm1v );
+        dstuv = (vec_u8_t)vec_perm( dstv_16h, dstv_16l, perm0v );
+        dstvv = (vec_u8_t)vec_perm( dstv_16h, dstv_16l, perm1v );
 
         VEC_STORE8( dstuv, dstu );
         VEC_STORE8( dstvv, dstv );
@@ -856,11 +856,323 @@ static void frame_init_lowres_core_altivec( uint8_t *src0, uint8_t *dst0, uint8_
         dstc += dst_stride;
     }
 }
-#endif // !X264_HIGH_BIT_DEPTH
+
+static void mc_weight_w2_altivec( uint8_t *dst, int i_dst, uint8_t *src, int i_src,
+                                  const x264_weight_t *weight, int i_height )
+{
+    LOAD_ZERO;
+    PREP_LOAD;
+    PREP_LOAD_SRC( src );
+    vec_u8_t srcv;
+    vec_s16_t weightv;
+    vec_s16_t scalev, offsetv, denomv, roundv;
+    vec_s16_u loadv;
+
+    int denom = weight->i_denom;
+
+    loadv.s[0] = weight->i_scale;
+    scalev = vec_splat( loadv.v, 0 );
+
+    loadv.s[0] = weight->i_offset;
+    offsetv = vec_splat( loadv.v, 0 );
+
+    if( denom >= 1 )
+    {
+        loadv.s[0] = denom;
+        denomv = vec_splat( loadv.v, 0 );
+
+        loadv.s[0] = 1<<(denom - 1);
+        roundv = vec_splat( loadv.v, 0 );
+
+        for( int y = 0; y < i_height; y++, dst += i_dst, src += i_src )
+        {
+            VEC_LOAD( src, srcv, 2, vec_u8_t, src );
+            weightv = vec_u8_to_s16( srcv );
+
+            weightv = vec_mladd( weightv, scalev, roundv );
+            weightv = vec_sra( weightv, (vec_u16_t)denomv );
+            weightv = vec_add( weightv, offsetv );
+
+            srcv = vec_packsu( weightv, zero_s16v );
+            vec_ste( vec_splat( (vec_u16_t)srcv, 0 ), 0, (uint16_t*)dst );
+        }
+    }
+    else
+    {
+        for( int y = 0; y < i_height; y++, dst += i_dst, src += i_src )
+        {
+            VEC_LOAD( src, srcv, 2, vec_u8_t, src );
+            weightv = vec_u8_to_s16( srcv );
+
+            weightv = vec_mladd( weightv, scalev, offsetv );
+
+            srcv = vec_packsu( weightv, zero_s16v );
+            vec_ste( vec_splat( (vec_u16_t)srcv, 0 ), 0, (uint16_t*)dst );
+        }
+    }
+}
+static void mc_weight_w4_altivec( uint8_t *dst, int i_dst, uint8_t *src, int i_src,
+                                  const x264_weight_t *weight, int i_height )
+{
+    LOAD_ZERO;
+    PREP_LOAD;
+    PREP_LOAD_SRC( src );
+    vec_u8_t srcv;
+    vec_s16_t weightv;
+    vec_s16_t scalev, offsetv, denomv, roundv;
+    vec_s16_u loadv;
+
+    int denom = weight->i_denom;
+
+    loadv.s[0] = weight->i_scale;
+    scalev = vec_splat( loadv.v, 0 );
+
+    loadv.s[0] = weight->i_offset;
+    offsetv = vec_splat( loadv.v, 0 );
+
+    if( denom >= 1 )
+    {
+        loadv.s[0] = denom;
+        denomv = vec_splat( loadv.v, 0 );
+
+        loadv.s[0] = 1<<(denom - 1);
+        roundv = vec_splat( loadv.v, 0 );
+
+        for( int y = 0; y < i_height; y++, dst += i_dst, src += i_src )
+        {
+            VEC_LOAD( src, srcv, 4, vec_u8_t, src );
+            weightv = vec_u8_to_s16( srcv );
+
+            weightv = vec_mladd( weightv, scalev, roundv );
+            weightv = vec_sra( weightv, (vec_u16_t)denomv );
+            weightv = vec_add( weightv, offsetv );
+
+            srcv = vec_packsu( weightv, zero_s16v );
+            vec_ste( vec_splat( (vec_u32_t)srcv, 0 ), 0, (uint32_t*)dst );
+        }
+    }
+    else
+    {
+        for( int y = 0; y < i_height; y++, dst += i_dst, src += i_src )
+        {
+            VEC_LOAD( src, srcv, 4, vec_u8_t, src );
+            weightv = vec_u8_to_s16( srcv );
+
+            weightv = vec_mladd( weightv, scalev, offsetv );
+
+            srcv = vec_packsu( weightv, zero_s16v );
+            vec_ste( vec_splat( (vec_u32_t)srcv, 0 ), 0, (uint32_t*)dst );
+        }
+    }
+}
+static void mc_weight_w8_altivec( uint8_t *dst, int i_dst, uint8_t *src, int i_src,
+                                  const x264_weight_t *weight, int i_height )
+{
+    LOAD_ZERO;
+    PREP_LOAD;
+    PREP_LOAD_SRC( src );
+    PREP_STORE8;
+    vec_u8_t srcv;
+    vec_s16_t weightv;
+    vec_s16_t scalev, offsetv, denomv, roundv;
+    vec_s16_u loadv;
+
+    int denom = weight->i_denom;
+
+    loadv.s[0] = weight->i_scale;
+    scalev = vec_splat( loadv.v, 0 );
+
+    loadv.s[0] = weight->i_offset;
+    offsetv = vec_splat( loadv.v, 0 );
+
+    if( denom >= 1 )
+    {
+        loadv.s[0] = denom;
+        denomv = vec_splat( loadv.v, 0 );
+
+        loadv.s[0] = 1<<(denom - 1);
+        roundv = vec_splat( loadv.v, 0 );
+
+        for( int y = 0; y < i_height; y++, dst += i_dst, src += i_src )
+        {
+            VEC_LOAD( src, srcv, 8, vec_u8_t, src );
+            weightv = vec_u8_to_s16( srcv );
+
+            weightv = vec_mladd( weightv, scalev, roundv );
+            weightv = vec_sra( weightv, (vec_u16_t)denomv );
+            weightv = vec_add( weightv, offsetv );
+
+            srcv = vec_packsu( weightv, zero_s16v );
+            VEC_STORE8( srcv, dst );
+        }
+    }
+    else
+    {
+        for( int y = 0; y < i_height; y++, dst += i_dst, src += i_src )
+        {
+            VEC_LOAD( src, srcv, 8, vec_u8_t, src );
+            weightv = vec_u8_to_s16( srcv );
+
+            weightv = vec_mladd( weightv, scalev, offsetv );
+
+            srcv = vec_packsu( weightv, zero_s16v );
+            VEC_STORE8( srcv, dst );
+        }
+    }
+}
+static void mc_weight_w16_altivec( uint8_t *dst, int i_dst, uint8_t *src, int i_src,
+                                   const x264_weight_t *weight, int i_height )
+{
+    LOAD_ZERO;
+    PREP_LOAD;
+    PREP_LOAD_SRC( src );
+    vec_u8_t srcv;
+    vec_s16_t weight_lv, weight_hv;
+    vec_s16_t scalev, offsetv, denomv, roundv;
+    vec_s16_u loadv;
+
+    int denom = weight->i_denom;
+
+    loadv.s[0] = weight->i_scale;
+    scalev = vec_splat( loadv.v, 0 );
+
+    loadv.s[0] = weight->i_offset;
+    offsetv = vec_splat( loadv.v, 0 );
+
+    if( denom >= 1 )
+    {
+        loadv.s[0] = denom;
+        denomv = vec_splat( loadv.v, 0 );
+
+        loadv.s[0] = 1<<(denom - 1);
+        roundv = vec_splat( loadv.v, 0 );
+
+        for( int y = 0; y < i_height; y++, dst += i_dst, src += i_src )
+        {
+            VEC_LOAD( src, srcv, 16, vec_u8_t, src );
+            weight_hv = vec_u8_to_s16_h( srcv );
+            weight_lv = vec_u8_to_s16_l( srcv );
+
+            weight_hv = vec_mladd( weight_hv, scalev, roundv );
+            weight_lv = vec_mladd( weight_lv, scalev, roundv );
+            weight_hv = vec_sra( weight_hv, (vec_u16_t)denomv );
+            weight_lv = vec_sra( weight_lv, (vec_u16_t)denomv );
+            weight_hv = vec_add( weight_hv, offsetv );
+            weight_lv = vec_add( weight_lv, offsetv );
+
+            srcv = vec_packsu( weight_hv, weight_lv );
+            vec_st( srcv, 0, dst );
+        }
+    }
+    else
+    {
+        for( int y = 0; y < i_height; y++, dst += i_dst, src += i_src )
+        {
+            VEC_LOAD( src, srcv, 16, vec_u8_t, src );
+            weight_hv = vec_u8_to_s16_h( srcv );
+            weight_lv = vec_u8_to_s16_l( srcv );
+
+            weight_hv = vec_mladd( weight_hv, scalev, offsetv );
+            weight_lv = vec_mladd( weight_lv, scalev, offsetv );
+
+            srcv = vec_packsu( weight_hv, weight_lv );
+            vec_st( srcv, 0, dst );
+        }
+    }
+}
+static void mc_weight_w20_altivec( uint8_t *dst, int i_dst, uint8_t *src, int i_src,
+                                   const x264_weight_t *weight, int i_height )
+{
+    LOAD_ZERO;
+    PREP_LOAD_SRC( src );
+    vec_u8_t src_1v, src_2v, src_3v;
+    vec_s16_t weight_lv, weight_hv, weight_3v;
+    vec_s16_t scalev, offsetv, denomv, roundv;
+    vec_s16_u loadv;
+
+    int denom = weight->i_denom;
+
+    loadv.s[0] = weight->i_scale;
+    scalev = vec_splat( loadv.v, 0 );
+
+    loadv.s[0] = weight->i_offset;
+    offsetv = vec_splat( loadv.v, 0 );
+
+    if( denom >= 1 )
+    {
+        loadv.s[0] = denom;
+        denomv = vec_splat( loadv.v, 0 );
+
+        loadv.s[0] = 1<<(denom - 1);
+        roundv = vec_splat( loadv.v, 0 );
+
+        for( int y = 0; y < i_height; y++, dst += i_dst, src += i_src )
+        {
+            src_1v = vec_ld( 0,  src );
+            src_2v = vec_ld( 16, src );
+            src_3v = vec_ld( 19, src );
+            src_1v = vec_perm( src_1v, src_2v, _src_ );
+            src_3v = vec_perm( src_2v, src_3v, _src_ );
+            weight_hv = vec_u8_to_s16_h( src_1v );
+            weight_lv = vec_u8_to_s16_l( src_1v );
+            weight_3v = vec_u8_to_s16_h( src_3v );
+
+            weight_hv = vec_mladd( weight_hv, scalev, roundv );
+            weight_lv = vec_mladd( weight_lv, scalev, roundv );
+            weight_3v = vec_mladd( weight_3v, scalev, roundv );
+            weight_hv = vec_sra( weight_hv, (vec_u16_t)denomv );
+            weight_lv = vec_sra( weight_lv, (vec_u16_t)denomv );
+            weight_3v = vec_sra( weight_3v, (vec_u16_t)denomv );
+            weight_hv = vec_add( weight_hv, offsetv );
+            weight_lv = vec_add( weight_lv, offsetv );
+            weight_3v = vec_add( weight_3v, offsetv );
+
+            src_1v = vec_packsu( weight_hv, weight_lv );
+            src_3v = vec_packsu( weight_3v, zero_s16v );
+            vec_st( src_1v, 0, dst );
+            vec_ste( (vec_u32_t)src_3v, 16, (uint32_t*)dst );
+        }
+    }
+    else
+    {
+        for( int y = 0; y < i_height; y++, dst += i_dst, src += i_src )
+        {
+            src_1v = vec_ld( 0,  src );
+            src_2v = vec_ld( 16, src );
+            src_3v = vec_ld( 19, src );
+            src_1v = vec_perm( src_1v, src_2v, _src_ );
+            src_3v = vec_perm( src_2v, src_3v, _src_ );
+            weight_hv = vec_u8_to_s16_h( src_1v );
+            weight_lv = vec_u8_to_s16_l( src_1v );
+            weight_3v = vec_u8_to_s16_h( src_3v );
+
+            weight_hv = vec_mladd( weight_hv, scalev, offsetv );
+            weight_lv = vec_mladd( weight_lv, scalev, offsetv );
+            weight_3v = vec_mladd( weight_3v, scalev, offsetv );
+
+            src_1v = vec_packsu( weight_hv, weight_lv );
+            src_3v = vec_packsu( weight_3v, zero_s16v );
+            vec_st( src_1v, 0, dst );
+            vec_ste( (vec_u32_t)src_3v, 16, (uint32_t*)dst );
+        }
+    }
+}
+
+static weight_fn_t x264_mc_weight_wtab_altivec[6] =
+{
+    mc_weight_w2_altivec,
+    mc_weight_w4_altivec,
+    mc_weight_w8_altivec,
+    mc_weight_w16_altivec,
+    mc_weight_w16_altivec,
+    mc_weight_w20_altivec,
+};
+
+#endif // !HIGH_BIT_DEPTH
 
 void x264_mc_altivec_init( x264_mc_functions_t *pf )
 {
-#if !X264_HIGH_BIT_DEPTH
+#if !HIGH_BIT_DEPTH
     pf->mc_luma   = mc_luma_altivec;
     pf->get_ref   = get_ref_altivec;
     pf->mc_chroma = mc_chroma_altivec;
@@ -870,5 +1182,7 @@ void x264_mc_altivec_init( x264_mc_functions_t *pf )
 
     pf->hpel_filter = x264_hpel_filter_altivec;
     pf->frame_init_lowres_core = frame_init_lowres_core_altivec;
-#endif // !X264_HIGH_BIT_DEPTH
+
+    pf->weight = x264_mc_weight_wtab_altivec;
+#endif // !HIGH_BIT_DEPTH
 }

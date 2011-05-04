@@ -1,7 +1,7 @@
 /*****************************************************************************
  * x264.h: x264 public header
  *****************************************************************************
- * Copyright (C) 2003-2010 x264 project
+ * Copyright (C) 2003-2011 x264 project
  *
  * Authors: Laurent Aimar <fenrir@via.ecp.fr>
  *          Loren Merritt <lorenm@u.washington.edu>
@@ -39,7 +39,9 @@
 
 #include <stdarg.h>
 
-#define X264_BUILD 106
+#include "x264_config.h"
+
+#define X264_BUILD 115
 
 /* x264_t:
  *      opaque handler for encoder */
@@ -120,6 +122,8 @@ typedef struct
 #define X264_CPU_FAST_NEON_MRC  0x080000  /* Transfer from NEON to ARM register is fast (Cortex-A9) */
 #define X264_CPU_SLOW_CTZ       0x100000  /* BSR/BSF x86 instructions are really slow on some CPUs */
 #define X264_CPU_SLOW_ATOM      0x200000  /* The Atom just sucks */
+#define X264_CPU_AVX            0x400000  /* AVX support: requires OS support even if YMM registers
+                                           * aren't used. */
 
 /* Analyse flags
  */
@@ -143,6 +147,7 @@ typedef struct
 #define X264_RC_CQP                  0
 #define X264_RC_CRF                  1
 #define X264_RC_ABR                  2
+#define X264_QP_AUTO                 0
 #define X264_AQ_NONE                 0
 #define X264_AQ_VARIANCE             1
 #define X264_AQ_AUTOVARIANCE         2
@@ -150,16 +155,13 @@ typedef struct
 #define X264_B_ADAPT_FAST            1
 #define X264_B_ADAPT_TRELLIS         2
 #define X264_WEIGHTP_NONE            0
-#define X264_WEIGHTP_BLIND           1
+#define X264_WEIGHTP_SIMPLE          1
 #define X264_WEIGHTP_SMART           2
 #define X264_B_PYRAMID_NONE          0
 #define X264_B_PYRAMID_STRICT        1
 #define X264_B_PYRAMID_NORMAL        2
 #define X264_KEYINT_MIN_AUTO         0
 #define X264_KEYINT_MAX_INFINITE     (1<<30)
-#define X264_OPEN_GOP_NONE           0
-#define X264_OPEN_GOP_NORMAL         1
-#define X264_OPEN_GOP_BLURAY         2
 
 static const char * const x264_direct_pred_names[] = { "none", "spatial", "temporal", "auto", 0 };
 static const char * const x264_motion_est_names[] = { "dia", "hex", "umh", "esa", "tesa", 0 };
@@ -171,7 +173,6 @@ static const char * const x264_colorprim_names[] = { "", "bt709", "undef", "", "
 static const char * const x264_transfer_names[] = { "", "bt709", "undef", "", "bt470m", "bt470bg", "smpte170m", "smpte240m", "linear", "log100", "log316", 0 };
 static const char * const x264_colmatrix_names[] = { "GBR", "bt709", "undef", "", "fcc", "bt470bg", "smpte170m", "smpte240m", "YCgCo", 0 };
 static const char * const x264_nal_hrd_names[] = { "none", "vbr", "cbr", 0 };
-static const char * const x264_open_gop_names[] = { "none", "normal", "bluray", 0 };
 
 /* Colorspace type */
 #define X264_CSP_MASK           0x00ff  /* */
@@ -276,7 +277,8 @@ typedef struct x264_param_t
     int         i_bframe_adaptive;
     int         i_bframe_bias;
     int         i_bframe_pyramid;   /* Keep some B-frames as references: 0=off, 1=strict hierarchical, 2=normal */
-    int         i_open_gop;         /* Open gop: 1=display order, 2=bluray compatibility braindamage mode */
+    int         b_open_gop;
+    int         b_bluray_compat;
 
     int         b_deblocking_filter;
     int         i_deblocking_filter_alphac0;    /* [-6, 6] -6 light filter, 6 strong */
@@ -343,7 +345,7 @@ typedef struct x264_param_t
     {
         int         i_rc_method;    /* X264_RC_* */
 
-        int         i_qp_constant;  /* 0 to (51 + 6*(x264_bit_depth-8)) */
+        int         i_qp_constant;  /* 0 to (51 + 6*(x264_bit_depth-8)). 0=lossless */
         int         i_qp_min;       /* min allowed QP value */
         int         i_qp_max;       /* max allowed QP value */
         int         i_qp_step;      /* max QP step between frames */
@@ -378,6 +380,19 @@ typedef struct x264_param_t
         char        *psz_zones;     /* alternate method of specifying zones */
     } rc;
 
+    /* Cropping Rectangle parameters: added to those implicitly defined by
+       non-mod16 video resolutions. */
+    struct
+    {
+        unsigned int i_left;
+        unsigned int i_top;
+        unsigned int i_right;
+        unsigned int i_bottom;
+    } crop_rect;
+
+    /* frame packing arrangement flag */
+    int i_frame_packing;
+
     /* Muxing parameters */
     int b_aud;                  /* generate access unit delimiters */
     int b_repeat_headers;       /* put SPS/PPS before each keyframe */
@@ -391,9 +406,6 @@ typedef struct x264_param_t
     uint32_t i_fps_den;
     uint32_t i_timebase_num;    /* Timebase numerator */
     uint32_t i_timebase_den;    /* Timebase denominator */
-    int b_dts_compress;         /* DTS compression: this algorithm eliminates negative DTS
-                                 * by compressing them to be less than the second PTS.
-                                 * Warning: this will change the timebase! */
 
     int b_tff;
 
@@ -466,7 +478,8 @@ void x264_nal_encode( x264_t *h, uint8_t *dst, x264_nal_t *nal );
  * H.264 level restriction information
  ****************************************************************************/
 
-typedef struct {
+typedef struct
+{
     int level_idc;
     int mbps;        /* max macroblock processing rate (macroblocks/sec) */
     int frame_size;  /* max frame size (macroblocks) */
@@ -529,7 +542,13 @@ int x264_param_parse( x264_param_t *, const char *name, const char *value );
  *      Currently available presets are, ordered from fastest to slowest: */
 static const char * const x264_preset_names[] = { "ultrafast", "superfast", "veryfast", "faster", "fast", "medium", "slow", "slower", "veryslow", "placebo", 0 };
 
-/*      Warning: the speed of these presets scales dramatically.  Ultrafast is a full
+/*      The presets can also be indexed numerically, as in:
+ *      x264_param_default_preset( &param, "3", ... )
+ *      with ultrafast mapping to "0" and placebo mapping to "9".  This mapping may
+ *      of course change if new presets are added in between, but will always be
+ *      ordered from fastest to slowest.
+ *
+ *      Warning: the speed of these presets scales dramatically.  Ultrafast is a full
  *      100 times faster than placebo!
  *
  *      Currently available tunings are: */
@@ -655,10 +674,11 @@ typedef struct
      *     mixing of auto and forced frametypes is done.
      * Out: type of the picture encoded */
     int     i_type;
-    /* In: force quantizer for > 0 */
+    /* In: force quantizer for != X264_QP_AUTO */
     int     i_qpplus1;
-    /* In: pic_struct, for pulldown/doubling/etc...used only if b_pic_timing_sei=1.
-     *     use pic_struct_e for pic_struct inputs */
+    /* In: pic_struct, for pulldown/doubling/etc...used only if b_pic_struct=1.
+     *     use pic_struct_e for pic_struct inputs
+     * Out: pic_struct element associated with frame */
     int     i_pic_struct;
     /* Out: whether this frame is a keyframe.  Important when using modes that result in
      * SEI recovery points being used instead of IDR frames. */
@@ -753,6 +773,10 @@ void    x264_encoder_close  ( x264_t * );
  *      return the number of currently delayed (buffered) frames
  *      this should be used at the end of the stream, to know when you have all the encoded frames. */
 int     x264_encoder_delayed_frames( x264_t * );
+/* x264_encoder_maximum_delayed_frames( x264_t *h ):
+ *      return the maximum number of delayed (buffered) frames that can occur with the current
+ *      parameters. */
+int     x264_encoder_maximum_delayed_frames( x264_t *h );
 /* x264_encoder_intra_refresh:
  *      If an intra refresh is not in progress, begin one with the next P-frame.
  *      If an intra refresh is in progress, begin one as soon as the current one finishes.

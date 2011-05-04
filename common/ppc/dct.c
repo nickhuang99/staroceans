@@ -1,7 +1,7 @@
 /*****************************************************************************
  * dct.c: ppc transform and zigzag
  *****************************************************************************
- * Copyright (C) 2003-2010 x264 project
+ * Copyright (C) 2003-2011 x264 project
  *
  * Authors: Guillaume Poirier <gpoirier@mplayerhq.hu>
  *          Eric Petit <eric.petit@lapsus.org>
@@ -27,7 +27,7 @@
 #include "common/common.h"
 #include "ppccommon.h"
 
-#if !X264_HIGH_BIT_DEPTH
+#if !HIGH_BIT_DEPTH
 #define VEC_DCT(a0,a1,a2,a3,b0,b1,b2,b3) \
     b1 = vec_add( a0, a3 );              \
     b3 = vec_add( a1, a2 );              \
@@ -91,14 +91,14 @@ void x264_sub8x8_dct_altivec( int16_t dct[4][16], uint8_t *pix1, uint8_t *pix2 )
     VEC_DCT( dct0v, dct1v, dct2v, dct3v, tmp0v, tmp1v, tmp2v, tmp3v );
     VEC_DCT( dct4v, dct5v, dct6v, dct7v, tmp4v, tmp5v, tmp6v, tmp7v );
 
-    vec_st(vec_perm(tmp0v, tmp1v, permHighv), 0,   dct);
-    vec_st(vec_perm(tmp2v, tmp3v, permHighv), 16,  dct);
-    vec_st(vec_perm(tmp4v, tmp5v, permHighv), 32,  dct);
-    vec_st(vec_perm(tmp6v, tmp7v, permHighv), 48,  dct);
-    vec_st(vec_perm(tmp0v, tmp1v, permLowv),  64,  dct);
-    vec_st(vec_perm(tmp2v, tmp3v, permLowv),  80,  dct);
-    vec_st(vec_perm(tmp4v, tmp5v, permLowv),  96,  dct);
-    vec_st(vec_perm(tmp6v, tmp7v, permLowv),  112, dct);
+    vec_st(vec_perm(tmp0v, tmp1v, permHighv), 0,   *dct);
+    vec_st(vec_perm(tmp2v, tmp3v, permHighv), 16,  *dct);
+    vec_st(vec_perm(tmp4v, tmp5v, permHighv), 32,  *dct);
+    vec_st(vec_perm(tmp6v, tmp7v, permHighv), 48,  *dct);
+    vec_st(vec_perm(tmp0v, tmp1v, permLowv),  64,  *dct);
+    vec_st(vec_perm(tmp2v, tmp3v, permLowv),  80,  *dct);
+    vec_st(vec_perm(tmp4v, tmp5v, permLowv),  96,  *dct);
+    vec_st(vec_perm(tmp6v, tmp7v, permLowv),  112, *dct);
 }
 
 void x264_sub16x16_dct_altivec( int16_t dct[16][16], uint8_t *pix1, uint8_t *pix2 )
@@ -486,5 +486,5 @@ void x264_zigzag_scan_4x4_field_altivec( int16_t level[16], int16_t dct[16] )
     vec_st( tmp0v, 0x00, level );
     vec_st( tmp1v, 0x10, level );
 }
-#endif // !X264_HIGH_BIT_DEPTH
+#endif // !HIGH_BIT_DEPTH
 

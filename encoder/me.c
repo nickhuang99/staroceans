@@ -1,7 +1,7 @@
 /*****************************************************************************
  * me.c: motion estimation
  *****************************************************************************
- * Copyright (C) 2003-2010 x264 project
+ * Copyright (C) 2003-2011 x264 project
  *
  * Authors: Loren Merritt <lorenm@u.washington.edu>
  *          Laurent Aimar <fenrir@via.ecp.fr>
@@ -583,21 +583,19 @@ void x264_me_search_ref( x264_t *h, x264_me_t *m, int16_t (*mvc)[2], int i_mvc, 
 #if 0
             /* plain old exhaustive search */
             for( int my = min_y; my <= max_y; my++ )
-                for( int mx = min_x; mx <= max_x; mx++ )
+                for( int mx = min_x; mx < min_x + width; mx++ )
                     COST_MV( mx, my );
 #else
             /* successive elimination by comparing DC before a full SAD,
              * because sum(abs(diff)) >= abs(diff(sum)). */
             uint16_t *sums_base = m->integral;
-            /* due to a GCC bug on some platforms (win32?), zero[] may not actually be aligned.
-             * this is not a problem because it is not used for any SSE instructions. */
-            ALIGNED_16( static pixel zero[8*FENC_STRIDE] );
+            ALIGNED_16( static pixel zero[8*FENC_STRIDE] ) = {0};
             ALIGNED_ARRAY_16( int, enc_dc,[4] );
             int sad_size = i_pixel <= PIXEL_8x8 ? PIXEL_8x8 : PIXEL_4x4;
             int delta = x264_pixel_size[sad_size].w;
             int16_t *xs = h->scratch_buffer;
             int xn;
-            uint16_t *cost_fpel_mvx = h->cost_mv_fpel[x264_lambda_tab[h->mb.i_qp]][-m->mvp[0]&3] + (-m->mvp[0]>>2);
+            uint16_t *cost_fpel_mvx = h->cost_mv_fpel[h->mb.i_qp][-m->mvp[0]&3] + (-m->mvp[0]>>2);
 
             h->pixf.sad_x4[sad_size]( zero, p_fenc, p_fenc+delta,
                 p_fenc+delta*FENC_STRIDE, p_fenc+delta+delta*FENC_STRIDE,
@@ -945,8 +943,8 @@ static void ALWAYS_INLINE x264_me_refine_bidir( x264_t *h, x264_me_t *m0, x264_m
     const int bw = x264_pixel_size[i_pixel].w;
     const int bh = x264_pixel_size[i_pixel].h;
     ALIGNED_ARRAY_16( pixel, pixy_buf,[2],[9][16*16] );
-    ALIGNED_ARRAY_8( pixel, pixu_buf,[2],[9][8*8] );
-    ALIGNED_ARRAY_8( pixel, pixv_buf,[2],[9][8*8] );
+    ALIGNED_ARRAY_16( pixel, pixu_buf,[2],[9][8*8] );
+    ALIGNED_ARRAY_16( pixel, pixv_buf,[2],[9][8*8] );
     pixel *src[2][9];
     pixel *pix  = &h->mb.pic.p_fdec[0][8*x + 8*y*FDEC_STRIDE];
     pixel *pixu = &h->mb.pic.p_fdec[1][4*x + 4*y*FDEC_STRIDE];
@@ -967,7 +965,7 @@ static void ALWAYS_INLINE x264_me_refine_bidir( x264_t *h, x264_me_t *m0, x264_m
     /* each byte of visited represents 8 possible m1y positions, so a 4D array isn't needed */
     ALIGNED_ARRAY_16( uint8_t, visited,[8],[8][8] );
     /* all permutations of an offset in up to 2 of the dimensions */
-    static const int8_t dia4d[33][4] =
+    ALIGNED_4( static const int8_t dia4d[33][4] ) =
     {
         {0,0,0,0},
         {0,0,0,1}, {0,0,0,-1}, {0,0,1,0}, {0,0,-1,0},
@@ -1110,7 +1108,15 @@ void x264_me_refine_bidir_rd( x264_t *h, x264_me_t *m0, x264_me_t *m1, int i_wei
         uint64_t cost; \
         M32( cache_mv ) = pack16to32_mask(mx,my); \
         if( m->i_pixel <= PIXEL_8x8 ) \
+        { \
             h->mc.mc_chroma( pixu, pixv, FDEC_STRIDE, m->p_fref[4], m->i_stride[1], mx, my + mvy_offset, bw>>1, bh>>1 ); \
+            if( m->weight[1].weightfn ) \
+                m->weight[1].weightfn[x264_pixel_size[i_pixel].w>>3]( pixu, FDEC_STRIDE, pixu, FDEC_STRIDE, \
+                                                                      &m->weight[1], x264_pixel_size[i_pixel].h>>1 ); \
+            if( m->weight[2].weightfn ) \
+                m->weight[2].weightfn[x264_pixel_size[i_pixel].w>>3]( pixv, FDEC_STRIDE, pixv, FDEC_STRIDE, \
+                                                                      &m->weight[2], x264_pixel_size[i_pixel].h>>1 ); \
+        } \
         cost = x264_rd_cost_part( h, i_lambda2, i4, m->i_pixel ); \
         COPY4_IF_LT( bcost, cost, bmx, mx, bmy, my, dir, do_dir?mdir:dir ); \
     } \
@@ -1129,8 +1135,7 @@ void x264_me_refine_qpel_rd( x264_t *h, x264_me_t *m, int i_lambda2, int i4, int
     int bmx = m->mv[0];
     int bmy = m->mv[1];
     int omx, omy, pmx, pmy;
-    unsigned bsatd;
-    int satd;
+    int satd, bsatd;
     int dir = -2;
     int i8 = i4>>2;
     uint16_t amvd;

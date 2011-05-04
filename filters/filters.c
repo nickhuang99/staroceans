@@ -1,7 +1,7 @@
 /*****************************************************************************
  * filters.c: common filter functions
  *****************************************************************************
- * Copyright (C) 2010 x264 project
+ * Copyright (C) 2010-2011 x264 project
  *
  * Authors: Diogo Franco <diogomfranco@gmail.com>
  *          Steven Walters <kemuri9@gmail.com>
@@ -27,7 +27,7 @@
 #include "filters.h"
 #define RETURN_IF_ERROR( cond, ... ) RETURN_IF_ERR( cond, "options", NULL, __VA_ARGS__ )
 
-char **x264_split_string( char *string, char *sep, uint32_t limit )
+char **x264_split_string( char *string, char *sep, int limit )
 {
     if( !string )
         return NULL;

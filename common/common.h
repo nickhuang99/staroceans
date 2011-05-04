@@ -1,7 +1,7 @@
 /*****************************************************************************
  * common.h: misc common functions
  *****************************************************************************
- * Copyright (C) 2003-2010 x264 project
+ * Copyright (C) 2003-2011 x264 project
  *
  * Authors: Laurent Aimar <fenrir@via.ecp.fr>
  *          Loren Merritt <lorenm@u.washington.edu>
@@ -59,12 +59,13 @@ do {\
 #define X264_PCM_COST (384*BIT_DEPTH+16)
 #define X264_LOOKAHEAD_MAX 250
 #define QP_BD_OFFSET (6*(BIT_DEPTH-8))
-#define QP_MAX (51+QP_BD_OFFSET)
-#define QP_MAX_MAX (51+2*6)
-#define LAMBDA_MAX (91 << (BIT_DEPTH-8))
+#define QP_MAX_SPEC (51+QP_BD_OFFSET)
+#define QP_MAX (QP_MAX_SPEC+18)
+#define QP_MAX_MAX (51+2*6+18)
 #define PIXEL_MAX ((1 << BIT_DEPTH)-1)
 // arbitrary, but low because SATD scores are 1/4 normal
 #define X264_LOOKAHEAD_QP (12+QP_BD_OFFSET)
+#define SPEC_QP(x) X264_MIN((x), QP_MAX_SPEC)
 
 // number of pixels (per thread) in progress at any given time.
 // 16 for the macroblock in progress + 3 for deblocking + 3 for motion compensation filter + 2 for extra safety
@@ -110,10 +111,11 @@ typedef union { x264_uint128_t i; uint64_t a[2]; uint32_t b[4]; uint16_t c[8]; u
 #define CP64(dst,src) M64(dst) = M64(src)
 #define CP128(dst,src) M128(dst) = M128(src)
 
-#if X264_HIGH_BIT_DEPTH
+#if HIGH_BIT_DEPTH
     typedef uint16_t pixel;
     typedef uint64_t pixel4;
     typedef int32_t  dctcoef;
+    typedef uint32_t udctcoef;
 
 #   define PIXEL_SPLAT_X4(x) ((x)*0x0001000100010001ULL)
 #   define MPIXEL_X4(src) M64(src)
@@ -121,10 +123,13 @@ typedef union { x264_uint128_t i; uint64_t a[2]; uint32_t b[4]; uint16_t c[8]; u
     typedef uint8_t  pixel;
     typedef uint32_t pixel4;
     typedef int16_t  dctcoef;
+    typedef uint16_t udctcoef;
 
 #   define PIXEL_SPLAT_X4(x) ((x)*0x01010101U)
 #   define MPIXEL_X4(src) M32(src)
 #endif
+
+#define BIT_DEPTH X264_BIT_DEPTH
 
 #define CPPIXEL_X4(dst,src) MPIXEL_X4(dst) = MPIXEL_X4(src)
 
@@ -132,7 +137,7 @@ typedef union { x264_uint128_t i; uint64_t a[2]; uint32_t b[4]; uint16_t c[8]; u
 #define X264_SCAN8_LUMA_SIZE (5*8)
 #define X264_SCAN8_0 (4+1*8)
 
-static const int x264_scan8[16+2*4+3] =
+static const unsigned x264_scan8[16+2*4+3] =
 {
     /* Luma */
     4+1*8, 5+1*8, 4+2*8, 5+2*8,
@@ -200,7 +205,7 @@ void x264_log( x264_t *h, int i_level, const char *psz_fmt, ... );
 
 void x264_reduce_fraction( uint32_t *n, uint32_t *d );
 void x264_reduce_fraction64( uint64_t *n, uint64_t *d );
-void x264_init_vlc_tables();
+void x264_init_vlc_tables( void );
 
 static ALWAYS_INLINE pixel x264_clip_pixel( int x )
 {
@@ -305,6 +310,8 @@ enum sei_payload_type_e
     SEI_USER_DATA_REGISTERED   = 4,
     SEI_USER_DATA_UNREGISTERED = 5,
     SEI_RECOVERY_POINT         = 6,
+    SEI_DEC_REF_PIC_MARKING    = 7,
+    SEI_FRAME_PACKING          = 45,
 };
 
 typedef struct
@@ -338,8 +345,7 @@ typedef struct
     int i_num_ref_idx_l0_active;
     int i_num_ref_idx_l1_active;
 
-    int b_ref_pic_list_reordering_l0;
-    int b_ref_pic_list_reordering_l1;
+    int b_ref_pic_list_reordering[2];
     struct
     {
         int idc;
@@ -413,6 +419,9 @@ struct x264_t
     uint8_t *nal_buffer;
     int      nal_buffer_size;
 
+    x264_sps_t      *sps;
+    x264_pps_t      *pps;
+
     /**** thread synchronization starts here ****/
 
     /* frame number/poc */
@@ -424,27 +433,24 @@ struct x264_t
     int             i_nal_type;
     int             i_nal_ref_idc;
 
-    int             i_disp_fields;  /* Number of displayed fields (both coded and implied via pic_struct) */
+    int64_t         i_disp_fields;  /* Number of displayed fields (both coded and implied via pic_struct) */
     int             i_disp_fields_last_frame;
-    int             i_prev_duration; /* Duration of previous frame */
-    int             i_coded_fields; /* Number of coded fields (both coded and implied via pic_struct) */
-    int             i_cpb_delay;    /* Equal to number of fields preceding this field
+    int64_t         i_prev_duration; /* Duration of previous frame */
+    int64_t         i_coded_fields; /* Number of coded fields (both coded and implied via pic_struct) */
+    int64_t         i_cpb_delay;    /* Equal to number of fields preceding this field
                                      * since last buffering_period SEI */
-    int             i_coded_fields_lookahead; /* Use separate counters for lookahead */
-    int             i_cpb_delay_lookahead;
+    int64_t         i_coded_fields_lookahead; /* Use separate counters for lookahead */
+    int64_t         i_cpb_delay_lookahead;
+
+    int64_t         i_cpb_delay_pir_offset;
 
     int             b_queued_intra_refresh;
     int64_t         i_last_idr_pts;
 
     /* We use only one SPS and one PPS */
     x264_sps_t      sps_array[1];
-    x264_sps_t      *sps;
     x264_pps_t      pps_array[1];
-    x264_pps_t      *pps;
     int             i_idr_pic_id;
-
-    /* Timebase multiplier for DTS compression */
-    int             i_dts_compress_multiplier;
 
     /* quantization matrix for decoding, [cqm][qp%6][coef] */
     int             (*dequant4_mf[4])[16];   /* [4][6][16] */
@@ -453,21 +459,24 @@ struct x264_t
     int             (*unquant4_mf[4])[16];   /* [4][52][16] */
     int             (*unquant8_mf[2])[64];   /* [2][52][64] */
     /* quantization matrix for deadzone */
-    uint16_t        (*quant4_mf[4])[16];     /* [4][52][16] */
-    uint16_t        (*quant8_mf[2])[64];     /* [2][52][64] */
-    uint16_t        (*quant4_bias[4])[16];   /* [4][52][16] */
-    uint16_t        (*quant8_bias[2])[64];   /* [2][52][64] */
+    udctcoef        (*quant4_mf[4])[16];     /* [4][52][16] */
+    udctcoef        (*quant8_mf[2])[64];     /* [2][52][64] */
+    udctcoef        (*quant4_bias[4])[16];   /* [4][52][16] */
+    udctcoef        (*quant8_bias[2])[64];   /* [2][52][64] */
+    udctcoef        (*nr_offset_emergency)[3][64];
 
-    /* mv/ref cost arrays.  Indexed by lambda instead of
-     * qp because, due to rounding, some quantizers share
-     * lambdas.  This saves memory. */
-    uint16_t *cost_mv[LAMBDA_MAX+1];
-    uint16_t *cost_mv_fpel[LAMBDA_MAX+1][4];
+    /* mv/ref cost arrays. */
+    uint16_t *cost_mv[QP_MAX+1];
+    uint16_t *cost_mv_fpel[QP_MAX+1][4];
 
     const uint8_t   *chroma_qp_table; /* includes both the nonlinear luma->chroma mapping and chroma_qp_offset */
 
     /* Slice header */
     x264_slice_header_t sh;
+
+    /* Slice header backup, for SEI_DEC_REF_PIC_MARKING */
+    int b_sh_backup;
+    x264_slice_header_t sh_backup;
 
     /* cabac context */
     x264_cabac_t    cabac;
@@ -500,7 +509,6 @@ struct x264_t
         int     i_bframe_delay;
         int64_t i_bframe_delay_time;
         int64_t i_first_pts;
-        int64_t i_init_delta;
         int64_t i_prev_reordered_pts[2];
         int64_t i_largest_pts;
         int64_t i_second_largest_pts;
@@ -515,10 +523,9 @@ struct x264_t
     x264_frame_t    *fdec;
 
     /* references lists */
-    int             i_ref0;
-    x264_frame_t    *fref0[X264_REF_MAX+3];     /* ref list 0 */
-    int             i_ref1;
-    x264_frame_t    *fref1[X264_REF_MAX+3];     /* ref list 1 */
+    int             i_ref[2];
+    x264_frame_t    *fref[2][X264_REF_MAX+3];
+    x264_frame_t    *fref_nearest[2];
     int             b_ref_reorder[2];
 
     /* hrd */
@@ -643,6 +650,7 @@ struct x264_t
         int b_reencode_mb;
         int ip_offset; /* Used by PIR to offset the quantizer of intra-refresh blocks. */
         int b_deblock_rdo;
+        int b_overflow; /* If CAVLC had a level code overflow during bitstream writing. */
 
         struct
         {
@@ -784,19 +792,20 @@ struct x264_t
         /* Cumulated stats */
 
         /* per slice info */
-        int     i_frame_count[5];
-        int64_t i_frame_size[5];
-        double  f_frame_qp[5];
+        int     i_frame_count[3];
+        int64_t i_frame_size[3];
+        double  f_frame_qp[3];
         int     i_consecutive_bframes[X264_BFRAME_MAX+1];
         /* */
-        int64_t i_ssd_global[5];
-        double  f_psnr_average[5];
-        double  f_psnr_mean_y[5];
-        double  f_psnr_mean_u[5];
-        double  f_psnr_mean_v[5];
-        double  f_ssim_mean_y[5];
+        double  f_ssd_global[3];
+        double  f_psnr_average[3];
+        double  f_psnr_mean_y[3];
+        double  f_psnr_mean_u[3];
+        double  f_psnr_mean_v[3];
+        double  f_ssim_mean_y[3];
+        double  f_frame_duration[3];
         /* */
-        int64_t i_mb_count[5][19];
+        int64_t i_mb_count[3][19];
         int64_t i_mb_partition[2][17];
         int64_t i_mb_count_8x8dct[2];
         int64_t i_mb_count_ref[2][2][X264_REF_MAX*2];
@@ -806,13 +815,18 @@ struct x264_t
         int     i_direct_score[2];
         int     i_direct_frames[2];
         /* num p-frames weighted */
-        int     i_wpred[3];
+        int     i_wpred[2];
 
     } stat;
 
-    ALIGNED_16( uint32_t nr_residual_sum[2][64] );
-    ALIGNED_16( uint16_t nr_offset[2][64] );
-    uint32_t        nr_count[2];
+    /* 0 = luma 4x4, 1 = luma 8x8, 2 = chroma 4x4 */
+    udctcoef (*nr_offset)[64];
+    uint32_t (*nr_residual_sum)[64];
+    uint32_t *nr_count;
+
+    ALIGNED_16( udctcoef nr_offset_denoise[3][64] );
+    ALIGNED_16( uint32_t nr_residual_sum_buf[2][3][64] );
+    uint32_t nr_count_buf[2][3];
 
     /* Buffers that are allocated per-thread even in sliced threads. */
     void *scratch_buffer; /* for any temporary storage that doesn't want repeated malloc */
@@ -842,11 +856,12 @@ struct x264_t
 
 // included at the end because it needs x264_t
 #include "macroblock.h"
-#include "rectangle.h"
 
-#if HAVE_MMX
+#if ARCH_X86 || ARCH_X86_64
 #include "x86/util.h"
 #endif
+
+#include "rectangle.h"
 
 #endif
 
