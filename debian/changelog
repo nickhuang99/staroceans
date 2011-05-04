@@ -6,8 +6,9 @@ x264 (2:0.115.1943+git6e33b51-1) UNRELEASED; urgency=low
   * Shared library package is renamed to lib264-115.
   * fix-8x8dct+slices+no-sliced-threads+cavlc+deblock.patch is removed, has
     been applied upstream.
+  * Add DM-Upload-Allowed: yes.
 
- -- Andres Mejia <mcitadel@gmail.com>  Wed, 04 May 2011 18:05:08 -0400
+ -- Andres Mejia <mcitadel@gmail.com>  Wed, 04 May 2011 18:07:17 -0400
 
 x264 (2:0.98.1653+git88b90d9-3) unstable; urgency=low
 

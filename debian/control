@@ -12,6 +12,7 @@ Build-Depends: debhelper (>= 7),
                libx11-dev,
                quilt
 Standards-Version: 3.9.2
+DM-Upload-Allowed: yes
 Vcs-Git: git://git.debian.org/git/pkg-multimedia/x264.git
 Vcs-Browser: http://git.debian.org/?p=pkg-multimedia/x264.git
 Homepage: http://www.videolan.org/developers/x264.html
