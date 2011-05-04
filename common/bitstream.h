@@ -1,7 +1,7 @@
 /*****************************************************************************
- * bitstream.h: h264 encoder library
+ * bitstream.h: bitstream writing
  *****************************************************************************
- * Copyright (C) 2003-2008 x264 project
+ * Copyright (C) 2003-2011 x264 project
  *
  * Authors: Loren Merritt <lorenm@u.washington.edu>
  *          Jason Garrett-Glaser <darkshikari@gmail.com>
@@ -20,6 +20,9 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02111, USA.
+ *
+ * This program is also available under a commercial proprietary license.
+ * For more information, contact us at licensing@x264.com.
  *****************************************************************************/
 
 #ifndef X264_BS_H
@@ -53,7 +56,7 @@ typedef struct bs_s
 typedef struct
 {
     int     last;
-    int16_t level[16];
+    dctcoef level[16];
     uint8_t run[16];
 } x264_run_level_t;
 
@@ -68,7 +71,6 @@ typedef struct
     uint8_t *(*nal_escape) ( uint8_t *dst, uint8_t *src, uint8_t *end );
 } x264_bitstream_function_t;
 
-int x264_nal_encode( x264_t *h, uint8_t *dst, x264_nal_t *nal, int b_long_startcode );
 void x264_bitstream_init( int cpu, x264_bitstream_function_t *pf );
 
 /* A larger level table size theoretically could help a bit at extremely

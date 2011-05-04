@@ -1,7 +1,10 @@
 /*****************************************************************************
- * rectangle.h: h264 encoder library
+ * rectangle.h: rectangle filling
  *****************************************************************************
- * Copyright (C) 2010 Jason Garrett-Glaser <darkshikari@gmail.com>
+ * Copyright (C) 2003-2011 x264 project
+ *
+ * Authors: Jason Garrett-Glaser <darkshikari@gmail.com>
+ *          Loren Merritt <lorenm@u.washington.edu>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,6 +19,9 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02111, USA.
+ *
+ * This program is also available under a commercial proprietary license.
+ * For more information, contact us at licensing@x264.com.
  *****************************************************************************/
 
 /* This function should only be called with constant w / h / s arguments! */
@@ -74,6 +80,15 @@ static ALWAYS_INLINE void x264_macroblock_cache_rect( void *dst, int w, int h, i
     {
         /* height 1, width 16 doesn't occur */
         assert( h != 1 );
+#if HAVE_VECTOREXT && defined(__SSE__)
+        v4si v16 = {v,v,v,v};
+
+        M128( d+s*0+0 ) = (__m128)v16;
+        M128( d+s*1+0 ) = (__m128)v16;
+        if( h == 2 ) return;
+        M128( d+s*2+0 ) = (__m128)v16;
+        M128( d+s*3+0 ) = (__m128)v16;
+#else
         if( WORD_SIZE == 8 )
         {
             do
@@ -97,6 +112,7 @@ static ALWAYS_INLINE void x264_macroblock_cache_rect( void *dst, int w, int h, i
                 d += s;
             } while( --h );
         }
+#endif
     }
     else
         assert(0);

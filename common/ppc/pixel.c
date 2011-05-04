@@ -1,7 +1,7 @@
 /*****************************************************************************
- * pixel.c: h264 encoder
+ * pixel.c: ppc pixel metrics
  *****************************************************************************
- * Copyright (C) 2003-2008 x264 project
+ * Copyright (C) 2003-2011 x264 project
  *
  * Authors: Eric Petit <eric.petit@lapsus.org>
  *          Guillaume Poirier <gpoirier@mplayerhq.hu>
@@ -19,11 +19,16 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02111, USA.
+ *
+ * This program is also available under a commercial proprietary license.
+ * For more information, contact us at licensing@x264.com.
  *****************************************************************************/
 
 #include "common/common.h"
 #include "ppccommon.h"
+#include "../predict.h"
 
+#if !HIGH_BIT_DEPTH
 /***********************************************************************
  * SAD routines
  **********************************************************************/
@@ -279,19 +284,19 @@ static int pixel_satd_8x8_altivec( uint8_t *pix1, int i_pix1,
               temp4v, temp5v, temp6v, temp7v;
     vec_s32_t satdv;
 
-    PREP_LOAD_SRC( pix1 );
-    vec_u8_t _offset1v_ = vec_lvsl(0, pix2);
-    vec_u8_t _offset2v_ = vec_lvsl(0, pix2 + i_pix2);
+    vec_u8_t _offset1_1v_ = vec_lvsl(0, pix1);
+    vec_u8_t _offset1_2v_ = vec_lvsl(0, pix1 + i_pix1);
+    vec_u8_t _offset2_1v_ = vec_lvsl(0, pix2);
+    vec_u8_t _offset2_2v_ = vec_lvsl(0, pix2 + i_pix2);
 
-
-    VEC_DIFF_H( pix1, i_pix1, pix2, i_pix2, 8, diff0v, offset1v );
-    VEC_DIFF_H( pix1, i_pix1, pix2, i_pix2, 8, diff1v, offset2v );
-    VEC_DIFF_H( pix1, i_pix1, pix2, i_pix2, 8, diff2v, offset1v );
-    VEC_DIFF_H( pix1, i_pix1, pix2, i_pix2, 8, diff3v, offset2v );
-    VEC_DIFF_H( pix1, i_pix1, pix2, i_pix2, 8, diff4v, offset1v );
-    VEC_DIFF_H( pix1, i_pix1, pix2, i_pix2, 8, diff5v, offset2v );
-    VEC_DIFF_H( pix1, i_pix1, pix2, i_pix2, 8, diff6v, offset1v );
-    VEC_DIFF_H( pix1, i_pix1, pix2, i_pix2, 8, diff7v, offset2v );
+    VEC_DIFF_H_OFFSET( pix1, i_pix1, pix2, i_pix2, 8, diff0v, offset1_1v, offset2_1v );
+    VEC_DIFF_H_OFFSET( pix1, i_pix1, pix2, i_pix2, 8, diff1v, offset1_2v, offset2_2v );
+    VEC_DIFF_H_OFFSET( pix1, i_pix1, pix2, i_pix2, 8, diff2v, offset1_1v, offset2_1v );
+    VEC_DIFF_H_OFFSET( pix1, i_pix1, pix2, i_pix2, 8, diff3v, offset1_2v, offset2_2v );
+    VEC_DIFF_H_OFFSET( pix1, i_pix1, pix2, i_pix2, 8, diff4v, offset1_1v, offset2_1v );
+    VEC_DIFF_H_OFFSET( pix1, i_pix1, pix2, i_pix2, 8, diff5v, offset1_2v, offset2_2v );
+    VEC_DIFF_H_OFFSET( pix1, i_pix1, pix2, i_pix2, 8, diff6v, offset1_1v, offset2_1v );
+    VEC_DIFF_H_OFFSET( pix1, i_pix1, pix2, i_pix2, 8, diff7v, offset1_2v, offset2_2v );
 
     VEC_HADAMAR( diff0v, diff1v, diff2v, diff3v,
                  temp0v, temp1v, temp2v, temp3v );
@@ -1980,11 +1985,68 @@ static void ssim_4x4x2_core_altivec( const uint8_t *pix1, int stride1,
     sums[1][3] = temp[1];
 }
 
+#define SATD_X( size ) \
+static void pixel_satd_x3_##size##_altivec( uint8_t *fenc, uint8_t *pix0, uint8_t *pix1, uint8_t *pix2, int i_stride, int scores[3] )\
+{\
+    scores[0] = pixel_satd_##size##_altivec( fenc, FENC_STRIDE, pix0, i_stride );\
+    scores[1] = pixel_satd_##size##_altivec( fenc, FENC_STRIDE, pix1, i_stride );\
+    scores[2] = pixel_satd_##size##_altivec( fenc, FENC_STRIDE, pix2, i_stride );\
+}\
+static void pixel_satd_x4_##size##_altivec( uint8_t *fenc, uint8_t *pix0, uint8_t *pix1, uint8_t *pix2, uint8_t *pix3, int i_stride, int scores[4] )\
+{\
+    scores[0] = pixel_satd_##size##_altivec( fenc, FENC_STRIDE, pix0, i_stride );\
+    scores[1] = pixel_satd_##size##_altivec( fenc, FENC_STRIDE, pix1, i_stride );\
+    scores[2] = pixel_satd_##size##_altivec( fenc, FENC_STRIDE, pix2, i_stride );\
+    scores[3] = pixel_satd_##size##_altivec( fenc, FENC_STRIDE, pix3, i_stride );\
+}
+SATD_X( 16x16 )\
+SATD_X( 16x8 )\
+SATD_X( 8x16 )\
+SATD_X( 8x8 )\
+SATD_X( 8x4 )\
+SATD_X( 4x8 )\
+SATD_X( 4x4 )
+
+
+#define INTRA_MBCMP_8x8( mbcmp )\
+void intra_##mbcmp##_x3_8x8_altivec( uint8_t *fenc, uint8_t edge[33], int res[3] )\
+{\
+    ALIGNED_8( uint8_t pix[8*FDEC_STRIDE] );\
+    x264_predict_8x8_v_c( pix, edge );\
+    res[0] = pixel_##mbcmp##_8x8_altivec( pix, FDEC_STRIDE, fenc, FENC_STRIDE );\
+    x264_predict_8x8_h_c( pix, edge );\
+    res[1] = pixel_##mbcmp##_8x8_altivec( pix, FDEC_STRIDE, fenc, FENC_STRIDE );\
+    x264_predict_8x8_dc_c( pix, edge );\
+    res[2] = pixel_##mbcmp##_8x8_altivec( pix, FDEC_STRIDE, fenc, FENC_STRIDE );\
+}
+
+INTRA_MBCMP_8x8(sad)
+INTRA_MBCMP_8x8(sa8d)
+
+#define INTRA_MBCMP( mbcmp, size, pred1, pred2, pred3, chroma )\
+void intra_##mbcmp##_x3_##size##x##size##chroma##_altivec( uint8_t *fenc, uint8_t *fdec, int res[3] )\
+{\
+    x264_predict_##size##x##size##chroma##_##pred1##_c( fdec );\
+    res[0] = pixel_##mbcmp##_##size##x##size##_altivec( fdec, FDEC_STRIDE, fenc, FENC_STRIDE );\
+    x264_predict_##size##x##size##chroma##_##pred2##_c( fdec );\
+    res[1] = pixel_##mbcmp##_##size##x##size##_altivec( fdec, FDEC_STRIDE, fenc, FENC_STRIDE );\
+    x264_predict_##size##x##size##chroma##_##pred3##_c( fdec );\
+    res[2] = pixel_##mbcmp##_##size##x##size##_altivec( fdec, FDEC_STRIDE, fenc, FENC_STRIDE );\
+}
+
+INTRA_MBCMP(satd, 4, v, h, dc, )
+INTRA_MBCMP(sad, 8, dc, h, v, c )
+INTRA_MBCMP(satd, 8, dc, h, v, c )
+INTRA_MBCMP(sad, 16, v, h, dc, )
+INTRA_MBCMP(satd, 16, v, h, dc, )
+#endif // !HIGH_BIT_DEPTH
+
 /****************************************************************************
  * x264_pixel_init:
  ****************************************************************************/
 void x264_pixel_altivec_init( x264_pixel_function_t *pixf )
 {
+#if !HIGH_BIT_DEPTH
     pixf->sad[PIXEL_16x16]  = pixel_sad_16x16_altivec;
     pixf->sad[PIXEL_8x16]   = pixel_sad_8x16_altivec;
     pixf->sad[PIXEL_16x8]   = pixel_sad_16x8_altivec;
@@ -2008,11 +2070,37 @@ void x264_pixel_altivec_init( x264_pixel_function_t *pixf )
     pixf->satd[PIXEL_4x8]   = pixel_satd_4x8_altivec;
     pixf->satd[PIXEL_4x4]   = pixel_satd_4x4_altivec;
 
+    pixf->satd_x3[PIXEL_16x16] = pixel_satd_x3_16x16_altivec;
+    pixf->satd_x3[PIXEL_8x16]  = pixel_satd_x3_8x16_altivec;
+    pixf->satd_x3[PIXEL_16x8]  = pixel_satd_x3_16x8_altivec;
+    pixf->satd_x3[PIXEL_8x8]   = pixel_satd_x3_8x8_altivec;
+    pixf->satd_x3[PIXEL_8x4]   = pixel_satd_x3_8x4_altivec;
+    pixf->satd_x3[PIXEL_4x8]   = pixel_satd_x3_4x8_altivec;
+    pixf->satd_x3[PIXEL_4x4]   = pixel_satd_x3_4x4_altivec;
+
+    pixf->satd_x4[PIXEL_16x16] = pixel_satd_x4_16x16_altivec;
+    pixf->satd_x4[PIXEL_8x16]  = pixel_satd_x4_8x16_altivec;
+    pixf->satd_x4[PIXEL_16x8]  = pixel_satd_x4_16x8_altivec;
+    pixf->satd_x4[PIXEL_8x8]   = pixel_satd_x4_8x8_altivec;
+    pixf->satd_x4[PIXEL_8x4]   = pixel_satd_x4_8x4_altivec;
+    pixf->satd_x4[PIXEL_4x8]   = pixel_satd_x4_4x8_altivec;
+    pixf->satd_x4[PIXEL_4x4]   = pixel_satd_x4_4x4_altivec;
+
+    pixf->intra_sad_x3_8x8    = intra_sad_x3_8x8_altivec;
+    pixf->intra_sad_x3_8x8c   = intra_sad_x3_8x8c_altivec;
+    pixf->intra_sad_x3_16x16  = intra_sad_x3_16x16_altivec;
+
+    pixf->intra_satd_x3_4x4   = intra_satd_x3_4x4_altivec;
+    pixf->intra_satd_x3_8x8c  = intra_satd_x3_8x8c_altivec;
+    pixf->intra_satd_x3_16x16 = intra_satd_x3_16x16_altivec;
+
     pixf->ssd[PIXEL_16x16] = pixel_ssd_16x16_altivec;
     pixf->ssd[PIXEL_8x8]   = pixel_ssd_8x8_altivec;
 
     pixf->sa8d[PIXEL_16x16] = pixel_sa8d_16x16_altivec;
     pixf->sa8d[PIXEL_8x8]   = pixel_sa8d_8x8_altivec;
+
+    pixf->intra_sa8d_x3_8x8   = intra_sa8d_x3_8x8_altivec;
 
     pixf->var[PIXEL_16x16] = x264_pixel_var_16x16_altivec;
     pixf->var[PIXEL_8x8]   = x264_pixel_var_8x8_altivec;
@@ -2023,4 +2111,5 @@ void x264_pixel_altivec_init( x264_pixel_function_t *pixf )
     pixf->hadamard_ac[PIXEL_8x8]   = x264_pixel_hadamard_ac_8x8_altivec;
 
     pixf->ssim_4x4x2_core = ssim_4x4x2_core_altivec;
+#endif // !HIGH_BIT_DEPTH
 }

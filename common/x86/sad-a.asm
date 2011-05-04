@@ -1,7 +1,7 @@
 ;*****************************************************************************
-;* sad-a.asm: h264 encoder library
+;* sad-a.asm: x86 sad functions
 ;*****************************************************************************
-;* Copyright (C) 2003-2008 x264 project
+;* Copyright (C) 2003-2011 x264 project
 ;*
 ;* Authors: Loren Merritt <lorenm@u.washington.edu>
 ;*          Jason Garrett-Glaser <darkshikari@gmail.com>
@@ -21,10 +21,26 @@
 ;* You should have received a copy of the GNU General Public License
 ;* along with this program; if not, write to the Free Software
 ;* Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02111, USA.
+;*
+;* This program is also available under a commercial proprietary license.
+;* For more information, contact us at licensing@x264.com.
 ;*****************************************************************************
 
 %include "x86inc.asm"
 %include "x86util.asm"
+
+SECTION_RODATA
+
+h4x4_pred_shuf: db 3,3,3,3,7,7,7,7,11,11,11,11,15,15,15,15
+h4x4_pred_shuf2: db 3,7,11,15,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1
+h8x8_pred_shuf: times 8 db 1
+                times 8 db 0
+                times 8 db 3
+                times 8 db 2
+                times 8 db 5
+                times 8 db 4
+                times 8 db 7
+                times 8 db 6
 
 SECTION .text
 
@@ -242,7 +258,7 @@ SAD_W16 sse2_aligned
 %if %1
     paddw   m0, m1
 %else
-    SWAP    m0, m1
+    SWAP     0, 1
 %endif
     paddw   m0, m2
 %endmacro
@@ -303,6 +319,45 @@ cglobal intra_sad_x3_4x4_mmxext, 3,3
     movd   [r2+4], mm1 ;H prediction cost
     RET
 
+%macro INTRA_SADx3_4x4 1
+cglobal intra_sad_x3_4x4_%1, 3,3
+    movd       xmm4, [r1+FDEC_STRIDE*0-4]
+    pinsrd     xmm4, [r1+FDEC_STRIDE*1-4], 1
+    pinsrd     xmm4, [r1+FDEC_STRIDE*2-4], 2
+    pinsrd     xmm4, [r1+FDEC_STRIDE*3-4], 3
+    movd       xmm2, [r1-FDEC_STRIDE]
+    pxor       xmm3, xmm3
+    pshufb     xmm5, xmm4, [h4x4_pred_shuf] ; EEEEFFFFGGGGHHHH
+    pshufb     xmm4, [h4x4_pred_shuf2]      ; EFGH
+    pshufd     xmm0, xmm2, 0                ; ABCDABCDABCDABCD
+    punpckldq  xmm2, xmm4                   ; ABCDEFGH
+    psadbw     xmm2, xmm3
+    movd       xmm1, [r0+FENC_STRIDE*0]
+    pinsrd     xmm1, [r0+FENC_STRIDE*1], 1
+    pinsrd     xmm1, [r0+FENC_STRIDE*2], 2
+    pinsrd     xmm1, [r0+FENC_STRIDE*3], 3
+    psadbw     xmm0, xmm1
+    psadbw     xmm5, xmm1
+    psraw      xmm2, 2
+    pavgw      xmm2, xmm3
+    pshufb     xmm2, xmm3              ; DC prediction
+    punpckhqdq xmm3, xmm0, xmm5
+    punpcklqdq xmm0, xmm5
+    psadbw     xmm2, xmm1
+    paddw      xmm0, xmm3
+    movhlps    xmm4, xmm2
+    packusdw   xmm0, xmm0
+    paddw      xmm2, xmm4
+    movq       [r2], xmm0              ; V/H prediction costs
+    movd     [r2+8], xmm2              ; DC prediction cost
+    RET
+%endmacro ; INTRA_SADx3_4x4
+
+INIT_XMM
+INTRA_SADx3_4x4 sse4
+INIT_AVX
+INTRA_SADx3_4x4 avx
+
 ;-----------------------------------------------------------------------------
 ; void intra_sad_x3_8x8( uint8_t *fenc, uint8_t edge[33], int res[3]);
 ;-----------------------------------------------------------------------------
@@ -323,21 +378,21 @@ cglobal intra_sad_x3_4x4_mmxext, 3,3
 %if %1
     paddw     m1, m4
 %else
-    SWAP      m1, m4
+    SWAP       1, 4
 %endif
     movq      m4, m5
     psadbw    m4, m6
 %if %1
     paddw     m2, m4
 %else
-    SWAP      m2, m4
+    SWAP       2, 4
 %endif
     pshufw    m4, m7, %2
     psadbw    m5, m4
 %if %1
     paddw     m3, m5
 %else
-    SWAP      m3, m5
+    SWAP       3, 5
 %endif
 %endmacro
 
@@ -369,6 +424,69 @@ cglobal intra_sad_x3_8x8_mmxext, 3,3
     movd  [r2+4], m3
     movd  [r2+8], m1
     RET
+
+%macro INTRA_SADx3_8x8 1
+cglobal intra_sad_x3_8x8_%1, 3,4,9
+%ifdef PIC
+    lea        r11, [h8x8_pred_shuf]
+%define shuf r11
+%else
+%define shuf h8x8_pred_shuf
+%endif
+    movq       m0, [r1+7]   ; left pixels
+    movq       m1, [r1+16]  ; top pixels
+    pxor       m2, m2
+    pxor       m3, m3
+    psadbw     m2, m0
+    psadbw     m3, m1
+    paddw      m2, m3
+    pxor       m3, m3       ; V score accumulator
+    psraw      m2, 3
+    pavgw      m2, m3
+    punpcklqdq m1, m1       ; V prediction
+    pshufb     m2, m3       ; DC prediction
+    pxor       m4, m4       ; H score accumulator
+    pxor       m5, m5       ; DC score accumulator
+    mov       r3d, 6
+.loop:
+    movq        m6, [r0+FENC_STRIDE*0]
+    movhps      m6, [r0+FENC_STRIDE*1]
+    pshufb      m7, m0, [shuf+r3*8] ; H prediction
+%ifdef ARCH_X86_64
+    psadbw      m7, m6
+    psadbw      m8, m1, m6
+    psadbw      m6, m2
+    paddw       m4, m7
+    paddw       m3, m8
+    paddw       m5, m6
+%else
+    psadbw      m7, m6
+    paddw       m4, m7
+    psadbw      m7, m1, m6
+    psadbw      m6, m2
+    paddw       m3, m7
+    paddw       m5, m6
+%endif
+    add         r0, FENC_STRIDE*2
+    sub        r3d, 2
+    jge .loop
+
+    movhlps     m0, m3
+    movhlps     m1, m4
+    movhlps     m2, m5
+    paddw       m3, m0
+    paddw       m4, m1
+    paddw       m5, m2
+    movd    [r2+0], m3
+    movd    [r2+4], m4
+    movd    [r2+8], m5
+    RET
+%endmacro ; INTRA_SADx3_8x8
+
+INIT_XMM
+INTRA_SADx3_8x8 ssse3
+INIT_AVX
+INTRA_SADx3_8x8 avx
 
 ;-----------------------------------------------------------------------------
 ; void intra_sad_x3_8x8c( uint8_t *fenc, uint8_t *fdec, int res[3] );

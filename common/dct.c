@@ -1,7 +1,7 @@
 /*****************************************************************************
- * dct.c: h264 encoder library
+ * dct.c: transform and zigzag
  *****************************************************************************
- * Copyright (C) 2003-2008 x264 project
+ * Copyright (C) 2003-2011 x264 project
  *
  * Authors: Loren Merritt <lorenm@u.washington.edu>
  *          Laurent Aimar <fenrir@via.ecp.fr>
@@ -19,6 +19,9 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02111, USA.
+ *
+ * This program is also available under a commercial proprietary license.
+ * For more information, contact us at licensing@x264.com.
  *****************************************************************************/
 
 #include "common.h"
@@ -418,6 +421,36 @@ void x264_dct_init( int cpu, x264_dct_function_t *dctf )
     dctf->dct4x4dc  = dct4x4dc;
     dctf->idct4x4dc = idct4x4dc;
 
+#if HIGH_BIT_DEPTH
+#if HAVE_MMX
+    if( cpu&X264_CPU_MMX )
+    {
+        dctf->sub4x4_dct    = x264_sub4x4_dct_mmx;
+        dctf->sub8x8_dct    = x264_sub8x8_dct_mmx;
+        dctf->sub16x16_dct  = x264_sub16x16_dct_mmx;
+    }
+    if( cpu&X264_CPU_SSE2 )
+    {
+        dctf->add4x4_idct     = x264_add4x4_idct_sse2;
+        dctf->dct4x4dc        = x264_dct4x4dc_sse2;
+        dctf->idct4x4dc       = x264_idct4x4dc_sse2;
+        dctf->add8x8_idct     = x264_add8x8_idct_sse2;
+        dctf->add16x16_idct   = x264_add16x16_idct_sse2;
+        dctf->add8x8_idct_dc  = x264_add8x8_idct_dc_sse2;
+        dctf->add16x16_idct_dc= x264_add16x16_idct_dc_sse2;
+    }
+    if( cpu&X264_CPU_AVX )
+    {
+        dctf->add4x4_idct     = x264_add4x4_idct_avx;
+        dctf->dct4x4dc        = x264_dct4x4dc_avx;
+        dctf->idct4x4dc       = x264_idct4x4dc_avx;
+        dctf->add8x8_idct     = x264_add8x8_idct_avx;
+        dctf->add16x16_idct   = x264_add16x16_idct_avx;
+        dctf->add8x8_idct_dc  = x264_add8x8_idct_dc_avx;
+        dctf->add16x16_idct_dc= x264_add16x16_idct_dc_avx;
+    }
+#endif // HAVE_MMX
+#else // !HIGH_BIT_DEPTH
 #if HAVE_MMX
     if( cpu&X264_CPU_MMX )
     {
@@ -471,6 +504,19 @@ void x264_dct_init( int cpu, x264_dct_function_t *dctf )
     if( cpu&X264_CPU_SSE4 )
         dctf->add4x4_idct   = x264_add4x4_idct_sse4;
 
+    if( cpu&X264_CPU_AVX )
+    {
+        dctf->add4x4_idct      = x264_add4x4_idct_avx;
+        dctf->add8x8_idct      = x264_add8x8_idct_avx;
+        dctf->add16x16_idct    = x264_add16x16_idct_avx;
+        dctf->add8x8_idct8     = x264_add8x8_idct8_avx;
+        dctf->add16x16_idct8   = x264_add16x16_idct8_avx;
+        dctf->add16x16_idct_dc = x264_add16x16_idct_dc_avx;
+        dctf->sub8x8_dct       = x264_sub8x8_dct_avx;
+        dctf->sub16x16_dct     = x264_sub16x16_dct_avx;
+        dctf->sub8x8_dct8      = x264_sub8x8_dct8_avx;
+        dctf->sub16x16_dct8    = x264_sub16x16_dct8_avx;
+    }
 #endif //HAVE_MMX
 
 #if HAVE_ALTIVEC
@@ -515,6 +561,7 @@ void x264_dct_init( int cpu, x264_dct_function_t *dctf )
         dctf->add16x16_idct8= x264_add16x16_idct8_neon;
     }
 #endif
+#endif // HIGH_BIT_DEPTH
 }
 
 void x264_dct_init_weights( void )
@@ -599,11 +646,9 @@ static void zigzag_scan_4x4_frame( dctcoef level[16], dctcoef dct[16] )
 
 static void zigzag_scan_4x4_field( dctcoef level[16], dctcoef dct[16] )
 {
-    CPDCT_X2( level, dct );
+    memcpy( level, dct, 2 * sizeof(dctcoef) );
     ZIG(2,0,1) ZIG(3,2,0) ZIG(4,3,0) ZIG(5,1,1)
-    CPDCT_X2( level+6, dct+6 );
-    CPDCT_X4( level+8, dct+8 );
-    CPDCT_X4( level+12, dct+12 );
+    memcpy( level+6, dct+6, 10 * sizeof(dctcoef) );
 }
 
 #undef ZIG
@@ -618,6 +663,7 @@ static void zigzag_scan_4x4_field( dctcoef level[16], dctcoef dct[16] )
     CPPIXEL_X4( p_dst+1*FDEC_STRIDE, p_src+1*FENC_STRIDE );\
     CPPIXEL_X4( p_dst+2*FDEC_STRIDE, p_src+2*FENC_STRIDE );\
     CPPIXEL_X4( p_dst+3*FDEC_STRIDE, p_src+3*FENC_STRIDE );
+#define CPPIXEL_X8(dst,src) ( CPPIXEL_X4(dst,src), CPPIXEL_X4(dst+4,src+4) )
 #define COPY8x8\
     CPPIXEL_X8( p_dst+0*FDEC_STRIDE, p_src+0*FENC_STRIDE );\
     CPPIXEL_X8( p_dst+1*FDEC_STRIDE, p_src+1*FENC_STRIDE );\
@@ -709,6 +755,16 @@ void x264_zigzag_init( int cpu, x264_zigzag_function_t *pf, int b_interlaced )
         pf->sub_8x8    = zigzag_sub_8x8_field;
         pf->sub_4x4    = zigzag_sub_4x4_field;
         pf->sub_4x4ac  = zigzag_sub_4x4ac_field;
+#if HIGH_BIT_DEPTH
+#if HAVE_MMX
+        if( cpu&X264_CPU_SSE2 )
+            pf->scan_4x4 = x264_zigzag_scan_4x4_field_sse2;
+        if( cpu&X264_CPU_SSE4 )
+            pf->scan_8x8 = x264_zigzag_scan_8x8_field_sse4;
+        if( cpu&X264_CPU_AVX )
+            pf->scan_8x8 = x264_zigzag_scan_8x8_field_avx;
+#endif // HAVE_MMX
+#else
 #if HAVE_MMX
         if( cpu&X264_CPU_MMXEXT )
         {
@@ -720,12 +776,19 @@ void x264_zigzag_init( int cpu, x264_zigzag_function_t *pf, int b_interlaced )
             pf->sub_4x4  = x264_zigzag_sub_4x4_field_ssse3;
             pf->sub_4x4ac= x264_zigzag_sub_4x4ac_field_ssse3;
         }
+        if( cpu&X264_CPU_AVX )
+        {
+            pf->sub_4x4  = x264_zigzag_sub_4x4_field_avx;
+#if ARCH_X86_64
+            pf->sub_4x4ac= x264_zigzag_sub_4x4ac_field_avx;
 #endif
-
+        }
+#endif // HAVE_MMX
 #if HAVE_ALTIVEC
         if( cpu&X264_CPU_ALTIVEC )
             pf->scan_4x4   = x264_zigzag_scan_4x4_field_altivec;
 #endif
+#endif // HIGH_BIT_DEPTH
     }
     else
     {
@@ -734,6 +797,22 @@ void x264_zigzag_init( int cpu, x264_zigzag_function_t *pf, int b_interlaced )
         pf->sub_8x8    = zigzag_sub_8x8_frame;
         pf->sub_4x4    = zigzag_sub_4x4_frame;
         pf->sub_4x4ac  = zigzag_sub_4x4ac_frame;
+#if HIGH_BIT_DEPTH
+#if HAVE_MMX
+        if( cpu&X264_CPU_SSE2 )
+        {
+            pf->scan_4x4 = x264_zigzag_scan_4x4_frame_sse2;
+            pf->scan_8x8 = x264_zigzag_scan_8x8_frame_sse2;
+        }
+#if ARCH_X86_64
+        if( cpu&X264_CPU_AVX )
+        {
+            pf->scan_4x4 = x264_zigzag_scan_4x4_frame_avx;
+            pf->scan_8x8 = x264_zigzag_scan_8x8_frame_avx;
+        }
+#endif // ARCH_X86_64
+#endif // HAVE_MMX
+#else
 #if HAVE_MMX
         if( cpu&X264_CPU_MMX )
             pf->scan_4x4 = x264_zigzag_scan_4x4_frame_mmx;
@@ -749,8 +828,16 @@ void x264_zigzag_init( int cpu, x264_zigzag_function_t *pf, int b_interlaced )
             if( cpu&X264_CPU_SHUFFLE_IS_FAST )
                 pf->scan_4x4 = x264_zigzag_scan_4x4_frame_ssse3;
         }
+        if( cpu&X264_CPU_AVX )
+        {
+            pf->sub_4x4  = x264_zigzag_sub_4x4_frame_avx;
+#if ARCH_X86_64
+            pf->sub_4x4ac= x264_zigzag_sub_4x4ac_frame_avx;
 #endif
-
+            if( cpu&X264_CPU_SHUFFLE_IS_FAST )
+                pf->scan_4x4 = x264_zigzag_scan_4x4_frame_avx;
+        }
+#endif // HAVE_MMX
 #if HAVE_ALTIVEC
         if( cpu&X264_CPU_ALTIVEC )
             pf->scan_4x4   = x264_zigzag_scan_4x4_frame_altivec;
@@ -759,13 +846,23 @@ void x264_zigzag_init( int cpu, x264_zigzag_function_t *pf, int b_interlaced )
         if( cpu&X264_CPU_NEON )
             pf->scan_4x4 = x264_zigzag_scan_4x4_frame_neon;
 #endif
+#endif // HIGH_BIT_DEPTH
     }
 
     pf->interleave_8x8_cavlc = zigzag_interleave_8x8_cavlc;
 #if HAVE_MMX
+#if HIGH_BIT_DEPTH
+    if( cpu&X264_CPU_SSE2 )
+        pf->interleave_8x8_cavlc = x264_zigzag_interleave_8x8_cavlc_sse2;
+    if( cpu&X264_CPU_AVX )
+        pf->interleave_8x8_cavlc = x264_zigzag_interleave_8x8_cavlc_avx;
+#else
     if( cpu&X264_CPU_MMX )
         pf->interleave_8x8_cavlc = x264_zigzag_interleave_8x8_cavlc_mmx;
     if( cpu&X264_CPU_SHUFFLE_IS_FAST )
         pf->interleave_8x8_cavlc = x264_zigzag_interleave_8x8_cavlc_sse2;
+    if( cpu&X264_CPU_AVX )
+        pf->interleave_8x8_cavlc = x264_zigzag_interleave_8x8_cavlc_avx;
+#endif // HIGH_BIT_DEPTH
 #endif
 }

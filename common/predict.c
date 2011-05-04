@@ -1,7 +1,7 @@
 /*****************************************************************************
- * predict.c: h264 encoder
+ * predict.c: intra prediction
  *****************************************************************************
- * Copyright (C) 2003-2008 x264 project
+ * Copyright (C) 2003-2011 x264 project
  *
  * Authors: Laurent Aimar <fenrir@via.ecp.fr>
  *          Loren Merritt <lorenm@u.washington.edu>
@@ -20,6 +20,9 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02111, USA.
+ *
+ * This program is also available under a commercial proprietary license.
+ * For more information, contact us at licensing@x264.com.
  *****************************************************************************/
 
 /* predict4x4 are inspired from ffmpeg h264 decoder */
@@ -53,40 +56,40 @@
 
 void x264_predict_16x16_dc_c( pixel *src )
 {
-    pixel4 dc = 0;
+    int dc = 0;
 
     for( int i = 0; i < 16; i++ )
     {
         dc += src[-1 + i * FDEC_STRIDE];
         dc += src[i - FDEC_STRIDE];
     }
-    dc = PIXEL_SPLAT_X4( ( dc + 16 ) >> 5 );
+    pixel4 dcsplat = PIXEL_SPLAT_X4( ( dc + 16 ) >> 5 );
 
-    PREDICT_16x16_DC( dc );
+    PREDICT_16x16_DC( dcsplat );
 }
 static void x264_predict_16x16_dc_left_c( pixel *src )
 {
-    pixel4 dc = 0;
+    int dc = 0;
 
     for( int i = 0; i < 16; i++ )
         dc += src[-1 + i * FDEC_STRIDE];
-    dc = PIXEL_SPLAT_X4( ( dc + 8 ) >> 4 );
+    pixel4 dcsplat = PIXEL_SPLAT_X4( ( dc + 8 ) >> 4 );
 
-    PREDICT_16x16_DC( dc );
+    PREDICT_16x16_DC( dcsplat );
 }
 static void x264_predict_16x16_dc_top_c( pixel *src )
 {
-    pixel4 dc = 0;
+    int dc = 0;
 
     for( int i = 0; i < 16; i++ )
         dc += src[i - FDEC_STRIDE];
-    dc = PIXEL_SPLAT_X4( ( dc + 8 ) >> 4 );
+    pixel4 dcsplat = PIXEL_SPLAT_X4( ( dc + 8 ) >> 4 );
 
-    PREDICT_16x16_DC( dc );
+    PREDICT_16x16_DC( dcsplat );
 }
 static void x264_predict_16x16_dc_128_c( pixel *src )
 {
-    PREDICT_16x16_DC( PIXEL_SPLAT_X4( 0x80 ) );
+    PREDICT_16x16_DC( PIXEL_SPLAT_X4( 1 << (BIT_DEPTH-1) ) );
 }
 void x264_predict_16x16_h_c( pixel *src )
 {
@@ -116,7 +119,7 @@ void x264_predict_16x16_v_c( pixel *src )
         src += FDEC_STRIDE;
     }
 }
-static void x264_predict_16x16_p_c( pixel *src )
+void x264_predict_16x16_p_c( pixel *src )
 {
     int H = 0, V = 0;
 
@@ -155,53 +158,53 @@ static void x264_predict_8x8c_dc_128_c( pixel *src )
 {
     for( int y = 0; y < 8; y++ )
     {
-        MPIXEL_X4( src+0 ) = PIXEL_SPLAT_X4( 0x80 );
-        MPIXEL_X4( src+4 ) = PIXEL_SPLAT_X4( 0x80 );
+        MPIXEL_X4( src+0 ) = PIXEL_SPLAT_X4( 1 << (BIT_DEPTH-1) );
+        MPIXEL_X4( src+4 ) = PIXEL_SPLAT_X4( 1 << (BIT_DEPTH-1) );
         src += FDEC_STRIDE;
     }
 }
 static void x264_predict_8x8c_dc_left_c( pixel *src )
 {
-    pixel4 dc0 = 0, dc1 = 0;
+    int dc0 = 0, dc1 = 0;
 
     for( int y = 0; y < 4; y++ )
     {
         dc0 += src[y * FDEC_STRIDE     - 1];
         dc1 += src[(y+4) * FDEC_STRIDE - 1];
     }
-    dc0 = PIXEL_SPLAT_X4( ( dc0 + 2 ) >> 2 );
-    dc1 = PIXEL_SPLAT_X4( ( dc1 + 2 ) >> 2 );
+    pixel4 dc0splat = PIXEL_SPLAT_X4( ( dc0 + 2 ) >> 2 );
+    pixel4 dc1splat = PIXEL_SPLAT_X4( ( dc1 + 2 ) >> 2 );
 
     for( int y = 0; y < 4; y++ )
     {
-        MPIXEL_X4( src+0 ) = dc0;
-        MPIXEL_X4( src+4 ) = dc0;
+        MPIXEL_X4( src+0 ) = dc0splat;
+        MPIXEL_X4( src+4 ) = dc0splat;
         src += FDEC_STRIDE;
     }
     for( int y = 0; y < 4; y++ )
     {
-        MPIXEL_X4( src+0 ) = dc1;
-        MPIXEL_X4( src+4 ) = dc1;
+        MPIXEL_X4( src+0 ) = dc1splat;
+        MPIXEL_X4( src+4 ) = dc1splat;
         src += FDEC_STRIDE;
     }
 
 }
 static void x264_predict_8x8c_dc_top_c( pixel *src )
 {
-    pixel4 dc0 = 0, dc1 = 0;
+    int dc0 = 0, dc1 = 0;
 
     for( int x = 0; x < 4; x++ )
     {
         dc0 += src[x     - FDEC_STRIDE];
         dc1 += src[x + 4 - FDEC_STRIDE];
     }
-    dc0 = PIXEL_SPLAT_X4( ( dc0 + 2 ) >> 2 );
-    dc1 = PIXEL_SPLAT_X4( ( dc1 + 2 ) >> 2 );
+    pixel4 dc0splat = PIXEL_SPLAT_X4( ( dc0 + 2 ) >> 2 );
+    pixel4 dc1splat = PIXEL_SPLAT_X4( ( dc1 + 2 ) >> 2 );
 
     for( int y = 0; y < 8; y++ )
     {
-        MPIXEL_X4( src+0 ) = dc0;
-        MPIXEL_X4( src+4 ) = dc1;
+        MPIXEL_X4( src+0 ) = dc0splat;
+        MPIXEL_X4( src+4 ) = dc1splat;
         src += FDEC_STRIDE;
     }
 }
@@ -266,7 +269,7 @@ void x264_predict_8x8c_v_c( pixel *src )
         src += FDEC_STRIDE;
     }
 }
-static void x264_predict_8x8c_p_c( pixel *src )
+void x264_predict_8x8c_p_c( pixel *src )
 {
     int H = 0, V = 0;
 
@@ -306,7 +309,7 @@ static void x264_predict_8x8c_p_c( pixel *src )
 
 static void x264_predict_4x4_dc_128_c( pixel *src )
 {
-    PREDICT_4x4_DC( PIXEL_SPLAT_X4( 0x80 ) );
+    PREDICT_4x4_DC( PIXEL_SPLAT_X4( 1 << (BIT_DEPTH-1) ) );
 }
 static void x264_predict_4x4_dc_left_c( pixel *src )
 {
@@ -491,7 +494,8 @@ static void x264_predict_8x8_filter_c( pixel *src, pixel edge[33], int i_neighbo
             }
             else
             {
-                M64( edge+24 ) = SRC(7,-1) * 0x0101010101010101ULL;
+                MPIXEL_X4( edge+24 ) = PIXEL_SPLAT_X4( SRC(7,-1) );
+                MPIXEL_X4( edge+28 ) = PIXEL_SPLAT_X4( SRC(7,-1) );
                 edge[32] = SRC(7,-1);
             }
         }
@@ -523,7 +527,7 @@ static void x264_predict_8x8_filter_c( pixel *src, pixel edge[33], int i_neighbo
 
 static void x264_predict_8x8_dc_128_c( pixel *src, pixel edge[33] )
 {
-    PREDICT_8x8_DC( PIXEL_SPLAT_X4( 0x80 ) );
+    PREDICT_8x8_DC( PIXEL_SPLAT_X4( 1 << (BIT_DEPTH-1) ) );
 }
 static void x264_predict_8x8_dc_left_c( pixel *src, pixel edge[33] )
 {
@@ -554,9 +558,13 @@ void x264_predict_8x8_h_c( pixel *src, pixel edge[33] )
 }
 void x264_predict_8x8_v_c( pixel *src, pixel edge[33] )
 {
-    uint64_t top = M64( edge+16 );
+    pixel4 top[2] = { MPIXEL_X4( edge+16 ),
+                      MPIXEL_X4( edge+20 ) };
     for( int y = 0; y < 8; y++ )
-        M64( src+y*FDEC_STRIDE ) = top;
+    {
+        MPIXEL_X4( src+y*FDEC_STRIDE+0 ) = top[0];
+        MPIXEL_X4( src+y*FDEC_STRIDE+4 ) = top[1];
+    }
 }
 static void x264_predict_8x8_ddl_c( pixel *src, pixel edge[33] )
 {

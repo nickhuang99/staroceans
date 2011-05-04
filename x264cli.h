@@ -1,7 +1,7 @@
 /*****************************************************************************
- * muxers.h: h264 file i/o modules
+ * x264cli.h: x264cli common
  *****************************************************************************
- * Copyright (C) 2003-2009 x264 project
+ * Copyright (C) 2003-2011 x264 project
  *
  * Authors: Laurent Aimar <fenrir@via.ecp.fr>
  *          Loren Merritt <lorenm@u.washington.edu>
@@ -19,17 +19,22 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02111, USA.
+ *
+ * This program is also available under a commercial proprietary license.
+ * For more information, contact us at licensing@x264.com.
  *****************************************************************************/
 
-#ifndef X264_MUXERS_H
-#define X264_MUXERS_H
+#ifndef X264_CLI_H
+#define X264_CLI_H
 
 #include "common/common.h"
-#include "x264.h"
+
+/* In microseconds */
+#define UPDATE_INTERVAL 250000
 
 typedef void *hnd_t;
 
-static inline int64_t gcd( int64_t a, int64_t b )
+static inline uint64_t gcd( uint64_t a, uint64_t b )
 {
     while( 1 )
     {
@@ -41,7 +46,7 @@ static inline int64_t gcd( int64_t a, int64_t b )
     }
 }
 
-static inline int64_t lcm( int64_t a, int64_t b )
+static inline uint64_t lcm( uint64_t a, uint64_t b )
 {
     return ( a / gcd( a, b ) ) * b;
 }
@@ -55,7 +60,16 @@ static inline char *get_filename_extension( char *filename )
     return ext;
 }
 
-#include "input/input.h"
-#include "output/output.h"
+void x264_cli_log( const char *name, int i_level, const char *fmt, ... );
+void x264_cli_printf( int i_level, const char *fmt, ... );
+
+#define RETURN_IF_ERR( cond, name, ret, ... )\
+if( cond )\
+{\
+    x264_cli_log( name, X264_LOG_ERROR, __VA_ARGS__ );\
+    return ret;\
+}
+
+#define FAIL_IF_ERR( cond, name, ... ) RETURN_IF_ERR( cond, name, -1, __VA_ARGS__ )
 
 #endif
