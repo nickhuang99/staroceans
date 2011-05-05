@@ -1,7 +1,5 @@
 #!/usr/bin/make -f
 
-include /usr/share/quilt/quilt.make
-
 libx264N := $(shell sed -rn 's/^Package:[[:space:]]*(libx264-[0-9]+)[[:space:]]*$$/\1/p' debian/control)
 
 DEB_BUILD_GNU_TYPE  ?= $(shell dpkg-architecture -qDEB_BUILD_GNU_TYPE)
@@ -17,8 +15,7 @@ include debian/confflags
 
 LDFLAGS += -Wl,--as-needed
 
-build: build-stamp
-build-stamp: debian/stamp-patched
+build:
 	dh_testdir
 	# Build static lib
 	LDFLAGS="$(LDFLAGS)" ./configure $(static_confflags)
@@ -38,7 +35,7 @@ ifeq ($(do_opt),yes)
 endif
 	touch $@
 
-debian/x264.1: build-stamp
+debian/x264.1:
 	help2man -n"fast h264 encoder" -N -s1 -S "Videolan project" -h '--fullhelp' \
 		debian/install/static/usr/bin/x264 > $@
 
@@ -47,8 +44,7 @@ clean:
 	dh_testroot
 	rm -rf debian/install
 	$(MAKE) -o config.mak distclean
-	$(MAKE) -f debian/rules unpatch
-	dh_clean build-stamp debian/x264.1 config.mak2
+	dh_clean build debian/x264.1 config.mak2
 
 install:
 	dh_testdir
