@@ -1,6 +1,6 @@
 Source: x264
 Section: libs
-Priority: extra
+Priority: optional
 Maintainer: Debian Multimedia Maintainers <pkg-multimedia-maintainers@lists.alioth.debian.org>
 Uploaders: Reinhard Tartler <siretart@tauware.de>,
            Fabian Greffrath <fabian+debian@greffrath.com>,
