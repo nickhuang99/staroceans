@@ -8,8 +8,6 @@ CFLAGS = $(or $(DEB_CFLAGS),-Wall)
 common_confflags += --prefix=/usr
 ifeq (,$(filter nostrip,$(DEB_BUILD_OPTIONS)))
   common_confflags += --disable-debug
-else
-  common_confflags += --enable-debug
 endif
 
 # XXX why isn't --enable-visualize used in the static build?
