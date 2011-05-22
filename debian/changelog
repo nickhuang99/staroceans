@@ -1,5 +1,6 @@
 x264 (2:0.115.1943+git6e33b51-1) UNRELEASED; urgency=low
 
+  [ Andres Mejia ]
   * New upstream release.
   * version.sh modifications no longer need to be made, an updated version.sh
     is installed in upstream tarball.
@@ -11,7 +12,11 @@ x264 (2:0.115.1943+git6e33b51-1) UNRELEASED; urgency=low
   * Convert packaging to dh 8.
   * Change Priority to optional.
 
- -- Andres Mejia <mcitadel@gmail.com>  Wed, 04 May 2011 21:15:42 -0400
+  [ Reinhard Tartler ]
+  * lower debhelper compat level to 7
+  * don't set --enable-debug
+
+ -- Reinhard Tartler <siretart@tauware.de>  Sun, 22 May 2011 19:06:33 +0200
 
 x264 (2:0.98.1653+git88b90d9-3) unstable; urgency=low
 
