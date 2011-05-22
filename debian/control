@@ -5,7 +5,7 @@ Maintainer: Debian Multimedia Maintainers <pkg-multimedia-maintainers@lists.alio
 Uploaders: Reinhard Tartler <siretart@tauware.de>,
            Fabian Greffrath <fabian+debian@greffrath.com>,
            Andres Mejia <mcitadel@gmail.com>
-Build-Depends: debhelper (>= 8),
+Build-Depends: debhelper (>= 7),
                libavformat-dev (>= 4:0.5),
                help2man,
                yasm [i386 amd64 kfreebsd-amd64 lpia],
