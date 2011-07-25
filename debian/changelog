@@ -1,4 +1,4 @@
-x264 (2:0.115.1943+git6e33b51-1) UNRELEASED; urgency=low
+x264 (2:0.116.2037+gitf8ebd4a-1) UNRELEASED; urgency=low
 
   [ Andres Mejia ]
   * New upstream release.
@@ -9,14 +9,14 @@ x264 (2:0.115.1943+git6e33b51-1) UNRELEASED; urgency=low
     been applied upstream.
   * Add DM-Upload-Allowed: yes.
   * Convert package to 3.0 (quilt).
-  * Convert packaging to dh 8.
+  * Convert packaging to dh 7.
   * Change Priority to optional.
 
   [ Reinhard Tartler ]
   * lower debhelper compat level to 7
   * don't set --enable-debug
 
- -- Reinhard Tartler <siretart@tauware.de>  Sun, 22 May 2011 19:06:33 +0200
+ -- Andres Mejia <amejia@debian.org>  Mon, 25 Jul 2011 17:37:30 -0400
 
 x264 (2:0.98.1653+git88b90d9-3) unstable; urgency=low
 
