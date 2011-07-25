@@ -65,20 +65,23 @@ typedef struct x264_frame
 
     /* YUV buffer */
     int     i_plane;
-    int     i_stride[2];
-    int     i_width[2];
-    int     i_lines[2];
+    int     i_stride[3];
+    int     i_width[3];
+    int     i_lines[3];
     int     i_stride_lowres;
     int     i_width_lowres;
     int     i_lines_lowres;
-    pixel *plane[2];
-    pixel *filtered[4]; /* plane[0], H, V, HV */
+    pixel *plane[3];
+    pixel *plane_fld[3];
+    pixel *filtered[3][4]; /* plane[0], H, V, HV */
+    pixel *filtered_fld[3][4];
     pixel *lowres[4]; /* half-size copy of input frame: Orig, H, V, HV */
     uint16_t *integral;
 
     /* for unrestricted mv we allocate more data than needed
      * allocated data are stored in buffer */
     pixel *buffer[4];
+    pixel *buffer_fld[4];
     pixel *buffer_lowres[4];
 
     x264_weight_t weight[X264_REF_MAX][3]; /* [ref_index][plane] */
@@ -92,6 +95,7 @@ typedef struct x264_frame
     int16_t (*mv[2])[2];
     int16_t (*mv16x16)[2];
     int16_t (*lowres_mvs[2][X264_BFRAME_MAX+1])[2];
+    uint8_t *field;
 
     /* Stored as (lists_used << LOWRES_COST_SHIFT) + (cost).
      * Doesn't need special addressing for intra cost because
@@ -117,6 +121,7 @@ typedef struct x264_frame
     int     *i_row_satd;
     int     *i_row_bits;
     float   *f_row_qp;
+    float   *f_row_qscale;
     float   *f_qp_offset;
     float   *f_qp_offset_aq;
     int     b_intra_calculated;
@@ -177,12 +182,15 @@ typedef struct
     x264_deblock_inter_t deblock_chroma[2];
     x264_deblock_intra_t deblock_luma_intra[2];
     x264_deblock_intra_t deblock_chroma_intra[2];
+    x264_deblock_inter_t deblock_luma_mbaff;
+    x264_deblock_inter_t deblock_chroma_mbaff;
+    x264_deblock_intra_t deblock_luma_intra_mbaff;
+    x264_deblock_intra_t deblock_chroma_intra_mbaff;
     void (*deblock_strength) ( uint8_t nnz[X264_SCAN8_SIZE], int8_t ref[2][X264_SCAN8_LUMA_SIZE],
-                               int16_t mv[2][X264_SCAN8_LUMA_SIZE][2], uint8_t bs[2][4][4], int mvy_limit,
+                               int16_t mv[2][X264_SCAN8_LUMA_SIZE][2], uint8_t bs[2][8][4], int mvy_limit,
                                int bframe );
 } x264_deblock_function_t;
 
-x264_frame_t *x264_frame_new( x264_t *h, int b_fdec );
 void          x264_frame_delete( x264_frame_t *frame );
 
 int           x264_frame_copy_picture( x264_t *h, x264_frame_t *dst, x264_picture_t *src );
@@ -191,6 +199,7 @@ void          x264_frame_expand_border( x264_t *h, x264_frame_t *frame, int mb_y
 void          x264_frame_expand_border_filtered( x264_t *h, x264_frame_t *frame, int mb_y, int b_end );
 void          x264_frame_expand_border_lowres( x264_frame_t *frame );
 void          x264_frame_expand_border_mod16( x264_t *h, x264_frame_t *frame );
+void          x264_expand_border_mbpair( x264_t *h, int mb_x, int mb_y );
 
 void          x264_frame_deblock_row( x264_t *h, int mb_y );
 void          x264_macroblock_deblock( x264_t *h );
@@ -198,7 +207,7 @@ void          x264_macroblock_deblock( x264_t *h );
 void          x264_frame_filter( x264_t *h, x264_frame_t *frame, int mb_y, int b_end );
 void          x264_frame_init_lowres( x264_t *h, x264_frame_t *frame );
 
-void          x264_deblock_init( int cpu, x264_deblock_function_t *pf );
+void          x264_deblock_init( int cpu, x264_deblock_function_t *pf, int b_mbaff );
 
 void          x264_frame_cond_broadcast( x264_frame_t *frame, int i_lines_completed );
 void          x264_frame_cond_wait( x264_frame_t *frame, int i_lines_completed );

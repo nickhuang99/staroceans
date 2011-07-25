@@ -56,7 +56,7 @@ do {\
 #define X264_BFRAME_MAX 16
 #define X264_REF_MAX 16
 #define X264_THREAD_MAX 128
-#define X264_PCM_COST (384*BIT_DEPTH+16)
+#define X264_PCM_COST ((384<<CHROMA444)*BIT_DEPTH+16)
 #define X264_LOOKAHEAD_MAX 250
 #define QP_BD_OFFSET (6*(BIT_DEPTH-8))
 #define QP_MAX_SPEC (51+QP_BD_OFFSET)
@@ -91,6 +91,18 @@ do {\
 #include <string.h>
 #include <assert.h>
 #include <limits.h>
+
+#if HAVE_INTERLACED
+#   define MB_INTERLACED h->mb.b_interlaced
+#   define SLICE_MBAFF h->sh.b_mbaff
+#   define PARAM_INTERLACED h->param.b_interlaced
+#else
+#   define MB_INTERLACED 0
+#   define SLICE_MBAFF 0
+#   define PARAM_INTERLACED 0
+#endif
+
+#define CHROMA444 (h->sps->i_chroma_format_idc == 3)
 
 /* Unions for type-punning.
  * Mn: load or store n bits, aligned, native-endian
@@ -133,41 +145,49 @@ typedef union { x264_uint128_t i; uint64_t a[2]; uint32_t b[4]; uint16_t c[8]; u
 
 #define CPPIXEL_X4(dst,src) MPIXEL_X4(dst) = MPIXEL_X4(src)
 
-#define X264_SCAN8_SIZE (6*8)
 #define X264_SCAN8_LUMA_SIZE (5*8)
+#define X264_SCAN8_SIZE (X264_SCAN8_LUMA_SIZE*3)
 #define X264_SCAN8_0 (4+1*8)
 
-static const unsigned x264_scan8[16+2*4+3] =
+/* Scan8 organization:
+ *    0 1 2 3 4 5 6 7
+ * 0  DY    y y y y y
+ * 1        y Y Y Y Y
+ * 2        y Y Y Y Y
+ * 3        y Y Y Y Y
+ * 4        y Y Y Y Y
+ * 5  DU    u u u u u
+ * 6        u U U U U
+ * 7        u U U U U
+ * 8        u U U U U
+ * 9        u U U U U
+ * 10 DV    v v v v v
+ * 11       v V V V V
+ * 12       v V V V V
+ * 13       v V V V V
+ * 14       v V V V V
+ * DY/DU/DV are for luma/chroma DC.
+ */
+
+#define LUMA_DC   48
+#define CHROMA_DC 49
+
+static const uint8_t x264_scan8[16*3 + 3] =
 {
-    /* Luma */
-    4+1*8, 5+1*8, 4+2*8, 5+2*8,
-    6+1*8, 7+1*8, 6+2*8, 7+2*8,
-    4+3*8, 5+3*8, 4+4*8, 5+4*8,
-    6+3*8, 7+3*8, 6+4*8, 7+4*8,
-
-    /* Cb */
-    1+1*8, 2+1*8,
-    1+2*8, 2+2*8,
-
-    /* Cr */
-    1+4*8, 2+4*8,
-    1+5*8, 2+5*8,
-
-    /* Luma DC */
-    4+5*8,
-
-    /* Chroma DC */
-    6+5*8, 7+5*8
+    4+ 1*8, 5+ 1*8, 4+ 2*8, 5+ 2*8,
+    6+ 1*8, 7+ 1*8, 6+ 2*8, 7+ 2*8,
+    4+ 3*8, 5+ 3*8, 4+ 4*8, 5+ 4*8,
+    6+ 3*8, 7+ 3*8, 6+ 4*8, 7+ 4*8,
+    4+ 6*8, 5+ 6*8, 4+ 7*8, 5+ 7*8,
+    6+ 6*8, 7+ 6*8, 6+ 7*8, 7+ 7*8,
+    4+ 8*8, 5+ 8*8, 4+ 9*8, 5+ 9*8,
+    6+ 8*8, 7+ 8*8, 6+ 9*8, 7+ 9*8,
+    4+11*8, 5+11*8, 4+12*8, 5+12*8,
+    6+11*8, 7+11*8, 6+12*8, 7+12*8,
+    4+13*8, 5+13*8, 4+14*8, 5+14*8,
+    6+13*8, 7+13*8, 6+14*8, 7+14*8,
+    0+ 0*8, 0+ 5*8, 0+10*8
 };
-/*
-   0 1 2 3 4 5 6 7
- 0
- 1   B B   L L L L
- 2   B B   L L L L
- 3         L L L L
- 4   R R   L L L L
- 5   R R   Dy  DuDv
-*/
 
 #include "x264.h"
 #include "bitstream.h"
@@ -205,7 +225,8 @@ void x264_log( x264_t *h, int i_level, const char *psz_fmt, ... );
 
 void x264_reduce_fraction( uint32_t *n, uint32_t *d );
 void x264_reduce_fraction64( uint64_t *n, uint64_t *d );
-void x264_init_vlc_tables( void );
+void x264_cavlc_init( void );
+void x264_cabac_init( x264_t *h );
 
 static ALWAYS_INLINE pixel x264_clip_pixel( int x )
 {
@@ -393,6 +414,15 @@ typedef struct x264_lookahead_t
 
 typedef struct x264_ratecontrol_t   x264_ratecontrol_t;
 
+typedef struct x264_left_table_t
+{
+    uint8_t intra[4];
+    uint8_t nnz[4];
+    uint8_t nnz_chroma[4];
+    uint8_t mv[4];
+    uint8_t ref[4];
+} x264_left_table_t;
+
 struct x264_t
 {
     /* encoder parameters */
@@ -419,9 +449,6 @@ struct x264_t
     uint8_t *nal_buffer;
     int      nal_buffer_size;
 
-    x264_sps_t      *sps;
-    x264_pps_t      *pps;
-
     /**** thread synchronization starts here ****/
 
     /* frame number/poc */
@@ -447,23 +474,20 @@ struct x264_t
     int             b_queued_intra_refresh;
     int64_t         i_last_idr_pts;
 
-    /* We use only one SPS and one PPS */
-    x264_sps_t      sps_array[1];
-    x264_pps_t      pps_array[1];
     int             i_idr_pic_id;
 
     /* quantization matrix for decoding, [cqm][qp%6][coef] */
     int             (*dequant4_mf[4])[16];   /* [4][6][16] */
-    int             (*dequant8_mf[2])[64];   /* [2][6][64] */
+    int             (*dequant8_mf[4])[64];   /* [4][6][64] */
     /* quantization matrix for trellis, [cqm][qp][coef] */
     int             (*unquant4_mf[4])[16];   /* [4][52][16] */
-    int             (*unquant8_mf[2])[64];   /* [2][52][64] */
+    int             (*unquant8_mf[4])[64];   /* [4][52][64] */
     /* quantization matrix for deadzone */
     udctcoef        (*quant4_mf[4])[16];     /* [4][52][16] */
-    udctcoef        (*quant8_mf[2])[64];     /* [2][52][64] */
+    udctcoef        (*quant8_mf[4])[64];     /* [4][52][64] */
     udctcoef        (*quant4_bias[4])[16];   /* [4][52][16] */
-    udctcoef        (*quant8_bias[2])[64];   /* [2][52][64] */
-    udctcoef        (*nr_offset_emergency)[3][64];
+    udctcoef        (*quant8_bias[4])[64];   /* [4][52][64] */
+    udctcoef        (*nr_offset_emergency)[4][64];
 
     /* mv/ref cost arrays. */
     uint16_t *cost_mv[QP_MAX+1];
@@ -473,6 +497,10 @@ struct x264_t
 
     /* Slice header */
     x264_slice_header_t sh;
+
+    /* SPS / PPS */
+    x264_sps_t      sps[1];
+    x264_pps_t      pps[1];
 
     /* Slice header backup, for SEI_DEC_REF_PIC_MARKING */
     int b_sh_backup;
@@ -536,11 +564,11 @@ struct x264_t
     /* Current MB DCT coeffs */
     struct
     {
-        ALIGNED_16( dctcoef luma16x16_dc[16] );
+        ALIGNED_16( dctcoef luma16x16_dc[3][16] );
         ALIGNED_16( dctcoef chroma_dc[2][4] );
         // FIXME share memory?
-        ALIGNED_16( dctcoef luma8x8[4][64] );
-        ALIGNED_16( dctcoef luma4x4[16+8][16] );
+        ALIGNED_16( dctcoef luma8x8[12][64] );
+        ALIGNED_16( dctcoef luma4x4[16*3][16] );
     } dct;
 
     /* MB table and cache for current frame/mb */
@@ -554,6 +582,8 @@ struct x264_t
         int     i_mb_stride;
         int     i_b8_stride;
         int     i_b4_stride;
+        int     left_b8[2];
+        int     left_b4[2];
 
         /* Current index */
         int     i_mb_x;
@@ -573,17 +603,24 @@ struct x264_t
         int     i_psy_trellis; /* Psy trellis strength--fixed point value*/
 
         int     b_interlaced;
+        int     b_adaptive_mbaff; /* MBAFF+subme 0 requires non-adaptive MBAFF i.e. all field mbs */
 
         /* Allowed qpel MV range to stay within the picture + emulated edge pixels */
         int     mv_min[2];
         int     mv_max[2];
+        int     mv_miny_row[3]; /* 0 == top progressive, 1 == bot progressive, 2 == interlaced */
+        int     mv_maxy_row[3];
         /* Subpel MV range for motion search.
          * same mv_min/max but includes levels' i_mv_range. */
         int     mv_min_spel[2];
         int     mv_max_spel[2];
+        int     mv_miny_spel_row[3];
+        int     mv_maxy_spel_row[3];
         /* Fullpel MV range for motion search */
         int     mv_min_fpel[2];
         int     mv_max_fpel[2];
+        int     mv_miny_fpel_row[3];
+        int     mv_maxy_fpel_row[3];
 
         /* neighboring MBs */
         unsigned int i_neighbour;
@@ -592,14 +629,22 @@ struct x264_t
         unsigned int i_neighbour_intra;     /* for constrained intra pred */
         unsigned int i_neighbour_frame;     /* ignoring slice boundaries */
         int     i_mb_type_top;
-        int     i_mb_type_left;
+        int     i_mb_type_left[2];
         int     i_mb_type_topleft;
         int     i_mb_type_topright;
         int     i_mb_prev_xy;
-        int     i_mb_left_xy;
+        int     i_mb_left_xy[2];
         int     i_mb_top_xy;
         int     i_mb_topleft_xy;
         int     i_mb_topright_xy;
+        int     i_mb_top_y;
+        int     i_mb_topleft_y;
+        int     i_mb_topright_y;
+        const x264_left_table_t *left_index_table;
+        int     i_mb_top_mbpair_xy;
+        int     topleft_partition;
+        int     b_allow_skip;
+        int     field_decoding_flag;
 
         /**** thread synchronization ends here ****/
         /* subsequent variables are either thread-local or constant,
@@ -612,7 +657,7 @@ struct x264_t
         int16_t *cbp;                       /* mb cbp: 0x0?: luma, 0x?0: chroma, 0x100: luma dc, 0x0200 and 0x0400: chroma dc  (all set for PCM)*/
         int8_t  (*intra4x4_pred_mode)[8];   /* intra4x4 pred mode. for non I4x4 set to I_PRED_4x4_DC(2) */
                                             /* actually has only 7 entries; set to 8 for write-combining optimizations */
-        uint8_t (*non_zero_count)[16+4+4];  /* nzc. for I_PCM set to 16 */
+        uint8_t (*non_zero_count)[16*3];    /* nzc. for I_PCM set to 16 */
         int8_t  *chroma_pred_mode;          /* chroma_pred_mode. cabac only. for non intra I_PRED_CHROMA_DC(0) */
         int16_t (*mv[2])[2];                /* mb mv. set to 0 for intra mb */
         uint8_t (*mvd[2])[8][2];            /* absolute value of mb mv difference with predict, clipped to [0,33]. set to 0 if intra. cabac only */
@@ -622,6 +667,7 @@ struct x264_t
         int8_t  *mb_transform_size;         /* transform_size_8x8_flag of each mb */
         uint16_t *slice_table;              /* sh->first_mb of the slice that the indexed mb is part of
                                              * NOTE: this will fail on resolutions above 2^16 MBs... */
+        uint8_t *field;
 
          /* buffer for weighted versions of the reference frames */
         pixel *p_weight_buf[X264_REF_MAX];
@@ -657,8 +703,8 @@ struct x264_t
             /* space for p_fenc and p_fdec */
 #define FENC_STRIDE 16
 #define FDEC_STRIDE 32
-            ALIGNED_16( pixel fenc_buf[24*FENC_STRIDE] );
-            ALIGNED_16( pixel fdec_buf[27*FDEC_STRIDE] );
+            ALIGNED_16( pixel fenc_buf[48*FENC_STRIDE] );
+            ALIGNED_16( pixel fdec_buf[52*FDEC_STRIDE] );
 
             /* i4x4 and i8x8 backup data, for skipping the encode stage when possible */
             ALIGNED_16( pixel i4x4_fdec_buf[16*16] );
@@ -681,14 +727,15 @@ struct x264_t
             /* pointer over mb of the frame to be compressed */
             pixel *p_fenc[3]; /* y,u,v */
             /* pointer to the actual source frame, not a block copy */
-            pixel *p_fenc_plane[2]; /* y,uv */
+            pixel *p_fenc_plane[3];
 
             /* pointer over mb of the frame to be reconstructed  */
             pixel *p_fdec[3];
 
             /* pointer over mb of the references */
             int i_fref[2];
-            pixel *p_fref[2][X264_REF_MAX*2][4+1]; /* last: yN, yH, yV, yHV, uv */
+            /* [12]: yN, yH, yV, yHV, (NV12 ? uv : I444 ? (uN, uH, uV, uHV, vN, ...)) */
+            pixel *p_fref[2][X264_REF_MAX*2][12];
             pixel *p_fref_w[X264_REF_MAX*2];  /* weighted fullpel luma */
             uint16_t *p_integral[2][X264_REF_MAX];
 
@@ -722,11 +769,15 @@ struct x264_t
 
             /* number of neighbors (top and left) that used 8x8 dct */
             int     i_neighbour_transform_size;
-            int     i_neighbour_interlaced;
+            int     i_neighbour_skip;
 
             /* neighbor CBPs */
             int     i_cbp_top;
             int     i_cbp_left;
+
+            /* extra data required for mbaff in mv prediction */
+            int16_t topright_mv[2][3][2];
+            int8_t  topright_ref[2][3];
         } cache;
 
         /* */
@@ -745,9 +796,9 @@ struct x264_t
         int     i_chroma_lambda2_offset;
 
         /* B_direct and weighted prediction */
-        int16_t dist_scale_factor_buf[2][X264_REF_MAX*2][4];
+        int16_t dist_scale_factor_buf[2][2][X264_REF_MAX*2][4];
         int16_t (*dist_scale_factor)[4];
-        int8_t bipred_weight_buf[2][X264_REF_MAX*2][4];
+        int8_t bipred_weight_buf[2][2][X264_REF_MAX*2][4];
         int8_t (*bipred_weight)[4];
         /* maps fref1[0]'s ref indices into the current list0 */
 #define map_col_to_list0(col) h->mb.map_col_to_list0[(col)+2]
@@ -782,11 +833,13 @@ struct x264_t
             int i_mb_partition[17];
             int i_mb_cbp[6];
             int i_mb_pred_mode[4][13];
+            int i_mb_field[3];
             /* Adaptive direct mv pred */
             int i_direct_score[2];
             /* Metrics */
             int64_t i_ssd[3];
             double f_ssim;
+            int i_ssim_cnt;
         } frame;
 
         /* Cumulated stats */
@@ -811,6 +864,7 @@ struct x264_t
         int64_t i_mb_count_ref[2][2][X264_REF_MAX*2];
         int64_t i_mb_cbp[6];
         int64_t i_mb_pred_mode[4][13];
+        int64_t i_mb_field[3];
         /* */
         int     i_direct_score[2];
         int     i_direct_frames[2];
@@ -819,19 +873,21 @@ struct x264_t
 
     } stat;
 
-    /* 0 = luma 4x4, 1 = luma 8x8, 2 = chroma 4x4 */
+    /* 0 = luma 4x4, 1 = luma 8x8, 2 = chroma 4x4, 3 = chroma 8x8 */
     udctcoef (*nr_offset)[64];
     uint32_t (*nr_residual_sum)[64];
     uint32_t *nr_count;
 
-    ALIGNED_16( udctcoef nr_offset_denoise[3][64] );
-    ALIGNED_16( uint32_t nr_residual_sum_buf[2][3][64] );
-    uint32_t nr_count_buf[2][3];
+    ALIGNED_16( udctcoef nr_offset_denoise[4][64] );
+    ALIGNED_16( uint32_t nr_residual_sum_buf[2][4][64] );
+    uint32_t nr_count_buf[2][4];
 
     /* Buffers that are allocated per-thread even in sliced threads. */
     void *scratch_buffer; /* for any temporary storage that doesn't want repeated malloc */
-    pixel *intra_border_backup[2][2]; /* bottom pixels of the previous mb row, used for intra prediction after the framebuffer has been deblocked */
-    uint8_t (*deblock_strength[2])[2][4][4];
+    pixel *intra_border_backup[5][3]; /* bottom pixels of the previous mb row, used for intra prediction after the framebuffer has been deblocked */
+    /* Deblock strength values are stored for each 4x4 partition. In MBAFF
+     * there are four extra values that need to be stored, located in [4][i]. */
+    uint8_t (*deblock_strength[2])[2][8][4];
 
     /* CPU functions dependents */
     x264_predict_t      predict_16x16[4+3];
@@ -844,6 +900,8 @@ struct x264_t
     x264_mc_functions_t   mc;
     x264_dct_function_t   dctf;
     x264_zigzag_function_t zigzagf;
+    x264_zigzag_function_t zigzagf_interlaced;
+    x264_zigzag_function_t zigzagf_progressive;
     x264_quant_function_t quantf;
     x264_deblock_function_t loopf;
     x264_bitstream_function_t bsf;

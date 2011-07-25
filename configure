@@ -4,30 +4,51 @@ if test x"$1" = x"-h" -o x"$1" = x"--help" ; then
 cat <<EOF
 Usage: ./configure [options]
 
-available options:
+Help:
+  -h, --help               print this message
 
-  --help                   print this message
-  --disable-avs            disables avisynth support (windows only)
-  --disable-lavf           disables libavformat support
-  --disable-ffms           disables ffmpegsource support
-  --disable-gpac           disables gpac support
-  --disable-gpl            disables GPL-only features
-  --disable-thread         disables multithreaded encoding
-  --enable-win32thread     use win32threads (windows only)
-  --disable-swscale        disables swscale support
-  --disable-asm            disables platform-specific assembly optimizations
-  --enable-debug           adds -g, doesn't strip
-  --enable-gprof           adds -pg, doesn't strip
-  --enable-visualize       enables visualization (X11 only)
-  --enable-pic             build position-independent code
-  --enable-shared          build shared library
-  --bit-depth=BIT_DEPTH    sets output bit depth (8-10), default 8
+Standard options:
+  --prefix=PREFIX          install architecture-independent files in PREFIX
+                           [/usr/local]
+  --exec-prefix=EPREFIX    install architecture-dependent files in EPREFIX
+                           [PREFIX]
+  --bindir=DIR             install binaries in DIR [EPREFIX/bin]
+  --libdir=DIR             install libs in DIR [EPREFIX/lib]
+  --includedir=DIR         install includes in DIR [PREFIX/include]
   --extra-asflags=EASFLAGS add EASFLAGS to ASFLAGS
   --extra-cflags=ECFLAGS   add ECFLAGS to CFLAGS
   --extra-ldflags=ELDFLAGS add ELDFLAGS to LDFLAGS
+
+Configuration options:
+  --disable-cli            disable cli
+  --system-libx264         use system libx264 instead of internal
+  --enable-shared          build shared library
+  --enable-static          build static library
+  --disable-gpl            disable GPL-only features
+  --disable-thread         disable multithreaded encoding
+  --enable-win32thread     use win32threads (windows only)
+  --disable-interlaced     disable interlaced encoding support
+  --enable-visualize       enable visualization (X11 only)
+  --bit-depth=BIT_DEPTH    set output bit depth (8-10) [8]
+
+Advanced options:
+  --disable-asm            disable platform-specific assembly optimizations
+  --enable-debug           add -g
+  --enable-gprof           add -pg
+  --enable-strip           add -s
+  --enable-pic             build position-independent code
+
+Cross-compilation:
   --host=HOST              build programs to run on HOST
   --cross-prefix=PREFIX    use PREFIX for compilation tools
   --sysroot=SYSROOT        root of cross-build tree
+
+External library support:
+  --disable-avs            disable avisynth support (windows only)
+  --disable-swscale        disable swscale support
+  --disable-lavf           disable libavformat support
+  --disable-ffms           disable ffmpegsource support
+  --disable-gpac           disable gpac support
 
 EOF
 exit 1
@@ -197,6 +218,10 @@ libdir='${exec_prefix}/lib'
 includedir='${prefix}/include'
 DEVNULL='/dev/null'
 
+cli="yes"
+cli_libx264="internal"
+shared="no"
+static="no"
 avs="auto"
 lavf="auto"
 ffms="auto"
@@ -205,11 +230,12 @@ gpl="yes"
 thread="auto"
 swscale="auto"
 asm="auto"
+interlaced="yes"
 debug="no"
 gprof="no"
+strip="no"
 pic="no"
 vis="no"
-shared="no"
 bit_depth="8"
 compiler="GNU"
 
@@ -223,7 +249,7 @@ cross_prefix=""
 EXE=""
 
 # list of all preprocessor HAVE values we can define
-CONFIG_HAVE="MALLOC_H ALTIVEC ALTIVEC_H MMX ARMV6 ARMV6T2 NEON BEOSTHREAD POSIXTHREAD WIN32THREAD THREAD LOG2F VISUALIZE SWSCALE LAVF FFMS GPAC GF_MALLOC AVS GPL VECTOREXT"
+CONFIG_HAVE="MALLOC_H ALTIVEC ALTIVEC_H MMX ARMV6 ARMV6T2 NEON BEOSTHREAD POSIXTHREAD WIN32THREAD THREAD LOG2F VISUALIZE SWSCALE LAVF FFMS GPAC GF_MALLOC AVS GPL VECTOREXT INTERLACED"
 
 # parse options
 
@@ -245,8 +271,23 @@ for opt do
         --includedir=*)
             includedir="$optarg"
             ;;
+        --disable-cli)
+            cli="no"
+            ;;
+        --system-libx264)
+            cli_libx264="system"
+            ;;
+        --enable-shared)
+            shared="yes"
+            ;;
+        --enable-static)
+            static="yes"
+            ;;
         --disable-asm)
             asm="no"
+            ;;
+        --disable-interlaced)
+            interlaced="no"
             ;;
         --disable-avs)
             avs="no"
@@ -264,13 +305,13 @@ for opt do
             gpl="no"
             ;;
         --extra-asflags=*)
-            ASFLAGS="$ASFLAGS ${opt#--extra-asflags=}"
+            ASFLAGS="$ASFLAGS $optarg"
             ;;
         --extra-cflags=*)
-            CFLAGS="$CFLAGS ${opt#--extra-cflags=}"
+            CFLAGS="$CFLAGS $optarg"
             ;;
         --extra-ldflags=*)
-            LDFLAGS="$LDFLAGS ${opt#--extra-ldflags=}"
+            LDFLAGS="$LDFLAGS $optarg"
             ;;
         --disable-thread)
             thread="no"
@@ -289,27 +330,27 @@ for opt do
             LDFLAGS="$LDFLAGS -pg"
             gprof="yes"
             ;;
+        --enable-strip)
+            strip="yes"
+            ;;
         --enable-pic)
             pic="yes"
-            ;;
-        --enable-shared)
-            shared="yes"
             ;;
         --enable-visualize)
             vis="yes"
             ;;
         --host=*)
-            host="${opt#--host=}"
+            host="$optarg"
             ;;
         --cross-prefix=*)
-            cross_prefix="${opt#--cross-prefix=}"
+            cross_prefix="$optarg"
             ;;
         --sysroot=*)
-            CFLAGS="$CFLAGS --sysroot=${opt#--sysroot=}"
-            LDFLAGS="$LDFLAGS --sysroot=${opt#--sysroot=}"
+            CFLAGS="$CFLAGS --sysroot=$optarg"
+            LDFLAGS="$LDFLAGS --sysroot=$optarg"
             ;;
         --bit-depth=*)
-            bit_depth="${opt#--bit-depth=}"
+            bit_depth="$optarg"
             if [ "$bit_depth" -lt "8" -o "$bit_depth" -gt "10" ]; then
                 echo "Supplied bit depth must be in range [8,10]."
                 exit 1
@@ -321,6 +362,8 @@ for opt do
             ;;
     esac
 done
+
+[ "$cli" = "no" -a "$shared" = "no" -a "$static" = "no" ] && die "Nothing to build. Enable cli, shared or static."
 
 CC="${CC-${cross_prefix}gcc}"
 AR="${AR-${cross_prefix}ar}"
@@ -586,7 +629,7 @@ fi
 
 if [ $asm = auto -a $ARCH = ARM ] ; then
     # set flags so neon is built by default
-    echo $CFLAGS | grep -Eq '(-mcpu|-march|-mfpu|-mfloat-abi)' || CFLAGS="$CFLAGS -mcpu=cortex-a8 -mfpu=neon -mfloat-abi=softfp"
+    echo $CFLAGS | grep -Eq '(-mcpu|-march|-mfpu)' || CFLAGS="$CFLAGS -mcpu=cortex-a8 -mfpu=neon"
 
     if  cc_check '' '' '__asm__("rev ip, ip");' ; then      define HAVE_ARMV6
         cc_check '' '' '__asm__("movt r0, #0");'         && define HAVE_ARMV6T2
@@ -690,22 +733,16 @@ fi
 if [ "$swscale" = "auto" ] ; then
     swscale="no"
     if ${cross_prefix}pkg-config --exists libswscale 2>/dev/null; then
-        SWSCALE_LIBS="$SWSCALE_LIBS $(${cross_prefix}pkg-config --libs libswscale)"
-        SWSCALE_CFLAGS="$SWSCALE_CFLAGS $(${cross_prefix}pkg-config --cflags libswscale)"
+        SWSCALE_LIBS="$SWSCALE_LIBS $(${cross_prefix}pkg-config --libs libswscale libavutil)"
+        SWSCALE_CFLAGS="$SWSCALE_CFLAGS $(${cross_prefix}pkg-config --cflags libswscale libavutil)"
     fi
     [ -z "$SWSCALE_LIBS" ] && SWSCALE_LIBS="-lswscale -lavutil"
 
-    error="swscale must be at least version 0.9.0"
-    if cc_check "libswscale/swscale.h" "$SWSCALE_CFLAGS $SWSCALE_LIBS" "sws_getContext(0,0,0,0,0,0,0,0,0,0);" ; then
-        if cpp_check "libswscale/swscale.h" "$SWSCALE_CFLAGS" "LIBSWSCALE_VERSION_INT >= AV_VERSION_INT(0,9,0)" "$error"; then
-            # we use colorspaces that were defined in libavutil r19775
-            if cc_check "libavutil/pixfmt.h" "$SWSCALE_CFLAGS" "enum PixelFormat pixfmt = PIX_FMT_YUV422P16LE;" ; then
-                swscale="yes"
-            else
-                echo "Warning: libavutil is too old, update to ffmpeg r19775+"
-            fi
+    if cc_check "libswscale/swscale.h" "$SWSCALE_CFLAGS $SWSCALE_LIBS" "sws_init_context(0,0,0);" ; then
+        if cc_check "libavutil/pixdesc.h" "$SWSCALE_CFLAGS $SWSCALE_LIBS" "av_get_pix_fmt_name(0);" ; then
+            swscale="yes"
         else
-            echo "Warning: ${error}"
+            echo "Warning: av_get_pix_fmt_name is missing from libavutil, update for swscale support"
         fi
     fi
 fi
@@ -723,15 +760,11 @@ if [ "$lavf" = "auto" ] ; then
         done
     fi
     LAVF_LIBS="-L. $LAVF_LIBS"
-    if cc_check libavformat/avformat.h "$LAVF_CFLAGS $LAVF_LIBS" "avcodec_decode_video2(0,0,0,0);" ; then
-        if cpp_check libavcodec/avcodec.h "$LAVF_CFLAGS $LAVF_LIBS" "LIBAVCODEC_VERSION_INT >= AV_VERSION_INT(52,64,0)" ; then
-            if [ "$swscale" = "yes" ]; then
-                lavf="yes"
-            else
-                echo "Warning: libavformat is not supported without swscale support"
-            fi
+    if cc_check libavformat/avformat.h "$LAVF_CFLAGS $LAVF_LIBS" "avformat_open_input(0,0,0,0); avcodec_open2(0,0,0);" ; then
+        if [ "$swscale" = "yes" ]; then
+            lavf="yes"
         else
-            echo "Warning: libavcodec is too old, update to ffmpeg r22735+"
+            echo "Warning: libavformat is not supported without swscale support"
         fi
     fi
 fi
@@ -821,7 +854,11 @@ if [ "$pic" = "yes" ] ; then
 fi
 
 if [ "$debug" != "yes" -a "$gprof" != "yes" ]; then
-    CFLAGS="$CFLAGS -s -fomit-frame-pointer"
+    CFLAGS="$CFLAGS -fomit-frame-pointer"
+fi
+
+if [ "$strip" = "yes" ]; then
+    CFLAGS="$CFLAGS -s"
     LDFLAGS="$LDFLAGS -s"
 fi
 
@@ -867,6 +904,8 @@ fi
 ASFLAGS="$ASFLAGS -DBIT_DEPTH=$bit_depth"
 
 [ $gpl = yes ] && define HAVE_GPL && x264_gpl=1 || x264_gpl=0
+
+[ $interlaced = yes ] && define HAVE_INTERLACED && x264_interlaced=1 || x264_interlaced=0
 
 #define undefined vars as 0
 for var in $CONFIG_HAVE; do
@@ -917,8 +956,9 @@ rm -f conftest*
 # generate exported config file
 
 cat > x264_config.h << EOF
-#define X264_BIT_DEPTH $bit_depth
-#define X264_GPL       $x264_gpl
+#define X264_BIT_DEPTH  $bit_depth
+#define X264_GPL        $x264_gpl
+#define X264_INTERLACED $x264_interlaced
 EOF
 
 # generate config files
@@ -937,7 +977,6 @@ DEPMM=$DEPMM
 DEPMT=$DEPMT
 LD=$LD
 LDFLAGS=$LDFLAGS
-LDFLAGSCLI=$LDFLAGSCLI
 LIBX264=$LIBX264
 AR=$AR
 RANLIB=$RANLIB
@@ -956,6 +995,11 @@ EOF
 if [ $compiler = ICL ]; then
     echo '%.o: %.c' >> config.mak
     echo '	$(CC) $(CFLAGS) -c -Fo$@ $<' >> config.mak
+fi
+
+if [ "$cli" = "yes" ]; then
+    echo 'default: cli' >> config.mak
+    echo 'install: install-cli' >> config.mak
 fi
 
 if [ "$shared" = "yes" ]; then
@@ -986,8 +1030,29 @@ if [ "$shared" = "yes" ]; then
         echo "SONAME=libx264.so.$API" >> config.mak
         echo 'SOFLAGS=-shared -Wl,-soname,$(SONAME)' >> config.mak
     fi
-    echo 'default: $(SONAME)' >> config.mak
+    echo 'default: lib-shared' >> config.mak
+    echo 'install: install-lib-shared' >> config.mak
 fi
+
+if [ "$static" = "yes" ]; then
+    echo 'default: lib-static' >> config.mak
+    echo 'install: install-lib-static' >> config.mak
+fi
+
+if [ "$cli_libx264" = "system" ] ; then
+    if [ "$shared" = "yes" ]; then
+        CLI_LIBX264='$(SONAME)'
+    elif ${cross_prefix}pkg-config --exists x264 2>/dev/null; then
+        LDFLAGSCLI="$LDFLAGSCLI $(${cross_prefix}pkg-config --libs x264)"
+        CLI_LIBX264=
+    else
+        die "Can not find system libx264"
+    fi
+else
+    CLI_LIBX264='$(LIBX264)'
+fi
+echo "LDFLAGSCLI = $LDFLAGSCLI" >> config.mak
+echo "CLI_LIBX264 = $CLI_LIBX264" >> config.mak
 
 ./version.sh >> config.h
 
@@ -1014,7 +1079,12 @@ gpl_filters=""
 cat > conftest.log <<EOF
 Platform:   $ARCH
 System:     $SYS
+cli:        $cli
+libx264:    $cli_libx264
+shared:     $shared
+static:     $static
 asm:        $asm
+interlaced: $interlaced
 avs:        $avs
 lavf:       $lavf
 ffms:       $ffms
@@ -1024,8 +1094,8 @@ thread:     $thread
 filters:    $filters
 debug:      $debug
 gprof:      $gprof
+strip:      $strip
 PIC:        $pic
-shared:     $shared
 visualize:  $vis
 bit depth:  $bit_depth
 EOF
