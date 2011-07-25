@@ -88,8 +88,8 @@ static const uint16_t x264_dct8_weight2_tab[64] = {
 };
 #undef W
 
-extern int x264_dct4_weight2_zigzag[2][16]; // [2] = {frame, field}
-extern int x264_dct8_weight2_zigzag[2][64];
+extern uint16_t x264_dct4_weight2_zigzag[2][16]; // [2] = {frame, field}
+extern uint16_t x264_dct8_weight2_zigzag[2][64];
 
 typedef struct
 {
@@ -132,6 +132,6 @@ typedef struct
 
 void x264_dct_init( int cpu, x264_dct_function_t *dctf );
 void x264_dct_init_weights( void );
-void x264_zigzag_init( int cpu, x264_zigzag_function_t *pf, int b_interlaced );
+void x264_zigzag_init( int cpu, x264_zigzag_function_t *pf_progressive, x264_zigzag_function_t *pf_interlaced );
 
 #endif
