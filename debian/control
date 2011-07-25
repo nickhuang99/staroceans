@@ -4,7 +4,7 @@ Priority: optional
 Maintainer: Debian Multimedia Maintainers <pkg-multimedia-maintainers@lists.alioth.debian.org>
 Uploaders: Reinhard Tartler <siretart@tauware.de>,
            Fabian Greffrath <fabian+debian@greffrath.com>,
-           Andres Mejia <mcitadel@gmail.com>
+           Andres Mejia <amejia@debian.org>
 Build-Depends: debhelper (>= 7),
                libavformat-dev (>= 4:0.5),
                help2man,
