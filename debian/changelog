@@ -1,22 +1,31 @@
-x264 (2:0.116.2037+gitf8ebd4a-1) UNRELEASED; urgency=low
+x264 (2:0.116.2037+gitf8ebd4a-1) unstable; urgency=low
 
   [ Andres Mejia ]
-  * New upstream release.
+  * New upstream release. (Closes: #405212)
   * version.sh modifications no longer need to be made, an updated version.sh
     is installed in upstream tarball.
-  * Shared library package is renamed to lib264-115.
+  * Shared library package is renamed to lib264-116.
   * fix-8x8dct+slices+no-sliced-threads+cavlc+deblock.patch is removed, has
     been applied upstream.
   * Add DM-Upload-Allowed: yes.
   * Convert package to 3.0 (quilt).
   * Convert packaging to dh 7.
   * Change Priority to optional.
+  * Update to my @debian.org email.
+  * Update VCS-* entries to new anonscm location.
+  * --enable-static must be explicitly set to build static library.
+  * Add proper version depends for debhelper.
+  * Update debian/copyright with new license information for new upstream
+    snapshot.
+  * Update debian/copyright to use DEP-5 spec.
+  * Add patch to do basic spell check.
+  * Include all public headers in dev package.
 
   [ Reinhard Tartler ]
-  * lower debhelper compat level to 7
-  * don't set --enable-debug
+  * Lower debhelper compat level to 7
+  * Don't set --enable-debug, no longer a known option for ./configure.
 
- -- Andres Mejia <amejia@debian.org>  Mon, 25 Jul 2011 17:37:30 -0400
+ -- Andres Mejia <amejia@debian.org>  Mon, 25 Jul 2011 19:37:52 -0400
 
 x264 (2:0.98.1653+git88b90d9-3) unstable; urgency=low
 
