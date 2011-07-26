@@ -39,7 +39,7 @@ override_dh_auto_configure:
 override_dh_auto_install:
 	# dh_auto_install phase handled via dh_auto_build.
 
-override_dh_clean:
+override_dh_auto_clean:
 	rm -rf debian/install
 	$(MAKE) -o config.mak distclean
 	dh_clean debian/x264.1 config.mak2
