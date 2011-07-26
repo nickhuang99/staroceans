@@ -21,7 +21,8 @@ static_confflags += \
 
 shared_confflags += \
 	$(common_confflags) \
-	--enable-shared
+	--enable-shared \
+	--system-libx264
 
 opt_confflags += \
 	$(common_confflags) \
