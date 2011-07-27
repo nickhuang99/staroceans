@@ -1,3 +1,19 @@
+x264 (2:0.116.2037+gitf8ebd4a-3) unstable; urgency=low
+
+  [ Fabian Greffrath ]
+  * Build-Depend on yasm on all i386 and amd64 archs,
+    fixes FTBFS on kfreebsd-i386. Remove lpia, it's deprecated.
+  * Remove trailing comma from Build-Depends.
+  * Build ahsred lib with --enable-pic on mips*,
+    hopefully fixes FTBFS on these arches.
+
+  [ Reinhard Tartler ]
+  * enable parallel builds
+  * print config.log in case the configure script fails
+  * enable ffms2 input module
+
+ -- Reinhard Tartler <siretart@tauware.de>  Wed, 27 Jul 2011 21:36:26 +0200
+
 x264 (2:0.116.2037+gitf8ebd4a-2) unstable; urgency=low
 
   [ Fabian Greffrath ]
