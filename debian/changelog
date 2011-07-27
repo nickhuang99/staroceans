@@ -1,3 +1,14 @@
+x264 (2:0.116.2037+gitf8ebd4a-2) UNRELEASED; urgency=low
+
+  [ Fabian Greffrath ]
+  * Override dh_auto_clean, not dh_clean.
+  * Actually build the cli against the shared lib.
+
+  [ Andres Mejia ]
+  * Prepare new revision.
+
+ -- Andres Mejia <amejia@debian.org>  Tue, 26 Jul 2011 21:59:58 -0400
+
 x264 (2:0.116.2037+gitf8ebd4a-1) unstable; urgency=low
 
   [ Andres Mejia ]
