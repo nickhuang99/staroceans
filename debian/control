@@ -7,6 +7,7 @@ Uploaders: Reinhard Tartler <siretart@tauware.de>,
            Andres Mejia <amejia@debian.org>
 Build-Depends: debhelper (>= 7.0.50~),
                libavformat-dev (>= 4:0.5),
+               libffms2-dev,
                yasm [any-i386 any-amd64],
                libx11-dev
 Standards-Version: 3.9.2
