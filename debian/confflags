@@ -96,8 +96,9 @@ endif
 
 # MIPS upstream arch, mips and mipsel Debian arches; no upstream flags by
 # default
-#ifneq (,$(filter mips mipsel,$(DEB_HOST_GNU_CPU)))
-#endif
+ifneq (,$(filter mips mipsel,$(DEB_HOST_GNU_CPU)))
+shared_confflags += --enable-pic
+endif
 
 # ARM upsteam arch, arm, armeb, and armel Debian arches; upstream prepends -O3
 # -fno-fast-math by default, but that's ok as we override -O and we don't care
