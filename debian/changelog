@@ -1,4 +1,4 @@
-x264 (2:0.116.2037+gitf8ebd4a-2) UNRELEASED; urgency=low
+x264 (2:0.116.2037+gitf8ebd4a-2) unstable; urgency=low
 
   [ Fabian Greffrath ]
   * Override dh_auto_clean, not dh_clean.
@@ -6,8 +6,12 @@ x264 (2:0.116.2037+gitf8ebd4a-2) UNRELEASED; urgency=low
 
   [ Andres Mejia ]
   * Prepare new revision.
+  * Generate x264 manpage only once and drop build-depends on help2man. This
+    makes for one less build dependency to put on the buildd machines. x264
+    manpage should be generated once for each new release on a dev machine and
+    tracked in git packaging repo.
 
- -- Andres Mejia <amejia@debian.org>  Tue, 26 Jul 2011 21:59:58 -0400
+ -- Andres Mejia <amejia@debian.org>  Tue, 26 Jul 2011 22:23:58 -0400
 
 x264 (2:0.116.2037+gitf8ebd4a-1) unstable; urgency=low
 
