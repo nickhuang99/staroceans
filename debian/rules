@@ -30,8 +30,6 @@ ifeq ($(do_opt),yes)
 	$(MAKE)
 	$(MAKE) install DESTDIR=$(CURDIR)/debian/install/opt
 endif
-	help2man -n"fast h264 encoder" -N -s1 -S "Videolan project" -h '--fullhelp' \
-		debian/install/static/usr/bin/x264 > debian/x264.1
 
 override_dh_auto_configure:
 	# dh_auto_configure phase handled via dh_auto_build.
@@ -42,7 +40,7 @@ override_dh_auto_install:
 override_dh_auto_clean:
 	rm -rf debian/install
 	$(MAKE) -o config.mak distclean
-	dh_clean debian/x264.1 config.mak2
+	dh_clean config.mak2
 
 override_dh_install:
 	dh_install --list-missing --sourcedir=debian/install
@@ -50,3 +48,14 @@ ifeq ($(do_opt),yes)
 	mkdir -p debian/$(libx264N)$(opt_libdir)
 	cp -a debian/install/opt$(opt_libdir)/*.so.* debian/$(libx264N)$(opt_libdir)
 endif
+
+override_dh_installman:
+	test -f debian/x264.1 || debian/rules debian/x264.1
+	dh_installman
+
+debian/x264.1: debian/install/static/usr/bin/x264
+	help2man -n"fast h264 encoder" -N -s1 -S "Videolan project" -h '--fullhelp' \
+		debian/install/static/usr/bin/x264 > debian/x264.1
+
+debian/install/static/usr/bin/x264:
+	debian/rules build
