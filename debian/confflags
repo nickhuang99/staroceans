@@ -5,6 +5,11 @@
 # Set CFLAGS from DEB_CFLAGS if defined, otherwise simply add -Wall
 CFLAGS = $(or $(DEB_CFLAGS),-Wall)
 
+ifneq (,$(filter parallel=%,$(DEB_BUILD_OPTIONS)))
+	NUMJOBS = $(patsubst parallel=%,%,$(filter parallel=%,$(DEB_BUILD_OPTIONS)))
+	MAKEFLAGS += -j$(NUMJOBS)
+endif
+
 common_confflags += --prefix=/usr
 
 # XXX why isn't --enable-visualize used in the static build?
