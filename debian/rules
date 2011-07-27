@@ -15,18 +15,21 @@ LDFLAGS += -Wl,--as-needed
 
 override_dh_auto_build:
 	# Build static lib
-	LDFLAGS="$(LDFLAGS)" ./configure $(static_confflags)
+	LDFLAGS="$(LDFLAGS)" ./configure $(static_confflags) \
+	   || ( tail -v -n +0 config.log config.log ; exit 1 )
 	$(MAKE)
 	$(MAKE) install DESTDIR=$(CURDIR)/debian/install/static
 	$(MAKE) distclean
 	# Build shared lib
-	CFLAGS="$(shared_extra_cflags)" LDFLAGS="$(LDFLAGS)" ./configure $(shared_confflags)
+	CFLAGS="$(shared_extra_cflags)" LDFLAGS="$(LDFLAGS)" ./configure $(shared_confflags) \
+	   || ( tail -v -n +0 config.log config.log ; exit 1 )
 	$(MAKE)
 	$(MAKE) install DESTDIR=$(CURDIR)/debian/install/shared
 ifeq ($(do_opt),yes)
 	$(MAKE) distclean
 	# Build opt lib
-	LDFLAGS="$(LDFLAGS)" ./configure $(opt_confflags)
+	LDFLAGS="$(LDFLAGS)" ./configure $(opt_confflags) \
+	   || ( tail -v -n +0 config.log config.log ; exit 1 )
 	$(MAKE)
 	$(MAKE) install DESTDIR=$(CURDIR)/debian/install/opt
 endif
