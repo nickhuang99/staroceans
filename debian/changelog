@@ -4,7 +4,7 @@ x264 (2:0.116.2037+gitf8ebd4a-3) unstable; urgency=low
   * Build-Depend on yasm on all i386 and amd64 archs,
     fixes FTBFS on kfreebsd-i386. Remove lpia, it's deprecated.
   * Remove trailing comma from Build-Depends.
-  * Build ahsred lib with --enable-pic on mips*,
+  * Build shared lib with --enable-pic on mips*,
     hopefully fixes FTBFS on these arches.
 
   [ Reinhard Tartler ]
