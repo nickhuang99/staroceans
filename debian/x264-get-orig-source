@@ -3,8 +3,8 @@
 # Script used to generate the orig source tarball for x264.
 
 X264_GIT_URL="git://git.videolan.org/x264.git"
-X264_GIT_COMMIT="f8ebd4ab2679c6eedd47bb7f138533259020984b"
-DATE_RETRIEVED="20110725"
+X264_GIT_COMMIT="178455cd4df5f5a36f39c49c8f7b03965b269a91"
+DATE_RETRIEVED="20110811"
 COMMIT_SHORT_FORM="$(echo $X264_GIT_COMMIT | \
                      sed -e 's/^\([[:xdigit:]]\{,7\}\).*/\1/')"
 
