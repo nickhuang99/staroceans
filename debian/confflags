@@ -10,7 +10,7 @@ ifneq (,$(filter parallel=%,$(DEB_BUILD_OPTIONS)))
 	MAKEFLAGS += -j$(NUMJOBS)
 endif
 
-common_confflags += --prefix=/usr
+common_confflags += --prefix=/usr --libdir=/usr/lib/$(DEB_HOST_MULTIARCH)
 
 # XXX why isn't --enable-visualize used in the static build?
 # TODO --disable-asm when we build an opt flavor?
@@ -58,7 +58,7 @@ has_sse := $(call check_asm, $(sse_asm))
 ifneq ($(has_sse),1)
 # build an SSE optimized flavor for i686
 do_opt := yes
-opt_libdir := /usr/lib/i686/sse2
+opt_libdir := /usr/lib/$(DEB_HOST_MULTIARCH)/i686/sse2
 shared_confflags += --disable-asm
 endif
 endif
@@ -78,7 +78,7 @@ has_altivec := $(call check_c, $(altivec_c), -include altivec.h)
 ifneq ($(has_altivec),1)
 # build an Altivec optimized flavor
 do_opt := yes
-opt_libdir := /usr/lib/altivec
+opt_libdir := /usr/lib/$(DEB_HOST_MULTIARCH)/altivec
 shared_confflags += --disable-asm
 endif
 endif
@@ -94,7 +94,7 @@ has_vis := $(call check_asm, $(vis_asm))
 ifneq ($(has_vis),1)
 # build a VIS optimized flavor
 do_opt := yes
-opt_libdir := /usr/lib/v9
+opt_libdir := /usr/lib/$(DEB_HOST_MULTIARCH)/v9
 shared_confflags += --disable-asm
 endif
 endif
@@ -124,7 +124,7 @@ endif
 shared_extra_cflags += -march=$(toolchain_arch)
 else
 do_opt := yes
-opt_libdir := /usr/lib/neon/vfp
+opt_libdir := /usr/lib/$(DEB_HOST_MULTIARCH)/neon/vfp
 shared_confflags += --disable-asm
 endif
 endif

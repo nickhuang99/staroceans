@@ -2,6 +2,7 @@
 
 libx264N := $(shell sed -rn 's/^Package:[[:space:]]*(libx264-[0-9]+)[[:space:]]*$$/\1/p' debian/control)
 
+DEB_HOST_MULTIARCH  ?= $(shell dpkg-architecture -qDEB_HOST_MULTIARCH)
 DEB_BUILD_GNU_TYPE  ?= $(shell dpkg-architecture -qDEB_BUILD_GNU_TYPE)
 DEB_HOST_GNU_TYPE   ?= $(shell dpkg-architecture -qDEB_HOST_GNU_TYPE)
 DEB_HOST_GNU_CPU    ?= $(shell dpkg-architecture -qDEB_HOST_GNU_CPU)
@@ -10,10 +11,20 @@ include debian/confflags
 
 LDFLAGS += -Wl,--as-needed
 
+DH_INSTALL_INPUT_FILES = debian/libx264-116.install.in \
+                         debian/libx264-dev.install.in
+
+DH_INSTALL_OUTPUT_FILES = $(DH_INSTALL_INPUT_FILES:.in=)
+
 %:
 	dh $@ --parallel
 
+$(DH_INSTALL_OUTPUT_FILES): $(DH_INSTALL_INPUT_FILES)
+	@echo "Generating $$(echo $@ | sed 's/\.in$$//') from $@"
+	sed -e 's/@DEB_HOST_MULTIARCH@/$(DEB_HOST_MULTIARCH)/g' $@.in > $@
+
 override_dh_auto_build:
+	debian/rules $(DH_INSTALL_OUTPUT_FILES)
 	# Build static lib
 	LDFLAGS="$(LDFLAGS)" ./configure $(static_confflags) \
 	   || ( tail -v -n +0 config.log config.log ; exit 1 )
@@ -43,7 +54,7 @@ override_dh_auto_install:
 override_dh_auto_clean:
 	rm -rf debian/install
 	$(MAKE) -o config.mak distclean
-	dh_clean config.mak2
+	dh_clean config.mak2 $(DH_INSTALL_OUTPUT_FILES)
 
 override_dh_install:
 	dh_install --list-missing --sourcedir=debian/install

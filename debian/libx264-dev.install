@@ -1,4 +1,0 @@
-shared/usr/lib/libx264.so               usr/lib
-static/usr/lib/libx264.a                usr/lib
-shared/usr/lib/pkgconfig/x264.pc        usr/lib/pkgconfig
-shared/usr/include                      usr

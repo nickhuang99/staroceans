@@ -1,3 +1,9 @@
+x264 (2:0.116.2042+git178455c-2) unstable; urgency=low
+
+  * Convert package to include multiarch support.
+
+ -- Andres Mejia <amejia@debian.org>  Sat, 17 Sep 2011 14:08:08 -0400
+
 x264 (2:0.116.2042+git178455c-1) unstable; urgency=low
 
   * New upstream snapshot.
