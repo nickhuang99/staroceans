@@ -1,0 +1,17 @@
+Author: Fabian Greffrath <fabian+debian@greffrath.com>
+Description: Debian's alpha buildds identify themselves as alphaev67,
+ so consider alpha* as ALPHA (Closes: #642810).
+Bug-Debian: http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=642810
+
+--- x264.orig/configure
++++ x264/configure
+@@ -580,6 +580,9 @@ case $host_cpu in
+     ia64)
+         ARCH="IA64"
+         ;;
++    alpha*)
++        ARCH="ALPHA"
++        ;;
+     *)
+         ARCH="$(echo $host_cpu | tr a-z A-Z)"
+         ;;
