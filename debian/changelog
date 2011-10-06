@@ -1,3 +1,10 @@
+x264 (2:0.116.2042+git178455c-3) unstable; urgency=low
+
+  * Debian's alpha buildds identify themselves as alphaev67,
+    so consider alpha* as ALPHA (Closes: #642810).
+
+ -- Fabian Greffrath <fabian+debian@greffrath.com>  Thu, 06 Oct 2011 10:33:25 +0200
+
 x264 (2:0.116.2042+git178455c-2) unstable; urgency=low
 
   * Convert package to include multiarch support.
