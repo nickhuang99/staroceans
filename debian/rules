@@ -11,7 +11,7 @@ include debian/confflags
 
 LDFLAGS += -Wl,--as-needed
 
-DH_INSTALL_INPUT_FILES = debian/libx264-116.install.in \
+DH_INSTALL_INPUT_FILES = debian/libx264-118.install.in \
                          debian/libx264-dev.install.in
 
 DH_INSTALL_OUTPUT_FILES = $(DH_INSTALL_INPUT_FILES:.in=)
