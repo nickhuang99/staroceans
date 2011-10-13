@@ -1,3 +1,9 @@
+x264 (2:0.118.2085+git8a62835-1) UNRELEASED; urgency=low
+
+  * New upstream snapshot.
+
+ -- Rico Tzschichholz <ricotz@ubuntu.com>  Thu, 13 Oct 2011 10:14:10 +0200
+
 x264 (2:0.116.2042+git178455c-3) unstable; urgency=low
 
   * Debian's alpha buildds identify themselves as alphaev67,
