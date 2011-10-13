@@ -48,6 +48,10 @@ const pw_32_0,     times 4 dw 32,
 const pw_8000,     times 8 dw 0x8000
 const pw_3fff,     times 8 dw 0x3fff
 const pw_pixel_max,times 8 dw ((1 << BIT_DEPTH)-1)
+const pw_ppppmmmm, dw 1,1,1,1,-1,-1,-1,-1
+const pw_ppmmppmm, dw 1,1,-1,-1,1,1,-1,-1
+const pw_pmpmpmpm, dw 1,-1,1,-1,1,-1,1,-1
+const pw_pmmpzzzz, dw 1,-1,-1,1,0,0,0,0
 
 const pd_1,        times 4 dd 1
 const pd_32,       times 4 dd 32
@@ -56,5 +60,4 @@ const pd_ffff,     times 4 dd 0xffff
 const pw_00ff,     times 8 dw 0x00ff
 const pw_ff00,     times 8 dw 0xff00
 
-const pb_reverse,  db 7, 6, 5, 4, 3, 2, 1, 0
 const sw_64,       dd 64

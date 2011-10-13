@@ -79,7 +79,7 @@ static void help( int longhelp )
             "            - resolution only: resizes and adapts sar to avoid stretching\n"
             "            - sar only: sets the sar and resizes to avoid stretching\n"
             "            - resolution and sar: resizes to given resolution and sets the sar\n"
-            "            - fittobox: resizes the video based on the desired contraints\n"
+            "            - fittobox: resizes the video based on the desired constraints\n"
             "               - width, height, both\n"
             "            - fittobox and sar: same as above except with specified sar\n"
             "            - csp: convert to the given csp. syntax: [name][:depth]\n"
@@ -137,6 +137,7 @@ static int convert_csp_to_pix_fmt( int csp )
     {
         case X264_CSP_YV12: /* specially handled via swapping chroma */
         case X264_CSP_I420: return csp&X264_CSP_HIGH_DEPTH ? PIX_FMT_YUV420P16 : PIX_FMT_YUV420P;
+        case X264_CSP_YV16: /* specially handled via swapping chroma */
         case X264_CSP_I422: return csp&X264_CSP_HIGH_DEPTH ? PIX_FMT_YUV422P16 : PIX_FMT_YUV422P;
         case X264_CSP_YV24: /* specially handled via swapping chroma */
         case X264_CSP_I444: return csp&X264_CSP_HIGH_DEPTH ? PIX_FMT_YUV444P16 : PIX_FMT_YUV444P;
@@ -160,11 +161,13 @@ static int pick_closest_supported_csp( int csp )
         case PIX_FMT_YUV422P:
         case PIX_FMT_YUYV422:
         case PIX_FMT_UYVY422:
+        case PIX_FMT_YUVJ422P:
             return X264_CSP_I422;
         case PIX_FMT_YUV422P16LE:
         case PIX_FMT_YUV422P16BE:
             return X264_CSP_I422 | X264_CSP_HIGH_DEPTH;
         case PIX_FMT_YUV444P:
+        case PIX_FMT_YUVJ444P:
             return X264_CSP_I444;
         case PIX_FMT_YUV444P16LE:
         case PIX_FMT_YUV444P16BE:
@@ -465,11 +468,11 @@ static int init( hnd_t *handle, cli_vid_filter_t *filter, video_info_t *info, x2
     h->dst.pix_fmt = convert_csp_to_pix_fmt( h->dst_csp );
     h->scale = h->dst;
 
-    /* swap chroma planes if YV12/YV24 is involved, as libswscale works with I420/I444 */
+    /* swap chroma planes if YV12/YV16/YV24 is involved, as libswscale works with I420/I422/I444 */
     int src_csp = info->csp & (X264_CSP_MASK | X264_CSP_OTHER);
     int dst_csp = h->dst_csp & (X264_CSP_MASK | X264_CSP_OTHER);
-    h->pre_swap_chroma  = src_csp == X264_CSP_YV12 || src_csp == X264_CSP_YV24;
-    h->post_swap_chroma = dst_csp == X264_CSP_YV12 || dst_csp == X264_CSP_YV24;
+    h->pre_swap_chroma  = src_csp == X264_CSP_YV12 || src_csp == X264_CSP_YV16 || src_csp == X264_CSP_YV24;
+    h->post_swap_chroma = dst_csp == X264_CSP_YV12 || dst_csp == X264_CSP_YV16 || dst_csp == X264_CSP_YV24;
 
     int src_pix_fmt = convert_csp_to_pix_fmt( info->csp );
 
