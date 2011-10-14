@@ -1,5 +1,6 @@
-x264 (2:0.118.2085+git8a62835-1) UNRELEASED; urgency=low
+x264 (2:0.118.2085+git8a62835-1) unstable; urgency=low
 
+  * Team upload.
   * New upstream snapshot.
   * Drop basic-spell-check.patch which is upstream
   * Rename shared library package to lib264-118
