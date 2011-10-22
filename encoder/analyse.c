@@ -702,8 +702,16 @@ static void x264_mb_analyse_intra_chroma( x264_t *h, x264_mb_analysis_t *a )
         }
 
         /* Cheap approximation of chroma costs to avoid a full i4x4/i8x8 analysis. */
-        h->predict_16x16[a->i_predict16x16]( h->mb.pic.p_fdec[1] );
-        h->predict_16x16[a->i_predict16x16]( h->mb.pic.p_fdec[2] );
+        if( h->mb.b_lossless )
+        {
+            x264_predict_lossless_16x16( h, 1, a->i_predict16x16 );
+            x264_predict_lossless_16x16( h, 2, a->i_predict16x16 );
+        }
+        else
+        {
+            h->predict_16x16[a->i_predict16x16]( h->mb.pic.p_fdec[1] );
+            h->predict_16x16[a->i_predict16x16]( h->mb.pic.p_fdec[2] );
+        }
         a->i_satd_chroma = h->pixf.mbcmp[PIXEL_16x16]( h->mb.pic.p_fdec[1], FDEC_STRIDE, h->mb.pic.p_fenc[1], FENC_STRIDE )
                          + h->pixf.mbcmp[PIXEL_16x16]( h->mb.pic.p_fdec[2], FDEC_STRIDE, h->mb.pic.p_fenc[2], FENC_STRIDE );
         return;
@@ -2659,10 +2667,12 @@ static void x264_mb_analyse_p_rd( x264_t *h, x264_mb_analysis_t *a, int i_satd )
                 for( subtype = D_L0_4x4; subtype <= D_L0_8x8; subtype++ )
                 {
                     uint64_t cost;
-                    if( costs[subtype] > sub8x8_thresh || (subtype == D_L0_8x8 && bcost == COST_MAX64) )
+                    if( costs[subtype] > sub8x8_thresh )
                         continue;
                     h->mb.i_sub_partition[i] = subtype;
                     x264_mb_cache_mv_p8x8( h, a, i );
+                    if( subtype == btype )
+                        continue;
                     cost = x264_rd_cost_part( h, a->i_lambda2, i<<2, PIXEL_8x8 );
                     COPY2_IF_LT( bcost, cost, btype, subtype );
                 }
