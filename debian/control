@@ -24,10 +24,6 @@ Architecture: any
 Depends:
  ${misc:Depends},
  ${shlibs:Depends}
-Conflicts:
- x264-bin
-Replaces:
- x264-bin
 Description: video encoder for the H.264/MPEG-4 AVC standard
  x264 is an advanced commandline encoder for creating H.264 (MPEG-4 AVC)
  video streams.
