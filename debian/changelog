@@ -1,9 +1,14 @@
-x264 (2:0.118.2092+git6eac7c3-1) UNRELEASED; urgency=low
+x264 (2:0.118.2092+git6eac7c3-1) unstable; urgency=low
 
+  [ Rico Tzschichholz ]
   * New upstream snapshot.
   * Drop arch-alpha.patch which is upstream
 
- -- Rico Tzschichholz <ricotz@ubuntu.com>  Sat, 22 Oct 2011 23:27:24 +0200
+  [ Reinhard Tartler ]
+  * debian/control: normalize fieldswith wrap-and-sort
+  * remove unnecessary Conflicts/Replaces on non-existing package x264-bin
+
+ -- Reinhard Tartler <siretart@tauware.de>  Mon, 31 Oct 2011 19:47:16 +0100
 
 x264 (2:0.118.2085+git8a62835-1) unstable; urgency=low
 
