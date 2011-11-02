@@ -1,3 +1,10 @@
+x264 (2:0.118.2092+git6eac7c3-2) UNRELEASED; urgency=low
+
+  * Remove build-on-hurd.patch, it has already been applied upstream and
+    is thus applied twice in Debian.
+
+ -- Fabian Greffrath <fabian+debian@greffrath.com>  Wed, 02 Nov 2011 10:23:49 +0100
+
 x264 (2:0.118.2092+git6eac7c3-1) unstable; urgency=low
 
   [ Rico Tzschichholz ]
