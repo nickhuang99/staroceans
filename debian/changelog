@@ -1,9 +1,14 @@
-x264 (2:0.118.2092+git6eac7c3-2) UNRELEASED; urgency=low
+x264 (2:0.118.2092+git6eac7c3-2) unstable; urgency=low
 
+  [ Fabian Greffrath ]
   * Remove build-on-hurd.patch, it has already been applied upstream and
     is thus applied twice in Debian.
 
- -- Fabian Greffrath <fabian+debian@greffrath.com>  Wed, 02 Nov 2011 10:23:49 +0100
+  [ Reinhard Tartler ]
+  * Rebuild against newer libav 0.7.3 to enable libavfilter/libavcodec
+    input support.
+
+ -- Reinhard Tartler <siretart@tauware.de>  Sat, 31 Dec 2011 11:43:02 +0100
 
 x264 (2:0.118.2092+git6eac7c3-1) unstable; urgency=low
 
