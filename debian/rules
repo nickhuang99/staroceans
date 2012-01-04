@@ -20,7 +20,6 @@ DH_INSTALL_OUTPUT_FILES = $(DH_INSTALL_INPUT_FILES:.in=)
 	dh $@ --parallel
 
 $(DH_INSTALL_OUTPUT_FILES): $(DH_INSTALL_INPUT_FILES)
-	@echo "Generating $$(echo $@ | sed 's/\.in$$//') from $@"
 	sed -e 's/@DEB_HOST_MULTIARCH@/$(DEB_HOST_MULTIARCH)/g' $@.in > $@
 
 override_dh_auto_build:
