@@ -32,6 +32,7 @@ shared_confflags += \
 opt_confflags += \
 	$(common_confflags) \
 	--enable-shared \
+	--disable-cli \
 	--libdir=$(opt_libdir)
 
 # this is only used for the check_asm macro
