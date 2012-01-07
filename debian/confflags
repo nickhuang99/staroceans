@@ -16,7 +16,8 @@ common_confflags += --prefix=/usr --libdir=/usr/lib/$(DEB_HOST_MULTIARCH)
 # TODO --disable-asm when we build an opt flavor?
 static_confflags += \
 	$(common_confflags) \
-	--enable-static
+	--enable-static \
+	--disable-cli
 
 # upstream defaults to forcing a bunch of optimizations on various arches;
 # --disable-asm should disable them all, but then we need to figure out what
