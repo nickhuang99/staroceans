@@ -1,3 +1,16 @@
+x264 (2:0.118.2092+git6eac7c3-3) UNRELEASED; urgency=low
+
+  * One less hard-coded library SONAME in debian/rules.
+  * Remove redundant and faulty blabber from debian/rules.
+  * Simplify creation of debian/*.install files.
+  * Do not build the CLI for the optimized shared library.
+  * Disable the CLI for the static build as well and regenerate
+    manpage from the shared build instead.
+  * Remove library SONAME from debian/libx264N.install file.
+  * Simplify manpage regeneration.
+
+ -- Fabian Greffrath <fabian+debian@greffrath.com>  Sun, 08 Jan 2012 13:41:01 +0100
+
 x264 (2:0.118.2092+git6eac7c3-2) unstable; urgency=low
 
   [ Fabian Greffrath ]
