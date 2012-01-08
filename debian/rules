@@ -59,14 +59,10 @@ ifeq ($(do_opt),yes)
 	cp -a debian/install/opt$(opt_libdir)/*.so.* debian/$(libx264N)$(opt_libdir)
 endif
 
-override_dh_installman:
-	test -f debian/x264.1 || debian/rules debian/x264.1
+override_dh_installman: debian/x264.1
 	dh_installman
 
-debian/x264.1: debian/install/shared/usr/bin/x264
+debian/x264.1: build
 	env LD_LIBRARY_PATH="$(LD_LIBRARY_PATH):$(CURDIR)/debian/install/shared/usr/lib/$(DEB_HOST_MULTIARCH)" \
-	help2man -n"fast h264 encoder" -N -s1 -S "Videolan project" -h '--fullhelp' \
+	help2man -n "fast h264 encoder" -N -s1 -S "Videolan project" -h '--fullhelp' \
 		debian/install/shared/usr/bin/x264 > debian/x264.1
-
-debian/install/shared/usr/bin/x264:
-	debian/rules build
