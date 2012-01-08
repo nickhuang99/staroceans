@@ -18,10 +18,9 @@ DH_INSTALL_FILES = debian/$(libx264N).install \
 	dh $@ --parallel
 
 $(DH_INSTALL_FILES):
-	sed -e 's/@DEB_HOST_MULTIARCH@/$(DEB_HOST_MULTIARCH)/g' $@.in > $@
+	sed -e 's/@DEB_HOST_MULTIARCH@/$(DEB_HOST_MULTIARCH)/g' $(subst $(libx264N),libx264N,$@).in > $@
 
 override_dh_auto_build:
-	debian/rules $(DH_INSTALL_FILES)
 	# Build static lib
 	LDFLAGS="$(LDFLAGS)" ./configure $(static_confflags) \
 	   || ( tail -v -n +0 config.log config.log ; exit 1 )
@@ -53,7 +52,7 @@ override_dh_auto_clean:
 	$(MAKE) -o config.mak distclean
 	dh_clean config.mak2 $(DH_INSTALL_FILES)
 
-override_dh_install:
+override_dh_install: $(DH_INSTALL_FILES)
 	dh_install --list-missing --sourcedir=debian/install
 ifeq ($(do_opt),yes)
 	mkdir -p debian/$(libx264N)$(opt_libdir)
