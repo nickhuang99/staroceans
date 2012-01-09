@@ -1,6 +1,6 @@
 #!/usr/bin/make -f
 
-libx264N := $(shell sed -rn 's/^Package:[[:space:]]*(libx264-[0-9]+)[[:space:]]*$$/\1/p' debian/control)
+libx264N := libx264-$(shell grep '\#define X264_BUILD' < x264.h | cut -f 3 -d ' ')
 
 DEB_HOST_MULTIARCH  ?= $(shell dpkg-architecture -qDEB_HOST_MULTIARCH)
 DEB_BUILD_GNU_TYPE  ?= $(shell dpkg-architecture -qDEB_BUILD_GNU_TYPE)
@@ -16,6 +16,10 @@ DH_INSTALL_FILES = debian/$(libx264N).install \
 
 %:
 	dh $@ --parallel
+
+.PHONY: debian/control
+debian/control:
+	sed -e 's/@libx264N@/$(libx264N)/g' $@.in > $@
 
 $(DH_INSTALL_FILES):
 	sed -e 's/@DEB_HOST_MULTIARCH@/$(DEB_HOST_MULTIARCH)/g' $(subst $(libx264N),libx264N,$@).in > $@
@@ -47,7 +51,7 @@ override_dh_auto_configure:
 override_dh_auto_install:
 	# dh_auto_install phase handled via dh_auto_build.
 
-override_dh_auto_clean:
+override_dh_auto_clean: debian/control
 	rm -rf debian/install
 	$(MAKE) -o config.mak distclean
 	dh_clean config.mak2 $(DH_INSTALL_FILES)
