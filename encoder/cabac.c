@@ -167,7 +167,12 @@ static void x264_cabac_qp_delta( x264_t *h, x264_cabac_t *cb )
 
     if( i_dqp != 0 )
     {
-        int val = i_dqp <= 0 ? (-2*i_dqp) : (2*i_dqp - 1);
+        /* Faster than (i_dqp <= 0 ? (-2*i_dqp) : (2*i_dqp-1)).
+         * If you so much as sneeze on these lines, gcc will compile this suboptimally. */
+        i_dqp *= 2;
+        int val = 1 - i_dqp;
+        if( val < 0 ) val = i_dqp;
+        val--;
         /* dqp is interpreted modulo (QP_MAX_SPEC+1) */
         if( val >= QP_MAX_SPEC && val != QP_MAX_SPEC+1 )
             val = 2*QP_MAX_SPEC+1 - val;
@@ -952,7 +957,7 @@ static ALWAYS_INLINE void x264_macroblock_write_cabac_internal( x264_t *h, x264_
                 bs_write( &s, BIT_DEPTH, h->mb.pic.p_fenc[p][i] );
         if( chroma )
             for( int ch = 1; ch < 3; ch++ )
-                for( int i = 0; i < 16>>h->mb.chroma_v_shift; i++ )
+                for( int i = 0; i < 16>>CHROMA_V_SHIFT; i++ )
                     for( int j = 0; j < 8; j++ )
                         bs_write( &s, BIT_DEPTH, h->mb.pic.p_fenc[ch][i*FENC_STRIDE+j] );
 
@@ -1076,7 +1081,7 @@ if( (h->mb.i_neighbour & MB_TOP) && !h->mb.mb_transform_size[h->mb.i_mb_top_xy] 
 
             if( h->mb.i_cbp_chroma == 2 ) /* Chroma AC residual present */
             {
-                int step = 8 << h->mb.chroma_v_shift;
+                int step = 8 << CHROMA_V_SHIFT;
                 for( int i = 16; i < 3*16; i += step )
                     for( int j = i; j < i+4; j++ )
                         x264_cabac_block_residual_cbf( h, cb, DCT_CHROMA_AC, j, h->dct.luma4x4[j]+1, b_intra );
@@ -1231,7 +1236,7 @@ static void x264_chroma_size_cabac( x264_t *h, x264_cabac_t *cb )
 
         if( h->mb.i_cbp_chroma == 2 )
         {
-            int step = 8 << h->mb.chroma_v_shift;
+            int step = 8 << CHROMA_V_SHIFT;
             for( int i = 16; i < 3*16; i += step )
                 for( int j = i; j < i+4; j++ )
                     x264_cabac_block_residual_cbf( h, cb, DCT_CHROMA_AC, j, h->dct.luma4x4[j]+1, 1 );
