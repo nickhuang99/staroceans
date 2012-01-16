@@ -1,5 +1,6 @@
-x264 (2:0.118.2092+git6eac7c3-3) UNRELEASED; urgency=low
+x264 (2:0.120.2127+gitf33c8cb-1) UNRELEASED; urgency=low
 
+  [ Fabian Greffrath ]
   * Simplify the debhelper install file generation.
   * Do not hard-code the library SONAME in debian/rules
     and the debhelper install file anymore.
@@ -7,8 +8,14 @@ x264 (2:0.118.2092+git6eac7c3-3) UNRELEASED; urgency=low
     as this is the actual configuration that we ship in the x264 package.
   * Generate the manpage from the CLI of the shared build.
   * Simplify the manpage generation.
+  * Do not hard-code the library SONAME anywhere. Instead, read it from
+    the upstream files and regenerate debian/control.
 
- -- Fabian Greffrath <fabian+debian@greffrath.com>  Sun, 08 Jan 2012 20:59:14 +0100
+  [ Reinhard Tartler ]
+  * Update to new upstream snapshot
+  * Imported Upstream version 0.120.2127+gitf33c8cb
+
+ -- Reinhard Tartler <siretart@tauware.de>  Mon, 16 Jan 2012 17:00:54 +0100
 
 x264 (2:0.118.2092+git6eac7c3-2) unstable; urgency=low
 
