@@ -9,8 +9,6 @@ DEB_HOST_GNU_CPU    ?= $(shell dpkg-architecture -qDEB_HOST_GNU_CPU)
 
 include debian/confflags
 
-LDFLAGS += -Wl,--as-needed
-
 DH_INSTALL_FILES = debian/$(libx264N).install \
                    debian/libx264-dev.install
 
