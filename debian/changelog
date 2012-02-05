@@ -1,4 +1,4 @@
-x264 (2:0.120.2151+gita3f4407-1) UNRELEASED; urgency=low
+x264 (2:0.120.2151+gita3f4407-1) unstable; urgency=low
 
   * Update to new upstream snapshot
   * Imported Upstream version 0.120.2151+gita3f4407
