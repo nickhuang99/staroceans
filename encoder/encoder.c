@@ -643,6 +643,8 @@ static int x264_validate_parameters( x264_t *h, int b_open )
         h->param.b_intra_refresh = 0;
         h->param.i_frame_reference = X264_MIN( h->param.i_frame_reference, 6 );
         h->param.i_dpb_size = X264_MIN( h->param.i_dpb_size, 6 );
+        /* Don't use I-frames, because Blu-ray treats them the same as IDR. */
+        h->param.i_keyint_min = 1;
         /* Due to the proliferation of broken players that don't handle dupes properly. */
         h->param.analyse.i_weighted_pred = X264_MIN( h->param.analyse.i_weighted_pred, X264_WEIGHTP_SIMPLE );
         if( h->param.b_fake_interlaced )
@@ -1173,10 +1175,6 @@ x264_t *x264_encoder_open( x264_param_t *param )
     x264_predict_8x16c_init( h->param.cpu, h->predict_8x16c );
     x264_predict_8x8_init( h->param.cpu, h->predict_8x8, &h->predict_8x8_filter );
     x264_predict_4x4_init( h->param.cpu, h->predict_4x4 );
-    if( h->param.b_cabac )
-        x264_cabac_init( h );
-    else
-        x264_cavlc_init();
     x264_pixel_init( h->param.cpu, &h->pixf );
     x264_dct_init( h->param.cpu, &h->dctf );
     x264_zigzag_init( h->param.cpu, &h->zigzagf_progressive, &h->zigzagf_interlaced );
@@ -1185,7 +1183,10 @@ x264_t *x264_encoder_open( x264_param_t *param )
     x264_quant_init( h, h->param.cpu, &h->quantf );
     x264_deblock_init( h->param.cpu, &h->loopf, PARAM_INTERLACED );
     x264_bitstream_init( h->param.cpu, &h->bsf );
-    x264_dct_init_weights();
+    if( h->param.b_cabac )
+        x264_cabac_init( h );
+    else
+        x264_cavlc_init( h );
 
     mbcmp_init( h );
     chroma_dsp_init( h );
@@ -2900,7 +2901,10 @@ int     x264_encoder_encode( x264_t *h,
             h->fdec->i_pir_end_col = h->fdec->f_pir_position+0.5;
             /* If our intra refresh has reached the right side of the frame, we're done. */
             if( h->fdec->i_pir_end_col >= h->mb.i_mb_width - 1 )
+            {
                 h->fdec->f_pir_position = h->mb.i_mb_width;
+                h->fdec->i_pir_end_col = h->mb.i_mb_width - 1;
+            }
         }
     }
 
