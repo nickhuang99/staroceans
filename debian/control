@@ -5,6 +5,7 @@ Maintainer: Debian Multimedia Maintainers <pkg-multimedia-maintainers@lists.alio
 Uploaders:
  Reinhard Tartler <siretart@tauware.de>,
  Fabian Greffrath <fabian+debian@greffrath.com>,
+ Rico Tzschichholz <ricotz@ubuntu.com>,
  Andres Mejia <amejia@debian.org>
 Build-Depends:
  debhelper (>= 8.1.3~),
