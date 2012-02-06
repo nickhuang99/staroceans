@@ -105,9 +105,8 @@ endif
 
 # MIPS upstream arch, mips and mipsel Debian arches; no upstream flags by
 # default
-ifneq (,$(filter mips mipsel,$(DEB_HOST_GNU_CPU)))
-shared_confflags += --enable-pic
-endif
+#ifneq (,$(filter mips mipsel,$(DEB_HOST_GNU_CPU)))
+#endif
 
 # ARM upsteam arch, arm, armeb, and armel Debian arches; upstream prepends -O3
 # -fno-fast-math by default, but that's ok as we override -O and we don't care
@@ -139,11 +138,8 @@ endif
 #endif
 
 # IA64 upstream arch, ia64 Debian arch; no upstream flags by default
-# XXX upstream: --enable-pic is a workaround until the patches to set PIC by
-# default on IA64 get merged
-ifeq (ia64,$(DEB_HOST_GNU_CPU))
-shared_confflags += --enable-pic
-endif
+#ifeq (ia64,$(DEB_HOST_GNU_CPU))
+#endif
 
 # there's no special handling for other arches upstream, except for PARISC
 # which is not supported in Debian and for which there's no upstream flags by
