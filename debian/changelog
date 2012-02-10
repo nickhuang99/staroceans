@@ -1,3 +1,17 @@
+x264 (2:0.120.2151+gita3f4407-2) experimental; urgency=low
+
+  [ Fabian Greffrath ]
+  * Meanwhile, upstream enabled PIC for the shared library build on ia64,
+    mips* and hppa/parisc (once more closes: #642810), so remove our
+    Debian-specific workarounds.
+
+  [ Reinhard Tartler ]
+  * Build against libgpac to enable MP4 output
+  * Add a note about non-relocatable code in the README.Debian file,
+    Closes: #657019, LP: #919509
+
+ -- Reinhard Tartler <siretart@tauware.de>  Fri, 10 Feb 2012 21:26:18 +0100
+
 x264 (2:0.120.2151+gita3f4407-1) unstable; urgency=low
 
   * Update to new upstream snapshot
