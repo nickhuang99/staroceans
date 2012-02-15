@@ -1,3 +1,9 @@
+x264 (2:0.120.2151+gita3f4407-3) unstable; urgency=low
+
+  * Upload to unstable
+
+ -- Reinhard Tartler <siretart@tauware.de>  Wed, 15 Feb 2012 22:58:10 +0100
+
 x264 (2:0.120.2151+gita3f4407-2) experimental; urgency=low
 
   [ Fabian Greffrath ]
