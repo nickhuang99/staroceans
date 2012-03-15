@@ -1,7 +1,7 @@
 /*****************************************************************************
  * encoder.c: top-level encoder functions
  *****************************************************************************
- * Copyright (C) 2003-2011 x264 project
+ * Copyright (C) 2003-2012 x264 project
  *
  * Authors: Laurent Aimar <fenrir@via.ecp.fr>
  *          Loren Merritt <lorenm@u.washington.edu>
@@ -1186,7 +1186,7 @@ x264_t *x264_encoder_open( x264_param_t *param )
     if( h->param.b_cabac )
         x264_cabac_init( h );
     else
-        x264_cavlc_init( h );
+        x264_stack_align( x264_cavlc_init, h );
 
     mbcmp_init( h );
     chroma_dsp_init( h );
@@ -2221,7 +2221,7 @@ reencode:
         int total_bits = bs_pos(&h->out.bs) + x264_cabac_pos(&h->cabac);
         int mb_size = total_bits - mb_spos;
 
-        if( slice_max_size )
+        if( slice_max_size && (!SLICE_MBAFF || (i_mb_y&1)) )
         {
             /* Count the skip run, just in case. */
             if( !h->param.b_cabac )
@@ -2237,7 +2237,7 @@ reencode:
             /* We'll just re-encode this last macroblock if we go over the max slice size. */
             if( total_bits - starting_bits > slice_max_size && !h->mb.b_reencode_mb )
             {
-                if( mb_xy != h->sh.i_first_mb )
+                if( mb_xy-SLICE_MBAFF*h->mb.i_mb_stride != h->sh.i_first_mb )
                 {
                     h->stat.frame.i_mv_bits = mv_bits_bak;
                     h->stat.frame.i_tex_bits = tex_bits_bak;

@@ -200,6 +200,33 @@ as_check() {
     return $res
 }
 
+rc_check() {
+    log_check "whether $RC works"
+    echo "$1" > conftest.rc
+    if [ $compiler = ICL ]; then
+        rc_cmd="$RC -foconftest.o conftest.rc"
+    else
+        rc_cmd="$RC -o conftest.o conftest.rc"
+    fi
+    if $rc_cmd >conftest.log 2>&1; then
+        res=$?
+        log_ok
+    else
+        res=$?
+        log_fail
+        log_msg "Failed commandline was:"
+        log_msg "--------------------------------------------------"
+        log_msg "$rc_cmd"
+        cat conftest.log >> config.log
+        log_msg "--------------------------------------------------"
+        log_msg "Failed program was:"
+        log_msg "--------------------------------------------------"
+        cat conftest.rc >> config.log
+        log_msg "--------------------------------------------------"
+    fi
+    return $res
+}
+
 define() {
     echo "#define $1$([ -n "$2" ] && echo " $2" || echo " 1")" >> config.h
 }
@@ -215,6 +242,7 @@ rm -f x264_config.h config.h config.mak config.log x264.pc x264.def conftest*
 SRCPATH="$(cd $(dirname $0); pwd)"
 [ "$SRCPATH" = "$(pwd)" ] && SRCPATH=.
 [ -n "$(echo $SRCPATH | grep ' ')" ] && die "Out of tree builds are impossible with whitespace in source path."
+[ -e "$SRCPATH/config.h" -o -e "$SRCPATH/x264_config.h" ] && die "Out of tree builds are impossible with config.h/x264_config.h in source dir."
 
 prefix='/usr/local'
 exec_prefix='${prefix}'
@@ -401,7 +429,7 @@ if [[ $host_os = mingw* || $host_os = cygwin* ]]; then
         # Windows Intel Compiler creates dependency generation with absolute Windows paths, Cygwin's make does not support Windows paths.
         [[ $host_os = cygwin* ]] && die "Windows Intel Compiler support requires MSYS"
         compiler=ICL
-        CFLAGS="$CFLAGS -Qstd=c99 -nologo -Qms0 -DHAVE_STRING_H -Iextras"
+        CFLAGS="$CFLAGS -Qstd=c99 -nologo -Qms0 -DHAVE_STRING_H -I\$(SRCPATH)/extras"
         QPRE="-Q"
         `$CC 2>&1 | grep -q IA-32` && host_cpu=i486
         `$CC 2>&1 | grep -q "Intel(R) 64"` && host_cpu=x86_64
@@ -605,6 +633,14 @@ case $host_cpu in
         ARCH="$(echo $host_cpu | tr a-z A-Z)"
         ;;
 esac
+
+RC=""
+if [ $SYS = WINDOWS ]; then
+    [ $compiler = ICL ] && RC="rc" || RC="${cross_prefix}windres"
+    if ! rc_check "0 RCDATA {0}" ; then
+        RC=""
+    fi
+fi
 
 log_msg "x264 configure script"
 if [ -n "$*" ]; then
@@ -928,7 +964,9 @@ fi
 
 if [ "$bit_depth" -gt "8" ]; then
     define HIGH_BIT_DEPTH
-    ASFLAGS="$ASFLAGS -DHIGH_BIT_DEPTH"
+    ASFLAGS="$ASFLAGS -DHIGH_BIT_DEPTH=1"
+else
+    ASFLAGS="$ASFLAGS -DHIGH_BIT_DEPTH=0"
 fi
 
 if [ "$chroma_format" != "all" ]; then
@@ -956,6 +994,7 @@ if [ $compiler = ICL ]; then
     LDFLAGSCLI="$(icl_ldflags $LDFLAGSCLI)"
     LIBX264=libx264.lib
     RANLIB=
+    [ -n "$RC" ] && RC="$RC -I. -I\$(SRCPATH)/extras -fo"
     STRIP=
     if [ $debug = yes ]; then
         LDFLAGS="-debug $LDFLAGS"
@@ -969,6 +1008,7 @@ else
     DEPMT="-MT"
     LD="$CC -o "
     LIBX264=libx264.a
+    [ -n "$RC" ] && RC="$RC -I. -o "
 fi
 if [ $compiler = GNU ]; then
     PROF_GEN_CC="-fprofile-generate"
@@ -1021,6 +1061,7 @@ RANLIB=$RANLIB
 STRIP=$STRIP
 AS=$AS
 ASFLAGS=$ASFLAGS
+RC=$RC
 EXE=$EXE
 HAVE_GETOPT_LONG=$HAVE_GETOPT_LONG
 DEVNULL=$DEVNULL
@@ -1050,7 +1091,7 @@ if [ "$shared" = "yes" ]; then
             # MSVC link does not act similarly, so it is required to make an export definition out of x264.h and use it at link time
             echo "SOFLAGS=-dll -def:x264.def -implib:\$(IMPLIBNAME) $SOFLAGS" >> config.mak
             echo "EXPORTS" > x264.def
-            grep "^\(int\|void\|x264_t\|extern\).*x264.*[\[(;]" x264.h | sed -e "s/.*\(x264.*\)[\[(].*/\1/;s/.*\(x264.*\);/\1/;s/open/open_$API/g" >> x264.def
+            grep "^\(int\|void\|x264_t\|extern\).*x264.*[\[(;]" ${SRCPATH}/x264.h | sed -e "s/.*\(x264.*\)[\[(].*/\1/;s/.*\(x264.*\);/\1/;s/open/open_$API/g" >> x264.def
         else
             echo 'IMPLIBNAME=libx264.dll.a' >> config.mak
             echo "SOFLAGS=-shared -Wl,--out-implib,\$(IMPLIBNAME) -Wl,--enable-auto-image-base $SOFLAGS" >> config.mak
