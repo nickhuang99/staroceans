@@ -65,6 +65,7 @@ Description: x264 video coding library
 Package: libx264-dev
 Section: libdevel
 Architecture: any
+Multi-Arch: same
 Depends:
  @libx264N@ (= ${binary:Version}),
  ${misc:Depends}
