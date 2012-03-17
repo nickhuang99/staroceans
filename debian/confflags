@@ -2,8 +2,13 @@
 # vi:syntax=make
 # configure flags logic
 
-# Set CFLAGS from DEB_CFLAGS if defined, otherwise simply add -Wall
-CFLAGS = $(or $(DEB_CFLAGS),-Wall)
+# Set CFLAGS from DEB_CFLAGS if defined, otherwise add build flags from
+# dpkg-buildflags excluding -g and -O2.
+CFLAGS = $(or $(DEB_CFLAGS),$(shell dpkg-buildflags --get CFLAGS 2>/dev/null | sed -e 's/-g\|-O2//g'))
+ifeq (,$(CFLAGS))
+  # Handle case for versions of Debian/Ubuntu that have dpkg-dev (<< 1.15.7).
+  CFLAGS = -fstack-protector --param=ssp-buffer-size=4 -Wformat -Wformat-security -Werror=format-security
+endif
 
 LDFLAGS := $(filter-out %-Bsymbolic-functions,$(LDFLAGS))
 
