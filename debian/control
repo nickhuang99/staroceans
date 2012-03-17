@@ -14,7 +14,7 @@ Build-Depends:
  libgpac-dev,
  libx11-dev,
  yasm [any-i386 any-amd64]
-Standards-Version: 3.9.2
+Standards-Version: 3.9.3
 DM-Upload-Allowed: yes
 Vcs-Git: git://anonscm.debian.org/pkg-multimedia/x264.git
 Vcs-Browser: http://anonscm.debian.org/gitweb/?p=pkg-multimedia/x264.git
