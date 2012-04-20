@@ -11,7 +11,7 @@ Build-Depends:
  debhelper (>= 8.1.3~),
  libavformat-dev (>= 4:0.5),
  libffms2-dev,
- libgpac-dev,
+ libgpac-dev (>= 0.4.5+svn4019~dfsg0),
  libx11-dev,
  yasm [any-i386 any-amd64]
 Standards-Version: 3.9.3
