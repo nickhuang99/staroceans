@@ -1,3 +1,9 @@
+x264 (2:0.120.2171+git01f7a33-4) UNRELEASED; urgency=low
+
+  * Force rebuild on gpac greater than 0.4.5+svn4019~dfsg0.
+
+ -- Alessio Treglia <alessio@debian.org>  Fri, 20 Apr 2012 15:56:07 +0200
+
 x264 (2:0.120.2171+git01f7a33-3) unstable; urgency=low
 
   * Fix issue of setting hardened CFLAGS for shared library.
