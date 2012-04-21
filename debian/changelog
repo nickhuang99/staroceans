@@ -1,8 +1,9 @@
-x264 (2:0.120.2171+git01f7a33-4) UNRELEASED; urgency=low
+x264 (2:0.120.2171+git01f7a33-4) unstable; urgency=low
 
-  * Force rebuild on gpac greater than 0.4.5+svn4019~dfsg0.
+  * Team upload.
+  * Rebuild to pick gpac's new shlib.
 
- -- Alessio Treglia <alessio@debian.org>  Fri, 20 Apr 2012 15:56:07 +0200
+ -- Alessio Treglia <alessio@debian.org>  Sat, 21 Apr 2012 08:25:51 +0200
 
 x264 (2:0.120.2171+git01f7a33-3) unstable; urgency=low
 
