@@ -41,7 +41,18 @@
 
 #include "x264_config.h"
 
-#define X264_BUILD 120
+#define X264_BUILD 123
+
+/* Application developers planning to link against a shared library version of
+ * libx264 from a Microsoft Visual Studio or similar development environment
+ * will need to define X264_API_IMPORTS before including this header.
+ * This clause does not apply to MinGW, similar development environments, or non
+ * Windows platforms. */
+#ifdef X264_API_IMPORTS
+#define X264_API __declspec(dllimport)
+#else
+#define X264_API
+#endif
 
 /* x264_t:
  *      opaque handler for encoder */
@@ -323,6 +334,7 @@ typedef struct x264_param_t
     void        *p_log_private;
     int         i_log_level;
     int         b_visualize;
+    int         b_full_recon;   /* fully reconstruct frames, even when not necessary for encoding.  Implied by psz_dump_yuv */
     char        *psz_dump_yuv;  /* filename for reconstructed frames */
 
     /* Encoder analyser parameters */
@@ -515,7 +527,7 @@ typedef struct
 } x264_level_t;
 
 /* all of the levels defined in the standard, terminated by .level_idc=0 */
-extern const x264_level_t x264_levels[];
+X264_API extern const x264_level_t x264_levels[];
 
 /****************************************************************************
  * Basic parameter handling functions
@@ -612,14 +624,14 @@ int     x264_param_apply_profile( x264_param_t *, const char *profile );
  *      (16-x264_bit_depth) bits to be zero.
  *      Note: The flag X264_CSP_HIGH_DEPTH must be used to specify the
  *      colorspace depth as well. */
-extern const int x264_bit_depth;
+X264_API extern const int x264_bit_depth;
 
 /* x264_chroma_format:
  *      Specifies the chroma formats that x264 supports encoding. When this
  *      value is non-zero, then it represents a X264_CSP_* that is the only
  *      chroma format that x264 supports encoding. If the value is 0 then
  *      there are no restrictions. */
-extern const int x264_chroma_format;
+X264_API extern const int x264_chroma_format;
 
 enum pic_struct_e
 {
@@ -689,6 +701,12 @@ typedef struct
     /* In: optional callback to free quant_offsets when used.
      *     Useful if one wants to use a different quant_offset array for each frame. */
     void (*quant_offsets_free)( void* );
+    /* Out: SSIM of the the frame luma (if x264_param_t.b_ssim is set) */
+    double f_ssim;
+    /* Out: Average PSNR of the frame (if x264_param_t.b_psnr is set) */
+    double f_psnr_avg;
+    /* Out: PSNR of Y, U, and V (if x264_param_t.b_psnr is set) */
+    double f_psnr[3];
 } x264_image_properties_t;
 
 typedef struct
@@ -721,9 +739,13 @@ typedef struct
            of H.264 itself; in this case, the caller must force an IDR frame
            if it needs the changed parameter to apply immediately. */
     x264_param_t *param;
-    /* In: raw data */
+    /* In: raw image data */
+    /* Out: reconstructed image data.  x264 may skip part of the reconstruction process,
+            e.g. deblocking, in frames where it isn't necessary.  To force complete
+            reconstruction, at a small speed cost, set b_full_recon. */
     x264_image_t img;
-    /* In: optional information to modify encoder decisions for this frame */
+    /* In: optional information to modify encoder decisions for this frame
+     * Out: information about the encoded frame */
     x264_image_properties_t prop;
     /* Out: HRD timing information. Output only when i_nal_hrd is set. */
     x264_hrd_t hrd_timing;
