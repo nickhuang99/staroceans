@@ -1,3 +1,11 @@
+x264 (2:0.123.2189+git35cf912-1) UNRELEASED; urgency=low
+
+  * Update to new upstream snapshot
+  * Imported Upstream version 0.123.2189+git35cf912
+  * Regenerate manpage
+
+ -- Rico Tzschichholz <ricotz@ubuntu.com>  Sun, 29 Apr 2012 19:56:17 +0200
+
 x264 (2:0.120.2171+git01f7a33-4) unstable; urgency=low
 
   * Team upload.
