@@ -1,3 +1,9 @@
+x264 (2:0.123.2189+git35cf912-2) UNRELEASED; urgency=low
+
+  * Prepare for new upload.
+
+ -- Andres Mejia <amejia@debian.org>  Thu, 03 May 2012 21:57:24 -0400
+
 x264 (2:0.123.2189+git35cf912-1) unstable; urgency=low
 
   * Update to new upstream snapshot
