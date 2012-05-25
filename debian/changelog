@@ -1,8 +1,11 @@
-x264 (2:0.123.2189+git35cf912-2) UNRELEASED; urgency=low
+x264 (2:0.124.2198+git1c97f35-1) UNRELEASED; urgency=low
 
-  * Prepare for new upload.
+  * Update to new upstream snapshot
+  * Imported Upstream version 0.124.2198+git1c97f35
+  * Regenerate manpage
+  * Regenerate debian/control
 
- -- Andres Mejia <amejia@debian.org>  Thu, 03 May 2012 21:57:24 -0400
+ -- Rico Tzschichholz <ricotz@ubuntu.com>  Fri, 25 May 2012 07:37:26 +0200
 
 x264 (2:0.123.2189+git35cf912-1) unstable; urgency=low
 
