@@ -1,4 +1,4 @@
-x264 (2:0.124.2198+git1c97f35-1) UNRELEASED; urgency=low
+x264 (2:0.124.2198+git1c97f35-1) experimental; urgency=low
 
   * Update to new upstream snapshot
   * Imported Upstream version 0.124.2198+git1c97f35
