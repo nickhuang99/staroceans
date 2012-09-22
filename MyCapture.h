@@ -9,14 +9,17 @@
 class MyVideoCapture
 {
 public:
-    void start(unsigned long pixelFormat = V4L2_PIX_FMT_YUYV,
+    void startCaptureAndDisplay(unsigned long pixelFormat = V4L2_PIX_FMT_YUYV,
                unsigned long width = 640, unsigned long height = 480,
                size_t bufferNumber = 2);
-
+    size_t startCapture(unsigned long pixelFormat = V4L2_PIX_FMT_YUYV,
+               unsigned long width = 640, unsigned long height = 480,
+               size_t bufferNumber = 2);
+    bool captureFrame(unsigned char*ptr, bool bPlanar=true);
     ~MyVideoCapture();
     MyVideoCapture();
-protected:
     static const int FPS_COUNT_NUMBER=30;
+protected:
     static int m_fd;
     pthread_t m_pthread;
     char m_dev_name[32];

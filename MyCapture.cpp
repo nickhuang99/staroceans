@@ -200,7 +200,7 @@ void MyVideoCapture::close_device()
     }
 }
 
-void MyVideoCapture::start(unsigned long pixelFormat,
+void MyVideoCapture::startCaptureAndDisplay(unsigned long pixelFormat,
                unsigned long width, unsigned long height, size_t bufferNumber)
 {
     if (m_fd == -1)
@@ -224,6 +224,94 @@ void MyVideoCapture::start(unsigned long pixelFormat,
     }
 }
 
+size_t MyVideoCapture::startCapture(unsigned long pixelFormat,
+               unsigned long width, unsigned long height, size_t bufferNumber)
+{
+    size_t size = 0;
+    if (m_fd == -1)
+    {
+        m_pixelFormat = pixelFormat;
+        m_width = width;
+        m_height = height;
+        m_bufferNumber = bufferNumber;
+        if (open_device())
+        {
+            size = m_length;
+        }
+        else
+        {
+            close_device();
+
+        }
+    }
+    return size;
+}
+
+bool MyVideoCapture::captureFrame(unsigned char*dstPtr, bool bPlanar)
+{
+    int r;
+    do
+    {
+        struct timeval tv;
+        fd_set fds;
+        FD_ZERO(&fds);
+        FD_SET(m_fd, &fds);
+        /* Timeout. */
+        tv.tv_sec = 1;
+        tv.tv_usec = 0;
+
+        r = select(m_fd + 1, &fds, NULL, NULL, &tv);
+    }
+    while ((r == -1 && (errno = EINTR)));
+    if (r == -1)
+    {
+        return false;
+    }
+    struct v4l2_buffer buf;
+    CLEAR(buf);
+    buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    buf.memory = V4L2_MEMORY_MMAP;
+    if (xioctl(m_fd, VIDIOC_DQBUF, &buf) == -1)
+    {
+        return false;
+    }
+    unsigned char* srcPtr = (unsigned char*)m_startArray[buf.index];
+
+    if (!bPlanar)
+    {
+        memcpy(dstPtr, srcPtr, m_length);
+    }
+    else
+    {
+        size_t planeSize = m_width*m_height;
+        unsigned char* yPtr = dstPtr, *uPtr=dstPtr + planeSize, *vPtr= dstPtr + planeSize*3/2;
+
+        for (size_t r = 0; r < m_height; r ++)
+        {
+            bool bEven = true;
+            for (size_t c = 0; c < m_width; c ++)
+            {
+                *yPtr = *srcPtr++;
+                if (bEven)
+                {
+                    bEven = false;
+                    *uPtr++ = *srcPtr++;
+                    *vPtr++ = *srcPtr++;
+                }
+                else
+                {
+                    bEven = true;
+                }
+            }
+        }
+    }
+
+    if (xioctl(m_fd, VIDIOC_QBUF, &buf) == -1)
+    {
+        return false;
+    }
+    return true;
+}
 
 void* MyVideoCapture::mainloop(void* arg)
 {

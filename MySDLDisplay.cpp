@@ -72,6 +72,7 @@ MySDLDisplay::~MySDLDisplay()
    {
        SDL_FreeYUVOverlay(displayOverlay);
        SDL_FreeSurface(screen);
+       bReady = false;
    }
    SDL_Quit();
 }
