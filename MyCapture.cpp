@@ -37,7 +37,6 @@ MyVideoCapture::~MyVideoCapture()
 }
 
 
-
 bool MyVideoCapture::open_device()
 {
     for (int i = 0; i < 64; i ++)
@@ -247,7 +246,7 @@ size_t MyVideoCapture::startCapture(unsigned long pixelFormat,
     return size;
 }
 
-bool MyVideoCapture::captureFrame(unsigned char*dstPtr, bool bPlanar)
+bool MyVideoCapture::captureFrame(unsigned char*dstPtr, bool bPlanar, bool bSkip)
 {
     int r;
     do
@@ -276,31 +275,33 @@ bool MyVideoCapture::captureFrame(unsigned char*dstPtr, bool bPlanar)
         return false;
     }
     unsigned char* srcPtr = (unsigned char*)m_startArray[buf.index];
-
-    if (!bPlanar)
+    if (!bSkip)
     {
-        memcpy(dstPtr, srcPtr, m_length);
-    }
-    else
-    {
-        size_t planeSize = m_width*m_height;
-        unsigned char* yPtr = dstPtr, *uPtr=dstPtr + planeSize, *vPtr= dstPtr + planeSize*3/2;
-
-        for (size_t r = 0; r < m_height; r ++)
+        if (!bPlanar)
         {
-            bool bEven = true;
-            for (size_t c = 0; c < m_width; c ++)
+            memcpy(dstPtr, srcPtr, m_length);
+        }
+        else
+        {
+            size_t planeSize = m_width*m_height;
+            unsigned char* yPtr = dstPtr, *uPtr=dstPtr + planeSize, *vPtr= dstPtr + planeSize*3/2;
+
+            for (size_t r = 0; r < m_height; r ++)
             {
-                *yPtr = *srcPtr++;
-                if (bEven)
+                bool bEven = true;
+                for (size_t c = 0; c < m_width; c ++)
                 {
-                    bEven = false;
-                    *uPtr++ = *srcPtr++;
-                    *vPtr++ = *srcPtr++;
-                }
-                else
-                {
-                    bEven = true;
+                    *yPtr = *srcPtr++;
+                    if (bEven)
+                    {
+                        bEven = false;
+                        *uPtr++ = *srcPtr++;
+                        *vPtr++ = *srcPtr++;
+                    }
+                    else
+                    {
+                        bEven = true;
+                    }
                 }
             }
         }

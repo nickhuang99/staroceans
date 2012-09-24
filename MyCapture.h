@@ -15,7 +15,7 @@ public:
     size_t startCapture(unsigned long pixelFormat = V4L2_PIX_FMT_YUYV,
                unsigned long width = 640, unsigned long height = 480,
                size_t bufferNumber = 2);
-    bool captureFrame(unsigned char*ptr, bool bPlanar=true);
+    bool captureFrame(unsigned char*ptr, bool bPlanar=true, bool bSkip = false);
     ~MyVideoCapture();
     MyVideoCapture();
     static const int FPS_COUNT_NUMBER=30;
