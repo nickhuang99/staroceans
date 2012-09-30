@@ -7,7 +7,7 @@ extern "C" {
 
 int myCaptureInit();
 int myCaptureSkip();
-int myCaptureRead(unsigned char*ptr);
+int myCaptureRead(unsigned char*ptr[4]);
 int myCaptureClose();
 
 #ifdef __cplusplus

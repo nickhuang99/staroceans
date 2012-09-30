@@ -34,9 +34,12 @@
 				</Linker>
 			</Target>
 		</Build>
-		<Unit filename="main.c">
-			<Option compilerVar="CC" />
-		</Unit>
+		<Unit filename="MyCapture.cpp" />
+		<Unit filename="MyCapture.h" />
+		<Unit filename="MyCaptureLib.cpp" />
+		<Unit filename="MyCaptureLib.h" />
+		<Unit filename="MySDLDisplay.cpp" />
+		<Unit filename="MySDLDisplay.h" />
 		<Extensions>
 			<code_completion />
 			<debugger />

@@ -29,7 +29,8 @@ extern "C" int myCaptureSkip()
 {
     if (pInstance)
     {
-        if (!pInstance->captureFrame(NULL, true, true))
+        unsigned char* unused[4];
+        if (!pInstance->captureFrame(unused, true))
         {
             return -1;
         }
@@ -38,7 +39,7 @@ extern "C" int myCaptureSkip()
     return -1;
 }
 
-extern "C" int myCaptureRead(unsigned char* ptr)
+extern "C" int myCaptureRead(unsigned char* ptr[4])
 {
     if (pInstance)
     {

@@ -152,7 +152,7 @@ bool MyVideoCapture::init_buffer()
         m_startArray[i] = v4l2_mmap(NULL, buf.length, PROT_READ|PROT_WRITE, MAP_SHARED, m_fd,
                             buf.m.offset);
 
-        if (MAP_FAILED == m_startArray)
+        if (MAP_FAILED == m_startArray[i])
         {
             bResult = false;
             break;
@@ -246,7 +246,7 @@ size_t MyVideoCapture::startCapture(unsigned long pixelFormat,
     return size;
 }
 
-bool MyVideoCapture::captureFrame(unsigned char*dstPtr, bool bPlanar, bool bSkip)
+bool MyVideoCapture::captureFrame(unsigned char*dstPtr, bool bSkip)
 {
     int r;
     do
@@ -277,31 +277,65 @@ bool MyVideoCapture::captureFrame(unsigned char*dstPtr, bool bPlanar, bool bSkip
     unsigned char* srcPtr = (unsigned char*)m_startArray[buf.index];
     if (!bSkip)
     {
-        if (!bPlanar)
-        {
-            memcpy(dstPtr, srcPtr, m_length);
-        }
-        else
-        {
-            size_t planeSize = m_width*m_height;
-            unsigned char* yPtr = dstPtr, *uPtr=dstPtr + planeSize, *vPtr= dstPtr + planeSize*3/2;
+        memcpy(dstPtr, srcPtr, m_length);
+    }
 
-            for (size_t r = 0; r < m_height; r ++)
+    if (xioctl(m_fd, VIDIOC_QBUF, &buf) == -1)
+    {
+        return false;
+    }
+    return true;
+}
+
+bool MyVideoCapture::captureFrame(unsigned char*dstPtr[4], bool bSkip)
+{
+    int r;
+    do
+    {
+        struct timeval tv;
+        fd_set fds;
+        FD_ZERO(&fds);
+        FD_SET(m_fd, &fds);
+        /* Timeout. */
+        tv.tv_sec = 1;
+        tv.tv_usec = 0;
+
+        r = select(m_fd + 1, &fds, NULL, NULL, &tv);
+    }
+    while ((r == -1 && (errno = EINTR)));
+    if (r == -1)
+    {
+        return false;
+    }
+    struct v4l2_buffer buf;
+    CLEAR(buf);
+    buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    buf.memory = V4L2_MEMORY_MMAP;
+    if (xioctl(m_fd, VIDIOC_DQBUF, &buf) == -1)
+    {
+        return false;
+    }
+    if (!bSkip)
+    {
+        unsigned char* srcPtr = (unsigned char*)m_startArray[buf.index];
+
+        unsigned char* yPtr = dstPtr[0], *uPtr=dstPtr[1], *vPtr= dstPtr[2];
+
+        for (size_t r = 0; r < m_height; r ++)
+        {
+            bool bEvenCol = true;
+            for (size_t c = 0; c < m_width; c ++)
             {
-                bool bEven = true;
-                for (size_t c = 0; c < m_width; c ++)
+                *yPtr++ = *srcPtr++;
+                if (bEvenCol)
                 {
-                    *yPtr = *srcPtr++;
-                    if (bEven)
-                    {
-                        bEven = false;
-                        *uPtr++ = *srcPtr++;
-                        *vPtr++ = *srcPtr++;
-                    }
-                    else
-                    {
-                        bEven = true;
-                    }
+                    bEvenCol = false;
+                    *uPtr++ = *srcPtr++;
+                    *vPtr++ = *srcPtr++;
+                }
+                else
+                {
+                    bEvenCol = true;
                 }
             }
         }
@@ -313,6 +347,7 @@ bool MyVideoCapture::captureFrame(unsigned char*dstPtr, bool bPlanar, bool bSkip
     }
     return true;
 }
+
 
 void* MyVideoCapture::mainloop(void* arg)
 {
@@ -399,5 +434,91 @@ int main()
     }
     return 0;
 
+}
+
+
+bool MyVideoCapture::captureFrame(unsigned char*dstPtr[4], bool bSkip)
+{
+    int r;
+    do
+    {
+        struct timeval tv;
+        fd_set fds;
+        FD_ZERO(&fds);
+        FD_SET(m_fd, &fds);
+
+        tv.tv_sec = 1;
+        tv.tv_usec = 0;
+
+        r = select(m_fd + 1, &fds, NULL, NULL, &tv);
+    }
+    while ((r == -1 && (errno = EINTR)));
+    if (r == -1)
+    {
+        return false;
+    }
+    struct v4l2_buffer buf;
+    CLEAR(buf);
+    buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    buf.memory = V4L2_MEMORY_MMAP;
+    if (xioctl(m_fd, VIDIOC_DQBUF, &buf) == -1)
+    {
+        return false;
+    }
+    unsigned char* srcPtr = (unsigned char*)m_startArray[buf.index];
+    if (!bSkip)
+    {
+        size_t planeSize = m_width*m_height;
+        unsigned char* yPtr = dstPtr[0], *uPtr=dstPtr[1], *vPtr= dstPtr[2];
+        bool bEvenRow = true;
+        for (size_t r = 0; r < m_height; r ++)
+        {
+            bool bEvenCol = true;
+            for (size_t c = 0; c < m_width; c ++)
+            {
+                *yPtr = *srcPtr++;
+                if (bEvenRow)
+                {
+                    if (bEvenCol)
+                    {
+                        bEvenCol = false;
+                        *uPtr++ = *srcPtr++;
+                        *vPtr++ = *srcPtr++;
+                    }
+                    else
+                    {
+                        bEvenCol = true;
+                    }
+                }
+                else
+                {
+                    if (bEvenCol)
+                    {
+                        bEvenCol = false;
+                        srcPtr++;
+                        srcPtr++;
+                    }
+                    else
+                    {
+                        bEvenCol = true;
+                    }
+                }
+            }
+            if (bEvenRow)
+            {
+                bEvenRow = false;
+            }
+            else
+            {
+                bEvenRow = true;
+            }
+        }
+    }
+
+    if (xioctl(m_fd, VIDIOC_QBUF, &buf) == -1)
+    {
+        return false;
+    }
+    return true;
 }
 */
