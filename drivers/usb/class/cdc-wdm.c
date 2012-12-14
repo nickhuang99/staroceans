@@ -285,7 +285,7 @@ static void cleanup(struct wdm_device *desc)
 			  desc->sbuf,
 			  desc->validity->transfer_dma);
 	usb_free_coherent(interface_to_usbdev(desc->intf),
-			  desc->bMaxPacketSize0,
+			  desc->wMaxCommand,
 			  desc->inbuf,
 			  desc->response->transfer_dma);
 	kfree(desc->orq);
@@ -765,7 +765,7 @@ out:
 err3:
 	usb_set_intfdata(intf, NULL);
 	usb_free_coherent(interface_to_usbdev(desc->intf),
-			  desc->bMaxPacketSize0,
+			  desc->wMaxCommand,
 			desc->inbuf,
 			desc->response->transfer_dma);
 err2:
