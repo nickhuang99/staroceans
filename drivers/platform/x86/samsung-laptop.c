@@ -21,6 +21,7 @@
 #include <linux/dmi.h>
 #include <linux/platform_device.h>
 #include <linux/rfkill.h>
+#include <linux/efi.h>
 
 /*
  * This driver is needed because a number of Samsung laptops do not hook
@@ -792,6 +793,9 @@ static int __init samsung_init(void)
 	int i;
 	int loca;
 	int retval;
+
+	if (efi_enabled)
+		return -ENODEV;
 
 	mutex_init(&sabi_mutex);
 
