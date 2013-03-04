@@ -4400,7 +4400,6 @@ EXPORT_SYMBOL vmlinux 0x45367449	sget
 EXPORT_SYMBOL vmlinux 0x453c8403	pci_msi_enabled
 EXPORT_SYMBOL vmlinux 0x453e8e93	neigh_changeaddr
 EXPORT_SYMBOL vmlinux 0x456e6dce	radix_tree_tag_get
-EXPORT_SYMBOL vmlinux 0x4575315d	utf8s_to_utf16s
 EXPORT_SYMBOL vmlinux 0x4578f528	__kfifo_to_user
 EXPORT_SYMBOL vmlinux 0x45957ba7	kobject_set_name
 EXPORT_SYMBOL vmlinux 0x4596db6a	sys_sigreturn
@@ -5771,6 +5770,7 @@ EXPORT_SYMBOL vmlinux 0xa652c4ef	__kfifo_dma_in_prepare_r
 EXPORT_SYMBOL vmlinux 0xa656391a	flush_icache_user_range
 EXPORT_SYMBOL vmlinux 0xa658de72	scsi_remove_host
 EXPORT_SYMBOL vmlinux 0xa65972b8	_memcpy_toio
+EXPORT_SYMBOL vmlinux 0xa675804c	utf8s_to_utf16s
 EXPORT_SYMBOL vmlinux 0xa67642cb	alloc_netdev_mqs
 EXPORT_SYMBOL vmlinux 0xa681fe88	generate_random_uuid
 EXPORT_SYMBOL vmlinux 0xa6854ba3	xfrm_register_mode

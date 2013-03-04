@@ -2991,7 +2991,6 @@ EXPORT_SYMBOL vmlinux 0x44f56fe5	unlink_framebuffer
 EXPORT_SYMBOL vmlinux 0x455a9c62	audit_log_end
 EXPORT_SYMBOL vmlinux 0x456903c1	blk_integrity_compare
 EXPORT_SYMBOL vmlinux 0x456e6dce	radix_tree_tag_get
-EXPORT_SYMBOL vmlinux 0x4575315d	utf8s_to_utf16s
 EXPORT_SYMBOL vmlinux 0x45764c6d	rawv6_mh_filter_register
 EXPORT_SYMBOL vmlinux 0x4577a519	simple_transaction_get
 EXPORT_SYMBOL vmlinux 0x4578f528	__kfifo_to_user
@@ -4346,6 +4345,7 @@ EXPORT_SYMBOL vmlinux 0xa64672be	inode_newsize_ok
 EXPORT_SYMBOL vmlinux 0xa64a4cea	usb_nop_xceiv_unregister
 EXPORT_SYMBOL vmlinux 0xa6554747	scsi_adjust_queue_depth
 EXPORT_SYMBOL vmlinux 0xa6624533	inet6_register_protosw
+EXPORT_SYMBOL vmlinux 0xa675804c	utf8s_to_utf16s
 EXPORT_SYMBOL vmlinux 0xa6805a7d	generic_file_buffered_write
 EXPORT_SYMBOL vmlinux 0xa681fe88	generate_random_uuid
 EXPORT_SYMBOL vmlinux 0xa68d490c	generic_file_splice_read

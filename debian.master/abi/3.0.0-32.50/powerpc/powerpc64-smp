@@ -4452,7 +4452,6 @@ EXPORT_SYMBOL vmlinux 0x4564459b	_lv1_set_virtual_uart_param
 EXPORT_SYMBOL vmlinux 0x456e257a	dev_change_flags
 EXPORT_SYMBOL vmlinux 0x45704798	print_hex_dump_bytes
 EXPORT_SYMBOL vmlinux 0x45743b0b	fb_validate_mode
-EXPORT_SYMBOL vmlinux 0x4575315d	utf8s_to_utf16s
 EXPORT_SYMBOL vmlinux 0x4575bf71	of_device_is_available
 EXPORT_SYMBOL vmlinux 0x4578f528	__kfifo_to_user
 EXPORT_SYMBOL vmlinux 0x4583680f	bdi_register_dev
@@ -5901,6 +5900,7 @@ EXPORT_SYMBOL vmlinux 0xa6450072	abx500_get_register_page_interruptible
 EXPORT_SYMBOL vmlinux 0xa647ed3d	simple_setattr
 EXPORT_SYMBOL vmlinux 0xa64f317f	tty_vhangup
 EXPORT_SYMBOL vmlinux 0xa65972b8	_memcpy_toio
+EXPORT_SYMBOL vmlinux 0xa675804c	utf8s_to_utf16s
 EXPORT_SYMBOL vmlinux 0xa681fe88	generate_random_uuid
 EXPORT_SYMBOL vmlinux 0xa6b14665	dm_table_event
 EXPORT_SYMBOL vmlinux 0xa6b82523	ethtool_op_set_flags

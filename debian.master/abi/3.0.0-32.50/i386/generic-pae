@@ -4652,7 +4652,6 @@ EXPORT_SYMBOL vmlinux 0x4550ba8a	register_cpu_notifier
 EXPORT_SYMBOL vmlinux 0x455a2eaa	ipv6_chk_addr
 EXPORT_SYMBOL vmlinux 0x456e6dce	radix_tree_tag_get
 EXPORT_SYMBOL vmlinux 0x456f5d8e	kfree_skb
-EXPORT_SYMBOL vmlinux 0x4575315d	utf8s_to_utf16s
 EXPORT_SYMBOL vmlinux 0x4578f528	__kfifo_to_user
 EXPORT_SYMBOL vmlinux 0x459fa88d	rps_may_expire_flow
 EXPORT_SYMBOL vmlinux 0x45a0560f	kmem_cache_free
@@ -6173,6 +6172,7 @@ EXPORT_SYMBOL vmlinux 0xa64fdf7c	simple_release_fs
 EXPORT_SYMBOL vmlinux 0xa658be7c	fasync_helper
 EXPORT_SYMBOL vmlinux 0xa65a6543	input_reset_device
 EXPORT_SYMBOL vmlinux 0xa6626a7f	bio_init
+EXPORT_SYMBOL vmlinux 0xa675804c	utf8s_to_utf16s
 EXPORT_SYMBOL vmlinux 0xa6774058	lro_flush_all
 EXPORT_SYMBOL vmlinux 0xa6774e8e	xfrm_state_register_afinfo
 EXPORT_SYMBOL vmlinux 0xa681fe88	generate_random_uuid

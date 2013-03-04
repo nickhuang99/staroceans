@@ -4579,7 +4579,6 @@ EXPORT_SYMBOL vmlinux 0x4555cdb2	dev_get_by_index_rcu
 EXPORT_SYMBOL vmlinux 0x455ba04a	input_set_abs_params
 EXPORT_SYMBOL vmlinux 0x456f09da	generic_make_request
 EXPORT_SYMBOL vmlinux 0x45704798	print_hex_dump_bytes
-EXPORT_SYMBOL vmlinux 0x4575315d	utf8s_to_utf16s
 EXPORT_SYMBOL vmlinux 0x4578f528	__kfifo_to_user
 EXPORT_SYMBOL vmlinux 0x457b4093	sock_no_accept
 EXPORT_SYMBOL vmlinux 0x457d0652	idr_remove_all
@@ -6049,6 +6048,7 @@ EXPORT_SYMBOL vmlinux 0xa63d85ab	slhc_remember
 EXPORT_SYMBOL vmlinux 0xa650e7e9	i2c_get_adapter
 EXPORT_SYMBOL vmlinux 0xa660be3c	dev_mc_unsync
 EXPORT_SYMBOL vmlinux 0xa674c3e1	ilookup5_nowait
+EXPORT_SYMBOL vmlinux 0xa675804c	utf8s_to_utf16s
 EXPORT_SYMBOL vmlinux 0xa681fe88	generate_random_uuid
 EXPORT_SYMBOL vmlinux 0xa68e3da4	__scsi_iterate_devices
 EXPORT_SYMBOL vmlinux 0xa69c1419	jbd2_journal_revoke

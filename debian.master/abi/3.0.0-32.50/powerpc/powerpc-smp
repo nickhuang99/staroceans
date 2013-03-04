@@ -4377,7 +4377,6 @@ EXPORT_SYMBOL vmlinux 0x453280be	locks_remove_posix
 EXPORT_SYMBOL vmlinux 0x453c8403	pci_msi_enabled
 EXPORT_SYMBOL vmlinux 0x4550ba8a	register_cpu_notifier
 EXPORT_SYMBOL vmlinux 0x456e6dce	radix_tree_tag_get
-EXPORT_SYMBOL vmlinux 0x4575315d	utf8s_to_utf16s
 EXPORT_SYMBOL vmlinux 0x4578f528	__kfifo_to_user
 EXPORT_SYMBOL vmlinux 0x4596db6a	sys_sigreturn
 EXPORT_SYMBOL vmlinux 0x45986c10	netif_receive_skb
@@ -5737,6 +5736,7 @@ EXPORT_SYMBOL vmlinux 0xa65972b8	_memcpy_toio
 EXPORT_SYMBOL vmlinux 0xa66b9102	scsi_add_host_with_dma
 EXPORT_SYMBOL vmlinux 0xa67254da	__tcf_em_tree_match
 EXPORT_SYMBOL vmlinux 0xa67350ba	iunique
+EXPORT_SYMBOL vmlinux 0xa675804c	utf8s_to_utf16s
 EXPORT_SYMBOL vmlinux 0xa681fe88	generate_random_uuid
 EXPORT_SYMBOL vmlinux 0xa6935800	keyring_clear
 EXPORT_SYMBOL vmlinux 0xa694b2f8	sock_create_lite
