@@ -4709,7 +4709,6 @@ EXPORT_SYMBOL vmlinux 0x450c0ba3	load_nls_default
 EXPORT_SYMBOL vmlinux 0x453c8403	pci_msi_enabled
 EXPORT_SYMBOL vmlinux 0x4550ba8a	register_cpu_notifier
 EXPORT_SYMBOL vmlinux 0x456e6dce	radix_tree_tag_get
-EXPORT_SYMBOL vmlinux 0x4575315d	utf8s_to_utf16s
 EXPORT_SYMBOL vmlinux 0x4578e77e	dentry_path_raw
 EXPORT_SYMBOL vmlinux 0x4578f528	__kfifo_to_user
 EXPORT_SYMBOL vmlinux 0x45852554	sched_autogroup_create_attach
@@ -6162,6 +6161,7 @@ EXPORT_SYMBOL vmlinux 0xa6400588	kill_block_super
 EXPORT_SYMBOL vmlinux 0xa6501a69	tcp_close
 EXPORT_SYMBOL vmlinux 0xa652c4ef	__kfifo_dma_in_prepare_r
 EXPORT_SYMBOL vmlinux 0xa655e634	kmem_cache_free
+EXPORT_SYMBOL vmlinux 0xa675804c	utf8s_to_utf16s
 EXPORT_SYMBOL vmlinux 0xa67e7c8c	tcp_disconnect
 EXPORT_SYMBOL vmlinux 0xa681fe88	generate_random_uuid
 EXPORT_SYMBOL vmlinux 0xa6970398	__kfifo_to_user_r
