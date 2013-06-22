@@ -35,7 +35,8 @@
  *Finds the highest rate index we can use
  *if skb is special data like DHCP/EAPOL, we set should
  *it to lowest rate CCK_1M, otherwise we set rate to
- *CCK11M or OFDM_54M based on wireless mode.
+ *highest rate based on wireless mode used for iwconfig
+ *show Tx rate.
  */
 static u8 _rtl_rc_get_highest_rix(struct rtl_priv *rtlpriv,
 				  struct ieee80211_sta *sta,
@@ -116,8 +117,7 @@ static void _rtl_rc_rate_set_series(struct rtl_priv *rtlpriv,
 			rate->flags |= IEEE80211_TX_RC_USE_SHORT_PREAMBLE;
 		if (mac->opmode == NL80211_IFTYPE_AP ||
 			mac->opmode == NL80211_IFTYPE_ADHOC) {
-			if (sta && (sta->ht_cap.cap &
-			    IEEE80211_HT_CAP_SUP_WIDTH_20_40))
+			if (sta && (sta->ht_cap.cap & IEEE80211_HT_CAP_SUP_WIDTH_20_40))
 				rate->flags |= IEEE80211_TX_RC_40_MHZ_WIDTH;
 		} else {
 			if (mac->bw_40)
@@ -204,12 +204,17 @@ static void rtl_tx_status(void *ppriv,
 				!(skb->protocol == cpu_to_be16(ETH_P_PAE))) {
 			if (ieee80211_is_data_qos(fc)) {
 				u8 tid = rtl_get_tid(skb);
-				if (_rtl_tx_aggr_check(rtlpriv, sta_entry,
-				    tid)) {
-					sta_entry->tids[tid].agg.agg_state =
-							 RTL_AGG_PROGRESS;
-					ieee80211_start_tx_ba_session(sta,
-								 tid, 5000);
+				if (_rtl_tx_aggr_check(rtlpriv, sta_entry, tid)) {
+					sta_entry->tids[tid].agg.agg_state = RTL_AGG_PROGRESS;
+					/*<delete in kernel start>*/
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,38))
+					/*<delete in kernel end>*/
+					ieee80211_start_tx_ba_session(sta, tid, 5000);
+					/*<delete in kernel start>*/
+#else
+					ieee80211_start_tx_ba_session(sta, tid);
+#endif
+					/*<delete in kernel end>*/
 				}
 			}
 		}
@@ -250,7 +255,7 @@ static void *rtl_rate_alloc_sta(void *ppriv,
 
 	rate_priv = kzalloc(sizeof(struct rtl_rate_priv), gfp);
 	if (!rate_priv) {
-		RT_TRACE(rtlpriv, COMP_ERR, DBG_EMERG,
+		RT_TRACE(COMP_ERR, DBG_EMERG,
 			 ("Unable to allocate private rc structure\n"));
 		return NULL;
 	}

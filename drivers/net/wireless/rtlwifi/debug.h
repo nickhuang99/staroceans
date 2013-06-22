@@ -24,6 +24,7 @@
  * Hsinchu 300, Taiwan.
  *
  * Larry Finger <Larry.Finger@lwfinger.net>
+ *
  *****************************************************************************/
 
 #ifndef __RTL_DEBUG_H__
@@ -105,7 +106,8 @@
 #define COMP_MAC80211		BIT(26)
 #define COMP_REGD			BIT(27)
 #define COMP_CHAN			BIT(28)
-#define COMP_USB			BIT(29)
+#define COMP_EASY_CONCURRENT 		BIT(29)
+#define COMP_BT_COEXIST			BIT(30)
 
 /*--------------------------------------------------------------
 		Define the rt_print components
@@ -133,6 +135,13 @@
 #define	PHY_TXPWR			BIT(8)
 #define	PHY_PWRDIFF			BIT(9)
 
+/* Define Dynamic Mechanism check module bit --> FDM */ 
+#define WA_IOT				BIT(0)
+#define DM_PWDB				BIT(1)
+#define DM_MONITOR			BIT(2)
+#define DM_DIG				BIT(3)
+#define DM_EDCA_TURBO		BIT(4)
+
 enum dbgp_flag_e {
 	FQOS = 0,
 	FTX = 1,
@@ -156,24 +165,25 @@ enum dbgp_flag_e {
 	DBGP_TYPE_MAX
 };
 
-#define RT_ASSERT(_exp, fmt)				\
-	do {						\
-		if (!(_exp)) {			\
+#define RT_ASSERT(_exp,fmt)				\
+	do { \
+		if(!(_exp))	{			\
 			printk(KERN_DEBUG "%s:%s(): ", KBUILD_MODNAME, \
-			__func__);			\
+			__func__);	\
 			printk fmt;			\
 		} \
-	} while (0);
+	} while(0);
 
-#define RT_TRACE(rtlpriv, comp, level, fmt)\
+#define RT_TRACE(comp, level, fmt)\
 	do { \
-		if (unlikely(((comp) & rtlpriv->dbg.global_debugcomponents) && \
+		if(unlikely(((comp) & rtlpriv->dbg.global_debugcomponents) && \
 			((level) <= rtlpriv->dbg.global_debuglevel))) {\
-			printk(KERN_DEBUG "%s:%s():<%lx-%x> ", KBUILD_MODNAME, \
-			__func__, in_interrupt(), in_atomic());	\
-			printk fmt;				\
-		} \
-	} while (0);
+			printk(KERN_DEBUG "%s-%d:%s():<%lx-%x> ", KBUILD_MODNAME, \
+			rtlpriv->rtlhal.interfaceindex, __func__, \
+			in_interrupt(), in_atomic());	\
+			printk fmt; 			\
+		}\
+	} while(0);
 
 #define RTPRINT(rtlpriv, dbgtype, dbgflag, printstr)	\
 	do {						\
@@ -181,33 +191,32 @@ enum dbgp_flag_e {
 			printk(KERN_DEBUG "%s: ", KBUILD_MODNAME);	\
 			printk printstr;		\
 		}					\
-	} while (0);
+	} while(0);
 
 #define RT_PRINT_DATA(rtlpriv, _comp, _level, _titlestring, _hexdata, \
 		_hexdatalen) \
 	do {\
-		if (unlikely(((_comp) & rtlpriv->dbg.global_debugcomponents) &&\
-			(_level <= rtlpriv->dbg.global_debuglevel)))	{ \
-			int __i;					\
-			u8*	ptr = (u8 *)_hexdata;			\
+		if(unlikely(((_comp) & rtlpriv->dbg.global_debugcomponents ) && \
+			(_level <= rtlpriv->dbg.global_debuglevel )))	{ 	\
+			int __i;						\
+			u8*	ptr = (u8*)_hexdata;				\
 			printk(KERN_DEBUG "%s: ", KBUILD_MODNAME);	\
-			printk("In process \"%s\" (pid %i):", current->comm,\
+			printk(KERN_DEBUG "In process \"%s\" (pid %i):", current->comm, 	\
 					current->pid); \
 			printk(_titlestring);		\
-			for (__i = 0; __i < (int)_hexdatalen; __i++) {	\
-				printk("%02X%s", ptr[__i], (((__i + 1) % 4)\
-							== 0) ? "  " : " ");\
-				if (((__i + 1) % 16) == 0)		\
-					printk("\n");			\
+			for( __i=0; __i<(int)_hexdatalen; __i++ ) {		\
+				printk("%02X%s", ptr[__i], (((__i + 1) % 4) 	\
+							== 0)?"  ":" ");	\
+				if (((__i + 1) % 16) == 0)	\
+					printk("\n");	\
 			}				\
 			printk(KERN_DEBUG "\n");			\
 		} \
-	} while (0);
-
-#define MAC_FMT "%02x:%02x:%02x:%02x:%02x:%02x"
-#define MAC_ARG(x) \
-	((u8 *)(x))[0], ((u8 *)(x))[1], ((u8 *)(x))[2],\
-	((u8 *)(x))[3], ((u8 *)(x))[4], ((u8 *)(x))[5]
+	} while(0);
 
 void rtl_dbgp_flag_init(struct ieee80211_hw *hw);
+void rtl_proc_add_one(struct ieee80211_hw *hw);
+void rtl_proc_remove_one(struct ieee80211_hw *hw);
+void rtl_proc_add_topdir(void);
+void rtl_proc_remove_topdir(void);
 #endif

@@ -85,7 +85,7 @@ static struct country_code_to_enum_rd allCountries[] = {
 	NL80211_RRF_NO_IBSS)
 
 #define RTL819x_5GHZ_ALL	\
-	(RTL819x_5GHZ_5150_5350, RTL819x_5GHZ_5470_5850)
+	RTL819x_5GHZ_5150_5350, RTL819x_5GHZ_5470_5850
 
 static const struct ieee80211_regdomain rtl_regdom_11 = {
 	.n_reg_rules = 1,
@@ -190,14 +190,13 @@ static void _rtl_reg_apply_beaconing_flags(struct wiphy *wiphy,
 
 				if (!(reg_rule->flags & NL80211_RRF_NO_IBSS))
 					ch->flags &= ~IEEE80211_CHAN_NO_IBSS;
-				if (!(reg_rule->
-				     flags & NL80211_RRF_PASSIVE_SCAN))
+				if (!(reg_rule->flags & NL80211_RRF_PASSIVE_SCAN))
 					ch->flags &=
 					    ~IEEE80211_CHAN_PASSIVE_SCAN;
 			} else {
 				if (ch->beacon_found)
 					ch->flags &= ~(IEEE80211_CHAN_NO_IBSS |
-						  IEEE80211_CHAN_PASSIVE_SCAN);
+						       IEEE80211_CHAN_PASSIVE_SCAN);
 			}
 		}
 	}
@@ -233,7 +232,7 @@ static void _rtl_reg_apply_active_scan_flags(struct wiphy *wiphy,
 	}
 
 	/*
-	 *If a country IE has been received check its rule for this
+	 *If a country IE has been recieved check its rule for this
 	 *channel first before enabling active scan. The passive scan
 	 *would have been enforced by the initial processing of our
 	 *custom regulatory domain.
@@ -342,7 +341,7 @@ static int _rtl_reg_notifier_apply(struct wiphy *wiphy,
 }
 
 static const struct ieee80211_regdomain *_rtl_regdomain_select(
-					       struct rtl_regulatory *reg)
+							       struct rtl_regulatory *reg)
 {
 	switch (reg->country_code) {
 	case COUNTRY_CODE_FCC:
@@ -371,7 +370,7 @@ static const struct ieee80211_regdomain *_rtl_regdomain_select(
 
 static int _rtl_regd_init_wiphy(struct rtl_regulatory *reg,
 				struct wiphy *wiphy,
-				int (*reg_notifier) (struct wiphy *wiphy,
+				int (*reg_notifier) (struct wiphy * wiphy,
 						     struct regulatory_request *
 						     request))
 {
@@ -415,12 +414,12 @@ int rtl_regd_init(struct ieee80211_hw *hw,
 	/* init country_code from efuse channel plan */
 	rtlpriv->regd.country_code = rtlpriv->efuse.channel_plan;
 
-	RT_TRACE(rtlpriv, COMP_REGD, DBG_TRACE,
+	RT_TRACE(COMP_REGD, DBG_TRACE,
 		 (KERN_DEBUG "rtl: EEPROM regdomain: 0x%0x\n",
 		  rtlpriv->regd.country_code));
 
 	if (rtlpriv->regd.country_code >= COUNTRY_CODE_MAX) {
-		RT_TRACE(rtlpriv, COMP_REGD, DBG_DMESG,
+		RT_TRACE(COMP_REGD, DBG_DMESG,
 			 (KERN_DEBUG "rtl: EEPROM indicates invalid contry code"
 			  "world wide 13 should be used\n"));
 
@@ -437,7 +436,7 @@ int rtl_regd_init(struct ieee80211_hw *hw,
 		rtlpriv->regd.alpha2[1] = '0';
 	}
 
-	RT_TRACE(rtlpriv, COMP_REGD, DBG_TRACE,
+	RT_TRACE(COMP_REGD, DBG_TRACE,
 		 (KERN_DEBUG "rtl: Country alpha2 being used: %c%c\n",
 		  rtlpriv->regd.alpha2[0], rtlpriv->regd.alpha2[1]));
 
@@ -451,7 +450,7 @@ int rtl_reg_notifier(struct wiphy *wiphy, struct regulatory_request *request)
 	struct ieee80211_hw *hw = wiphy_to_ieee80211_hw(wiphy);
 	struct rtl_priv *rtlpriv = rtl_priv(hw);
 
-	RT_TRACE(rtlpriv, COMP_REGD, DBG_LOUD, ("\n"));
+	RT_TRACE(COMP_REGD, DBG_LOUD, ("\n"));
 
 	return _rtl_reg_notifier_apply(wiphy, request, &rtlpriv->regd);
 }

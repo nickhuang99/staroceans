@@ -34,9 +34,9 @@
 #include "rf.h"
 #include "dm.h"
 
-static bool _rtl92ce_phy_rf6052_config_parafile(struct ieee80211_hw *hw);
+static bool _rtl92c_phy_rf6052_config_parafile(struct ieee80211_hw *hw);
 
-void rtl92ce_phy_rf6052_set_bandwidth(struct ieee80211_hw *hw, u8 bandwidth)
+void rtl92c_phy_rf6052_set_bandwidth(struct ieee80211_hw *hw, u8 bandwidth)
 {
 	struct rtl_priv *rtlpriv = rtl_priv(hw);
 	struct rtl_phy *rtlphy = &(rtlpriv->phy);
@@ -55,14 +55,14 @@ void rtl92ce_phy_rf6052_set_bandwidth(struct ieee80211_hw *hw, u8 bandwidth)
 			      rtlphy->rfreg_chnlval[0]);
 		break;
 	default:
-		RT_TRACE(rtlpriv, COMP_ERR, DBG_EMERG,
+		RT_TRACE(COMP_ERR, DBG_EMERG,
 			 ("unknown bandwidth: %#X\n", bandwidth));
 		break;
 	}
 }
 
-void rtl92ce_phy_rf6052_set_cck_txpower(struct ieee80211_hw *hw,
-					u8 *ppowerlevel)
+void rtl92c_phy_rf6052_set_cck_txpower(struct ieee80211_hw *hw,
+				       u8 *ppowerlevel)
 {
 	struct rtl_priv *rtlpriv = rtl_priv(hw);
 	struct rtl_phy *rtlphy = &(rtlpriv->phy);
@@ -104,8 +104,8 @@ void rtl92ce_phy_rf6052_set_cck_txpower(struct ieee80211_hw *hw,
 			tx_agc[RF90_PATH_A] += tmpval;
 
 			tmpval = (rtlphy->mcs_txpwrlevel_origoffset[0][14]) +
-				 (rtlphy->mcs_txpwrlevel_origoffset[0][15] <<
-				 24);
+			    (rtlphy->mcs_txpwrlevel_origoffset[0][15] <<
+			     24);
 			tx_agc[RF90_PATH_B] += tmpval;
 		}
 	}
@@ -211,7 +211,7 @@ static void _rtl92c_get_txpower_writeval_by_regulatory(struct ieee80211_hw *hw,
 
 			writeVal =
 			    rtlphy->mcs_txpwrlevel_origoffset[chnlgroup][index +
-			    (rf ? 8 : 0)]
+									 (rf ? 8 : 0)]
 			    + ((index < 2) ? powerBase0[rf] : powerBase1[rf]);
 
 			RTPRINT(rtlpriv, FPHY, PHY_TXPWR,
@@ -284,9 +284,8 @@ static void _rtl92c_get_txpower_writeval_by_regulatory(struct ieee80211_hw *hw,
 			for (i = 0; i < 4; i++) {
 				pwr_diff_limit[i] =
 				    (u8) ((rtlphy->mcs_txpwrlevel_origoffset
-					  [chnlgroup][index +
-					  (rf ? 8 : 0)] & (0x7f << (i * 8))) >>
-					  (i * 8));
+					   [chnlgroup][index + (rf ? 8 : 0)] & (0x7f <<
+									(i * 8))) >> (i * 8));
 
 				if (rtlphy->current_chan_bw ==
 				    HT_CHANNEL_WIDTH_20_40) {
@@ -409,7 +408,7 @@ static void _rtl92c_write_ofdm_power_reg(struct ieee80211_hw *hw,
 	}
 }
 
-void rtl92ce_phy_rf6052_set_ofdm_txpower(struct ieee80211_hw *hw,
+void rtl92c_phy_rf6052_set_ofdm_txpower(struct ieee80211_hw *hw,
 					u8 *ppowerlevel, u8 channel)
 {
 	u32 writeVal[2], powerBase0[2], powerBase1[2];
@@ -429,7 +428,7 @@ void rtl92ce_phy_rf6052_set_ofdm_txpower(struct ieee80211_hw *hw,
 	}
 }
 
-bool rtl92ce_phy_rf6052_config(struct ieee80211_hw *hw)
+bool rtl92c_phy_rf6052_config(struct ieee80211_hw *hw)
 {
 	struct rtl_priv *rtlpriv = rtl_priv(hw);
 	struct rtl_phy *rtlphy = &(rtlpriv->phy);
@@ -439,11 +438,11 @@ bool rtl92ce_phy_rf6052_config(struct ieee80211_hw *hw)
 	else
 		rtlphy->num_total_rfpath = 2;
 
-	return _rtl92ce_phy_rf6052_config_parafile(hw);
+	return _rtl92c_phy_rf6052_config_parafile(hw);
 
 }
 
-static bool _rtl92ce_phy_rf6052_config_parafile(struct ieee80211_hw *hw)
+static bool _rtl92c_phy_rf6052_config_parafile(struct ieee80211_hw *hw)
 {
 	struct rtl_priv *rtlpriv = rtl_priv(hw);
 	struct rtl_phy *rtlphy = &(rtlpriv->phy);
@@ -485,11 +484,11 @@ static bool _rtl92ce_phy_rf6052_config_parafile(struct ieee80211_hw *hw)
 		switch (rfpath) {
 		case RF90_PATH_A:
 			rtstatus = rtl92c_phy_config_rf_with_headerfile(hw,
-						(enum radio_path)rfpath);
+									(enum radio_path)rfpath);
 			break;
 		case RF90_PATH_B:
 			rtstatus = rtl92c_phy_config_rf_with_headerfile(hw,
-						(enum radio_path)rfpath);
+									(enum radio_path)rfpath);
 			break;
 		case RF90_PATH_C:
 			break;
@@ -511,13 +510,13 @@ static bool _rtl92ce_phy_rf6052_config_parafile(struct ieee80211_hw *hw)
 		}
 
 		if (rtstatus != true) {
-			RT_TRACE(rtlpriv, COMP_INIT, DBG_TRACE,
+			RT_TRACE(COMP_INIT, DBG_TRACE,
 				 ("Radio[%d] Fail!!", rfpath));
 			return false;
 		}
 
 	}
 
-	RT_TRACE(rtlpriv, COMP_INIT, DBG_TRACE, ("<---\n"));
+	RT_TRACE(COMP_INIT, DBG_TRACE, ("<---\n"));
 	return rtstatus;
 }

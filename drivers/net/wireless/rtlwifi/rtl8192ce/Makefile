@@ -6,7 +6,8 @@ rtl8192ce-objs :=		\
 		rf.o		\
 		sw.o		\
 		table.o		\
-		trx.o
+		trx.o		\
+		fw.o
 
 obj-$(CONFIG_RTL8192CE) += rtl8192ce.o
 

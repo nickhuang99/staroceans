@@ -72,7 +72,7 @@
 #define PCI_MAX_DEVICES				32
 #define PCI_MAX_FUNCTION			8
 
-#define PCI_CONF_ADDRESS	0x0CF8	/*PCI Configuration Space Address */
+#define PCI_CONF_ADDRESS   	0x0CF8	/*PCI Configuration Space Address */
 #define PCI_CONF_DATA		0x0CFC	/*PCI Configuration Space Data */
 
 #define PCI_CLASS_BRIDGE_DEV		0x06
@@ -80,9 +80,9 @@
 #define PCI_CAPABILITY_ID_PCI_EXPRESS	0x10
 #define PCI_CAP_ID_EXP			0x10
 
-#define U1DONTCARE			0xFF
-#define U2DONTCARE			0xFFFF
-#define U4DONTCARE			0xFFFFFFFF
+#define U1DONTCARE 			0xFF
+#define U2DONTCARE 			0xFFFF
+#define U4DONTCARE 			0xFFFFFFFF
 
 #define RTL_PCI_8192_DID	0x8192	/*8192 PCI-E */
 #define RTL_PCI_8192SE_DID	0x8192	/*8192 SE */
@@ -97,16 +97,17 @@
 #define RTL_PCI_700F_DID	0x700F
 #define RTL_PCI_701F_DID	0x701F
 #define RTL_PCI_DLINK_DID	0x3304
+#define RTL_PCI_8723AE_DID  0x8723	/*8723e */
 #define RTL_PCI_8192CET_DID	0x8191	/*8192ce */
 #define RTL_PCI_8192CE_DID	0x8178	/*8192ce */
 #define RTL_PCI_8191CE_DID	0x8177	/*8192ce */
 #define RTL_PCI_8188CE_DID	0x8176	/*8192ce */
 #define RTL_PCI_8192CU_DID	0x8191	/*8192ce */
 #define RTL_PCI_8192DE_DID	0x8193	/*8192de */
-#define RTL_PCI_8192DE_DID2	0x002B	/*92DE*/
+#define RTL_PCI_8192DE_DID2	0x002B	//92DE
 
 /*8192 support 16 pages of IO registers*/
-#define RTL_MEM_MAPPED_IO_RANGE_8190PCI		0x1000
+#define RTL_MEM_MAPPED_IO_RANGE_8190PCI 	0x1000
 #define RTL_MEM_MAPPED_IO_RANGE_8192PCIE	0x4000
 #define RTL_MEM_MAPPED_IO_RANGE_8192SE		0x4000
 #define RTL_MEM_MAPPED_IO_RANGE_8192CE		0x4000
@@ -122,16 +123,16 @@
 
 enum pci_bridge_vendor {
 	PCI_BRIDGE_VENDOR_INTEL = 0x0,	/*0b'0000,0001 */
-	PCI_BRIDGE_VENDOR_ATI,		/*0b'0000,0010*/
-	PCI_BRIDGE_VENDOR_AMD,		/*0b'0000,0100*/
-	PCI_BRIDGE_VENDOR_SIS,		/*0b'0000,1000*/
-	PCI_BRIDGE_VENDOR_UNKNOWN,	/*0b'0100,0000*/
-	PCI_BRIDGE_VENDOR_MAX,
+	PCI_BRIDGE_VENDOR_ATI,			/*0b'0000,0010*/
+	PCI_BRIDGE_VENDOR_AMD,			/*0b'0000,0100*/
+	PCI_BRIDGE_VENDOR_SIS,			/*0b'0000,1000*/
+	PCI_BRIDGE_VENDOR_UNKNOWN,		/*0b'0100,0000*/
+	PCI_BRIDGE_VENDOR_MAX,	
 };
 
 struct rtl_pci_capabilities_header {
-	u8 capability_id;
-	u8 next;
+    u8 capability_id;
+    u8 next;
 };
 
 struct rtl_rx_desc {
@@ -163,12 +164,6 @@ struct rtl8192_rx_ring {
 
 struct rtl_pci {
 	struct pci_dev *pdev;
-
-	bool driver_is_goingto_unload;
-	bool up_first_time;
-	bool first_init;
-	bool being_init_adapter;
-	bool init_ready;
 	bool irq_enabled;
 
 	/*Tx */
@@ -199,8 +194,8 @@ struct rtl_pci {
 	u8 const_devicepci_aspm_setting;
 	/*If it supports ASPM, Offset[560h] = 0x40,
 	   otherwise Offset[560h] = 0x00. */
-	bool support_aspm;
-	bool support_backdoor;
+	bool b_support_aspm;
+	bool b_support_backdoor;
 
 	/*QOS & EDCA */
 	enum acm_method acm_method;
@@ -250,39 +245,39 @@ extern struct rtl_intf_ops rtl_pci_ops;
 int __devinit rtl_pci_probe(struct pci_dev *pdev,
 			    const struct pci_device_id *id);
 void rtl_pci_disconnect(struct pci_dev *pdev);
-int rtl_pci_suspend(struct pci_dev *pdev, pm_message_t state);
-int rtl_pci_resume(struct pci_dev *pdev);
+int rtl_pci_suspend(struct device *dev);
+int rtl_pci_resume(struct device *dev);
 
 static inline u8 pci_read8_sync(struct rtl_priv *rtlpriv, u32 addr)
 {
-	return readb((u8 __iomem *) rtlpriv->io.pci_mem_start + addr);
+	return 0xff & readb((u8 *) rtlpriv->io.pci_mem_start + addr);
 }
 
 static inline u16 pci_read16_sync(struct rtl_priv *rtlpriv, u32 addr)
 {
-	return readw((u8 __iomem *) rtlpriv->io.pci_mem_start + addr);
+	return readw((u8 *) rtlpriv->io.pci_mem_start + addr);
 }
 
 static inline u32 pci_read32_sync(struct rtl_priv *rtlpriv, u32 addr)
 {
-	return readl((u8 __iomem *) rtlpriv->io.pci_mem_start + addr);
+	return readl((u8 *) rtlpriv->io.pci_mem_start + addr);
 }
 
 static inline void pci_write8_async(struct rtl_priv *rtlpriv, u32 addr, u8 val)
 {
-	writeb(val, (u8 __iomem *) rtlpriv->io.pci_mem_start + addr);
+	writeb(val, (u8 *) rtlpriv->io.pci_mem_start + addr);
 }
 
 static inline void pci_write16_async(struct rtl_priv *rtlpriv,
 				     u32 addr, u16 val)
 {
-	writew(val, (u8 __iomem *) rtlpriv->io.pci_mem_start + addr);
+	writew(val, (u8 *) rtlpriv->io.pci_mem_start + addr);
 }
 
 static inline void pci_write32_async(struct rtl_priv *rtlpriv,
 				     u32 addr, u32 val)
 {
-	writel(val, (u8 __iomem *) rtlpriv->io.pci_mem_start + addr);
+	writel(val, (u8 *) rtlpriv->io.pci_mem_start + addr);
 }
 
 static inline void rtl_pci_raw_write_port_ulong(u32 port, u32 val)
@@ -295,17 +290,17 @@ static inline void rtl_pci_raw_write_port_uchar(u32 port, u8 val)
 	outb(val, port);
 }
 
-static inline void rtl_pci_raw_read_port_uchar(u32 port, u8 *pval)
+static inline void rtl_pci_raw_read_port_uchar(u32 port, u8 * pval)
 {
 	*pval = inb(port);
 }
 
-static inline void rtl_pci_raw_read_port_ushort(u32 port, u16 *pval)
+static inline void rtl_pci_raw_read_port_ushort(u32 port, u16 * pval)
 {
 	*pval = inw(port);
 }
 
-static inline void rtl_pci_raw_read_port_ulong(u32 port, u32 *pval)
+static inline void rtl_pci_raw_read_port_ulong(u32 port, u32 * pval)
 {
 	*pval = inl(port);
 }

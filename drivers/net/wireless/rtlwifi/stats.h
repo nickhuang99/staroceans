@@ -27,30 +27,20 @@
  *
  *****************************************************************************/
 
-#ifndef __RTL_CAM_H_
-#define __RTL_CAM_H_
+#ifndef __RTL_STATS_H__
+#define __RTL_STATS_H__
 
-#define CAM_CONTENT_COUNT 				8
+#define	PHY_RSSI_SLID_WIN_MAX				100
+#define	PHY_LINKQUALITY_SLID_WIN_MAX		20
+#define	PHY_BEACON_RSSI_SLID_WIN_MAX		10
 
-#define CFG_DEFAULT_KEY  				BIT(5)
-#define CFG_VALID        				BIT(15)
+/* Rx smooth factor */
+#define	RX_SMOOTH_FACTOR					20
 
-#define PAIRWISE_KEYIDX					0
-#define CAM_PAIRWISE_KEY_POSITION		4
-
-#define	CAM_CONFIG_USEDK				1
-#define	CAM_CONFIG_NO_USEDK				0
-
-extern void rtl_cam_reset_all_entry(struct ieee80211_hw *hw);
-extern u8 rtl_cam_add_one_entry(struct ieee80211_hw *hw, u8 *mac_addr,
-			u32 ul_key_id, u32 ul_entry_idx, u32 ul_enc_alg,
-			u32 ul_default_key, u8 *key_content);
-int rtl_cam_delete_one_entry(struct ieee80211_hw *hw, u8 *mac_addr,
-			u32 ul_key_id);
-void rtl_cam_mark_invalid(struct ieee80211_hw *hw, u8 uc_index);
-void rtl_cam_empty_entry(struct ieee80211_hw *hw, u8 uc_index);
-void rtl_cam_reset_sec_info(struct ieee80211_hw *hw);
-u8 rtl_cam_get_free_entry(struct ieee80211_hw *hw, u8 *sta_addr);
-void rtl_cam_del_entry(struct ieee80211_hw *hw, u8 *sta_addr);
+u8 rtl_query_rxpwrpercentage(char antpower);
+u8 rtl_evm_db_to_percentage(char value);
+long rtl_signal_scale_mapping(struct ieee80211_hw *hw, long currsig);
+void rtl_process_phyinfo(struct ieee80211_hw *hw, u8 *buffer,
+	struct rtl_stats *pstatus);
 
 #endif
