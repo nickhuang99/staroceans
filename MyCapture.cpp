@@ -15,7 +15,7 @@
 #include "MySDLDisplay.h"
 
 #define CLEAR(x) memset (&(x), 0, sizeof (x))
-
+static FILE* before, *after;
 int MyVideoCapture::m_fd = -1;
 void** MyVideoCapture::m_startArray = NULL;
 size_t MyVideoCapture::m_length = 0;
@@ -117,7 +117,7 @@ bool MyVideoCapture::init_device()
 }
 bool MyVideoCapture::init_buffer()
 {
-    struct v4l2_requestbuffers      req;
+    struct v4l2_requestbuffers req;
     m_startArray = new void*[m_bufferNumber];
     memset(m_startArray, 0, sizeof(void*)*m_bufferNumber);
     if (m_startArray == NULL)
@@ -196,6 +196,8 @@ void MyVideoCapture::close_device()
     {
         v4l2_close(m_fd);
         m_fd = -1;
+        fclose(before);
+        fclose(after);
     }
 }
 
@@ -236,6 +238,8 @@ size_t MyVideoCapture::startCapture(unsigned long pixelFormat,
         if (open_device())
         {
             size = m_length;
+            before = fopen("before", "w");
+            after = fopen("after", "w");
         }
         else
         {
@@ -321,24 +325,37 @@ bool MyVideoCapture::captureFrame(unsigned char*dstPtr[4], bool bSkip)
 
         unsigned char* yPtr = dstPtr[0], *uPtr=dstPtr[1], *vPtr= dstPtr[2];
 
+        //fwrite(srcPtr, m_length, 1, before);
+        // convert from packed yuv422 to planar yuv420
+        bool bEvenRow = true;
         for (size_t r = 0; r < m_height; r ++)
         {
-            bool bEvenCol = true;
-            for (size_t c = 0; c < m_width; c ++)
+            if (bEvenRow)
             {
-                *yPtr++ = *srcPtr++;
-                if (bEvenCol)
+                for (size_t c = 0; c < m_width/2; c ++)
                 {
-                    bEvenCol = false;
+                    *yPtr++ = *srcPtr++;
                     *uPtr++ = *srcPtr++;
+                    *yPtr++ = *srcPtr++;
                     *vPtr++ = *srcPtr++;
                 }
-                else
-                {
-                    bEvenCol = true;
-                }
             }
+            else
+            {
+                for (size_t c = 0; c < m_width/2; c ++)
+                {
+                    *yPtr++ = *srcPtr++;
+                    srcPtr++;
+                    *yPtr++ = *srcPtr++;
+                    srcPtr++;
+                }
+
+            }
+            //bEvenRow = !bEvenRow;
         }
+        //fwrite(dstPtr[0], m_width*m_height, 1, after);
+        //fwrite(dstPtr[1], m_width*m_height/4, 1, after);
+        //fwrite(dstPtr[2], m_width*m_height/4, 1, after);
     }
 
     if (xioctl(m_fd, VIDIOC_QBUF, &buf) == -1)
