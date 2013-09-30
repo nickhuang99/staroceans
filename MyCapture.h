@@ -14,7 +14,7 @@ public:
                size_t bufferNumber = 2);
     size_t startCapture(unsigned long pixelFormat = V4L2_PIX_FMT_YUYV,
                unsigned long width = 640, unsigned long height = 480,
-               size_t bufferNumber = 2);
+               size_t bufferNumber = 10);
     bool captureFrame(unsigned char*ptr, bool bSkip = false);
     bool captureFrame(unsigned char*ptr[4], bool bSkip = false);
     ~MyVideoCapture();

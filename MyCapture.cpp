@@ -440,6 +440,81 @@ void* MyVideoCapture::mainloop(void* arg)
 }
 
 /*
+void* MyVideoCapture::mainloop2(void* arg)
+{
+    MySDLDisplay display;
+    SDL_Event event;
+    struct timeval last, now;
+    int counter = 0;
+    if (!display.init())
+    {
+        return NULL;
+    }
+    while (true)
+    {
+        if (counter == 0 )
+        {
+            gettimeofday(&last, NULL);
+        }
+
+        SDL_PollEvent(&event);
+        if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_ESCAPE)
+        {
+            break;
+        }
+        int r;
+        do
+        {
+            struct timeval tv;
+            fd_set fds;
+            FD_ZERO(&fds);
+            FD_SET(m_fd, &fds);
+            // Timeout.
+            tv.tv_sec = 1;
+            tv.tv_usec = 0;
+
+            r = select(m_fd + 1, &fds, NULL, NULL, &tv);
+        }
+        while ((r == -1 && (errno = EINTR)));
+        if (r == -1)
+        {
+            perror("select");
+            break;
+        }
+        struct v4l2_buffer buf;
+        CLEAR(buf);
+        buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+        buf.memory = V4L2_MEMORY_MMAP;
+        if (xioctl(m_fd, VIDIOC_DQBUF, &buf) == -1)
+        {
+            break;
+        }
+
+        if (!display.displayImage((unsigned char*)m_startArray[buf.index]))
+        {
+            break;
+        }
+
+        if (xioctl(m_fd, VIDIOC_QBUF, &buf) == -1)
+        {
+            break;
+        }
+        counter ++;
+        if (counter % FPS_COUNT_NUMBER == 0)
+        {
+            gettimeofday(&now, NULL);
+            double diff = (now.tv_sec - last.tv_sec) + (double)(now.tv_usec - last.tv_usec)/1000000.0;
+            counter = 0;
+            printf("fps:%f\n", (double)FPS_COUNT_NUMBER/diff);
+
+        }
+    }
+
+    return NULL;
+}
+*/
+
+/*
 int main()
 {
     MyVideoCapture* ptr = MyVideoCapture::createInstance();
