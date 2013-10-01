@@ -134,6 +134,52 @@ bool MyX264::encode_header()
 	}
 	return write_nal(p_nal, i_nal);
 }
+
+void MyX264::copyPlanarYUV420(const unsigned char* srcPtr, unsigned char*yBuf, unsigned char* uBuf, unsigned char* vBuf)
+{
+	const unsigned char* ptr = srcPtr;
+	unsigned char* yPtr = yBuf, * uPtr = uBuf, * vPtr= vBuf;
+	for (unsigned int r = 0; r < m_height; r ++)
+	{
+		if (r % 2 == 0)
+		{
+			for (unsigned int c = 0; c < m_width/2; c ++)
+			{
+				*yPtr ++ = *ptr ++;
+				*uPtr ++ = *ptr ++;
+				*yPtr ++ = *ptr ++;
+				*vPtr ++ = *ptr ++;
+			}
+		}
+		else
+		{
+			for (unsigned int c = 0; c < m_width/2; c ++)
+			{
+				*yPtr ++ = *ptr ++;
+				ptr ++;
+				*yPtr ++ = *ptr ++;
+				ptr ++;
+			}
+		}
+
+	}
+}
+
+void MyX264::copyPlanarYUV422(const unsigned char* srcPtr, unsigned char*yBuf, unsigned char* uBuf, unsigned char* vBuf)
+{
+	const unsigned char* ptr = srcPtr;
+	unsigned char* yPtr = yBuf, * uPtr = uBuf, * vPtr= vBuf;
+	for (unsigned int r = 0; r < m_height; r ++)
+	{
+		for (unsigned int c = 0; c < m_width/2; c ++)
+		{
+			*yPtr ++ = *ptr ++;
+			*uPtr ++ = *ptr ++;
+			*yPtr ++ = *ptr ++;
+			*vPtr ++ = *ptr ++;
+		}
+	}
+}
 // assume it is yuv422 as input,
 bool MyX264::encode_frame(unsigned char* ptr, unsigned int size)
 {
@@ -154,29 +200,15 @@ bool MyX264::encode_frame(unsigned char* ptr, unsigned int size)
 	unsigned char* yPtr = img.plane[0];
 	unsigned char* uPtr = img.plane[1];
 	unsigned char* vPtr = img.plane[2];
-	for (size_t r = 0; r < m_height; r ++)
+	if (x264_param.i_csp == X264_CSP_I420)
 	{
-		if (r%2 == 0)
+		copyPlanarYUV420(ptr, yPtr, uPtr, vPtr);
+	}
+	else
+	{
+		if (x264_param.i_csp == X264_CSP_I422)
 		{
-			for (size_t c = 0; c < m_width/2; c ++)
-			{
-				*yPtr = *ptr;
-				yPtr ++;
-				ptr ++;
-				*uPtr = *ptr;
-				uPtr ++;
-				ptr ++;
-				*yPtr = *ptr;
-				yPtr ++;
-				ptr ++;
-				*vPtr = *ptr;
-				vPtr ++;
-				ptr ++;
-			}
-		}
-		else
-		{
-			memcpy(yPtr, ptr, m_width);
+			copyPlanarYUV422(ptr, yPtr, uPtr, vPtr);
 		}
 	}
 

@@ -11,25 +11,17 @@ static unsigned char yBuf[Width*Height];
 static unsigned char uBuf[Width*Height];
 static unsigned char vBuf[Width*Height];
 
-void writePlanarYUV3(FILE* output, unsigned char* ptr)
+void writePlanarYUV422(FILE* output, unsigned char* ptr)
 {
 	unsigned char* yPtr = yBuf, * uPtr = uBuf, * vPtr= vBuf;
 	for (unsigned int r = 0; r < Height; r ++)
 	{
 		for (unsigned int c = 0; c < Width/2; c ++)
 		{
-			*yPtr = *ptr;
-			yPtr ++;
-			ptr ++;
-			*uPtr = *ptr;
-			uPtr ++;
-			ptr ++;
-			*yPtr = *ptr;
-			yPtr ++;
-			ptr ++;
-			*vPtr = *ptr;
-			vPtr ++;
-			ptr ++;
+			*yPtr ++ = *ptr ++;
+			*uPtr ++ = *ptr ++;
+			*yPtr ++ = *ptr ++;
+			*vPtr ++ = *ptr ++;
 		}
 	}
 	fwrite(yBuf, 1, Width*Height, output);
@@ -38,14 +30,14 @@ void writePlanarYUV3(FILE* output, unsigned char* ptr)
 }
 
 // i420
-void writePlanarYUV(FILE* output, unsigned char* ptr)
+void writePlanarYUV420(FILE* output, unsigned char* ptr)
 {
 	unsigned char* yPtr = yBuf, * uPtr = uBuf, * vPtr= vBuf;
 	for (unsigned int r = 0; r < Height; r ++)
 	{
 		if (r % 2 == 0)
 		{
-			for (unsigned int c = 0; c < Width; c ++)
+			for (unsigned int c = 0; c < Width/2; c ++)
 			{
 				*yPtr ++ = *ptr ++;
 				*uPtr ++ = *ptr ++;
@@ -55,9 +47,12 @@ void writePlanarYUV(FILE* output, unsigned char* ptr)
 		}
 		else
 		{
-			for (unsigned int c = 0; c < 600; c ++)
+			for (unsigned int c = 0; c < Width/2; c ++)
 			{
 				*yPtr ++ = *ptr ++;
+				ptr ++;
+				*yPtr ++ = *ptr ++;
+				ptr ++;
 			}
 		}
 
@@ -65,52 +60,6 @@ void writePlanarYUV(FILE* output, unsigned char* ptr)
 	fwrite(yBuf, 1, Width*Height, output);
 	fwrite(uBuf, 1, Width*Height/4, output);
 	fwrite(vBuf, 1, Width*Height/4, output);
-}
-
-
-void writePlanarYUV2(FILE* output, unsigned char* ptr)
-{
-	unsigned char* yPtr = yBuf, * uPtr = uBuf, * vPtr= vBuf;
-	for (unsigned int r = 0; r < 480; r ++)
-	{
-		if (r % 2 == 0)
-		{
-			for (unsigned int c = 0; c < 600; c ++)
-			{
-				*yPtr ++ = *ptr ++;
-				*uPtr ++ = *ptr ++;
-			}
-		}
-		else
-		{
-			for (unsigned int c = 0; c < 600; c ++)
-			{
-				*yPtr ++ = *ptr ++;
-				*vPtr ++ = *ptr ++;
-			}
-		}
-	}
-	fwrite(yBuf, 1, 600*480, output);
-	fwrite(uBuf, 1, 600*480/4, output);
-	fwrite(vBuf, 1, 600*480/4, output);
-}
-void writePlanarYUV1(FILE* output, unsigned char* ptr)
-{
-	unsigned char* yPtr = yBuf, * uPtr = uBuf, * vPtr= vBuf;
-
-	for (unsigned int r = 0; r < 480; r ++)
-	{
-		for (unsigned int c = 0; c < 300; c ++)
-		{
-			*yPtr ++ = *ptr ++;
-			*uPtr ++ = *ptr ++;
-			*yPtr ++ = *ptr ++;
-			*vPtr ++ = *ptr ++;
-		}
-	}
-	fwrite(yBuf, 1, 600*480, output);
-	fwrite(uBuf, 1, 600/2*480, output);
-	fwrite(vBuf, 1, 600/2*480, output);
 }
 
 
@@ -162,7 +111,7 @@ int main()
 */
                 //if (counter == 10)
                 {
-                	writePlanarYUV(output, ptr);
+                	writePlanarYUV420(output, ptr);
                 }
                 counter ++;
                 if (counter % MyVideoCapture::FPS_COUNT_NUMBER == 0)

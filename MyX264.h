@@ -41,6 +41,8 @@ private:
 	bool param_apply_profile( x264_param_t *param, const char *profile);
 	bool param_apply_tune( x264_param_t *param, const char *s);
 	bool param_apply_preset( x264_param_t *param, const char *preset);
+	void copyPlanarYUV420(const unsigned char* srcPtr, unsigned char*yBuf, unsigned char* uBuf, unsigned char* vBuf);
+	void copyPlanarYUV422(const unsigned char* srcPtr, unsigned char*yBuf, unsigned char* uBuf, unsigned char* vBuf);
 public:
 	MyX264()
 	{
