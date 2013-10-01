@@ -49,12 +49,12 @@ bool MyX264::init_param(x264_param_t*param)
 	}
 
 	// profile "baseline"
-	if (!param_apply_profile(param, "base"))
+	if (!param_apply_profile(param, "main"))
 	{
 		return false;
 	}
 	// setup csp
-	param->i_csp = X264_CSP_I422;
+	param->i_csp = X264_CSP_I420;
 	param->i_width = m_width;
 	param->i_height = m_height;
 	return true;
@@ -140,7 +140,7 @@ bool MyX264::encode_frame(unsigned char* ptr, unsigned int size)
 	static bool bFirst = true;
 	x264_image_t& img = x264_pic.img;
 
-	img.i_csp = X264_CSP_I422;
+	//img.i_csp = X264_CSP_I422;
 	img.i_plane = 3;
 
 	img.i_stride[0] = m_width;
@@ -156,12 +156,27 @@ bool MyX264::encode_frame(unsigned char* ptr, unsigned int size)
 	unsigned char* vPtr = img.plane[2];
 	for (size_t r = 0; r < m_height; r ++)
 	{
-		for (size_t c = 0; c < m_width/2; c ++)
+		if (r%2 == 0)
 		{
-			*yPtr ++ = *ptr ++;
-			*uPtr ++ = *ptr ++;
-			*yPtr ++ = *ptr ++;
-			*vPtr ++ = *ptr ++;
+			for (size_t c = 0; c < m_width/2; c ++)
+			{
+				*yPtr = *ptr;
+				yPtr ++;
+				ptr ++;
+				*uPtr = *ptr;
+				uPtr ++;
+				ptr ++;
+				*yPtr = *ptr;
+				yPtr ++;
+				ptr ++;
+				*vPtr = *ptr;
+				vPtr ++;
+				ptr ++;
+			}
+		}
+		else
+		{
+			memcpy(yPtr, ptr, m_width);
 		}
 	}
 
@@ -389,16 +404,6 @@ bool MyX264::param_apply_profile( x264_param_t *param, const char *profile )
         (param->rc.i_rc_method == X264_RC_CRF && (int)(param->rc.f_rf_constant) <= 0)) )
     {
         printf("%s profile doesn't support lossless\n", profile );
-        return false;
-    }
-    if( (param->i_csp & X264_CSP_MASK) >= X264_CSP_I444 )
-    {
-        printf("%s profile doesn't support 4:4:4\n", profile );
-        return false;
-    }
-    if( (param->i_csp & X264_CSP_MASK) >= X264_CSP_I422 )
-    {
-        printf("%s profile doesn't support 4:2:2\n", profile );
         return false;
     }
 

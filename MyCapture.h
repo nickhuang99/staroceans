@@ -19,6 +19,8 @@ public:
     bool captureFrame(unsigned char*ptr[4], bool bSkip = false);
     ~MyVideoCapture();
     MyVideoCapture();
+    unsigned long getImageWidth() const { return m_width;}
+    unsigned long getImageHeight() const { return m_height;}
     static const int FPS_COUNT_NUMBER=30;
 protected:
     static int m_fd;
