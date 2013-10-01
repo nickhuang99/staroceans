@@ -34,7 +34,7 @@ MyX264::~MyX264()
 	}
 }
 
-bool MyX264::init_param(x264_param_t*param)
+bool MyX264::init_param(x264_param_t*param, unsigned long int chromeFormat)
 {
 	x264_param_default(param);
 	// preset of "ultrafast"
@@ -54,18 +54,18 @@ bool MyX264::init_param(x264_param_t*param)
 		return false;
 	}
 	// setup csp
-	param->i_csp = X264_CSP_I420;
+	param->i_csp = chromeFormat;
 	param->i_width = m_width;
 	param->i_height = m_height;
 	return true;
 }
 
 // FIX-ME: all error handling...
-bool MyX264::init(unsigned int width, unsigned int height, const char* fileName)
+bool MyX264::init(unsigned int width, unsigned int height, const char* fileName, unsigned long int chromeFormat)
 {
 	m_width = width;
 	m_height = height;
-	if (!init_param(&x264_param))
+	if (!init_param(&x264_param, chromeFormat))
 	{
 		printf("init param failed!\n");
 		return false;

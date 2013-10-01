@@ -103,15 +103,14 @@ int main()
                 {
                     break;
                 }
-/*
+
                 if (!x264.encode_frame(ptr, display.getImgSize()))
                 {
                 	break;
                 }
-*/
                 //if (counter == 10)
                 {
-                	writePlanarYUV420(output, ptr);
+                	//writePlanarYUV420(output, ptr);
                 }
                 counter ++;
                 if (counter % MyVideoCapture::FPS_COUNT_NUMBER == 0)

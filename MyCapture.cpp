@@ -24,7 +24,7 @@ size_t MyVideoCapture::m_bufferNumber=0;
 MyVideoCapture::MyVideoCapture()
 {
     m_pixelFormat = V4L2_PIX_FMT_YUYV;
-    m_width = 600;
+    m_width = 640;
     m_height = 480;
     m_startArray = NULL;
     m_length = 0;

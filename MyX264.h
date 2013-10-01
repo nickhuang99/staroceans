@@ -35,7 +35,7 @@ private:
 	unsigned int m_width, m_height;
 	FILE* output;
 
-	bool init_param(x264_param_t*param);
+	bool init_param(x264_param_t*param, unsigned long int chromeFormat);
 	bool write_file(unsigned char* pData, unsigned int size);
 	bool write_nal(x264_nal_t* p_nal, int i_nal);
 	bool param_apply_profile( x264_param_t *param, const char *profile);
@@ -51,7 +51,7 @@ public:
 	}
 	~MyX264();
 
-	bool init(unsigned int width, unsigned int height, const char* fileName);
+	bool init(unsigned int width, unsigned int height, const char* fileName, unsigned long int chromeFormat = X264_CSP_I420);
 
 	bool encode_header();
 	// assume it is yuv422 as input,
