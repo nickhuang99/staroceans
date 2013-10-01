@@ -22,7 +22,7 @@ MyX264::~MyX264()
 		i_frame_size = x264_encoder_encode(ptr_x264, &p_nal, &i_nal, NULL, &pic_out);
 		if (i_frame_size > 0)
 		{
-			printf("***************************frame %d*********************\n", x264_pic.i_pts);
+			printf("********delayed*************frame %ld*******delayed*********\n", pic_out.i_pts);
 			write_nal(p_nal, i_nal);
 		}
 	}
@@ -184,6 +184,7 @@ void MyX264::copyPlanarYUV422(const unsigned char* srcPtr, unsigned char*yBuf, u
 bool MyX264::encode_frame(unsigned char* ptr, unsigned int size)
 {
 	static bool bFirst = true;
+	static int64_t i_pts = 1;
 	x264_image_t& img = x264_pic.img;
 
 	//img.i_csp = X264_CSP_I422;
@@ -216,13 +217,15 @@ bool MyX264::encode_frame(unsigned char* ptr, unsigned int size)
 	int i_frame_size = 0;
 	x264_nal_t* p_nal = NULL;
 	int i_nal = 0;
+	x264_pic.i_pts = i_pts ++;
 	i_frame_size = x264_encoder_encode(ptr_x264, &p_nal, &i_nal, &x264_pic, &pic_out);
 	if (i_frame_size > 0)
 	{
-		printf("***************************frame %d*********************\n", x264_pic.i_pts);
+		//i_pts = pic_out.i_pts;
+		printf("***************************frame %ld*********************\n", pic_out.i_pts);
 		return write_nal(p_nal, i_nal);
 	}
-	x264_pic.i_pts ++;
+	//x264_pic.i_pts ++;
 	return true;
 }
 
@@ -452,11 +455,7 @@ bool MyX264::param_apply_profile( x264_param_t *param, const char *profile )
             printf("baseline profile doesn't support interlacing\n" );
             return false;
         }
-        if( param->b_fake_interlaced )
-        {
-            printf( "baseline profile doesn't support fake interlacing\n" );
-            return false;
-        }
+
         return true;
     }
 

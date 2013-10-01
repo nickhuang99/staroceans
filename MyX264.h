@@ -19,11 +19,48 @@
 extern "C"
 {
 	//#include <x264.h>
-#include "x264.h"
+#include <x264.h>
 }
 
 using namespace std;
 
+/* Analyse flags
+ */
+#define X264_ANALYSE_I4x4       0x0001  /* Analyse i4x4 */
+#define X264_ANALYSE_I8x8       0x0002  /* Analyse i8x8 (requires 8x8 transform) */
+#define X264_ANALYSE_PSUB16x16  0x0010  /* Analyse p16x8, p8x16 and p8x8 */
+#define X264_ANALYSE_PSUB8x8    0x0020  /* Analyse p8x4, p4x8, p4x4 */
+#define X264_ANALYSE_BSUB16x16  0x0100  /* Analyse b16x8, b8x16 and b8x8 */
+#define X264_DIRECT_PRED_NONE        0
+#define X264_DIRECT_PRED_SPATIAL     1
+#define X264_DIRECT_PRED_TEMPORAL    2
+#define X264_DIRECT_PRED_AUTO        3
+#define X264_ME_DIA                  0
+#define X264_ME_HEX                  1
+#define X264_ME_UMH                  2
+#define X264_ME_ESA                  3
+#define X264_ME_TESA                 4
+#define X264_CQM_FLAT                0
+#define X264_CQM_JVT                 1
+#define X264_CQM_CUSTOM              2
+#define X264_RC_CQP                  0
+#define X264_RC_CRF                  1
+#define X264_RC_ABR                  2
+#define X264_QP_AUTO                 0
+#define X264_AQ_NONE                 0
+#define X264_AQ_VARIANCE             1
+#define X264_AQ_AUTOVARIANCE         2
+#define X264_B_ADAPT_NONE            0
+#define X264_B_ADAPT_FAST            1
+#define X264_B_ADAPT_TRELLIS         2
+#define X264_WEIGHTP_NONE            0
+#define X264_WEIGHTP_SIMPLE          1
+#define X264_WEIGHTP_SMART           2
+#define X264_B_PYRAMID_NONE          0
+#define X264_B_PYRAMID_STRICT        1
+#define X264_B_PYRAMID_NORMAL        2
+#define X264_KEYINT_MIN_AUTO         0
+#define X264_KEYINT_MAX_INFINITE     (1<<30)
 
 class MyX264
 {

@@ -62,7 +62,6 @@ void writePlanarYUV420(FILE* output, unsigned char* ptr)
 	fwrite(vBuf, 1, Width*Height/4, output);
 }
 
-
 int main()
 {
 	static FILE* output = NULL;
@@ -73,7 +72,7 @@ int main()
     MyVideoCapture capture;
     MySDLDisplay display;
     MyX264 x264;
-    if (!x264.init(capture.getImageWidth(), capture.getImageHeight(), "output.raw"))
+    if (!x264.init(capture.getImageWidth(), capture.getImageHeight(), "output.raw", X264_CSP_I420))
     {
     	printf("unable to initialize x264/n");
     	return -1;
@@ -89,7 +88,7 @@ int main()
         {
             int counter = 0;
             struct timeval last, now;
-            while (counter <100)
+            while (counter <1000)
             {
                 if (counter % MyVideoCapture::FPS_COUNT_NUMBER == 0 )
                 {
