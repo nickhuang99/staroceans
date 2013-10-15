@@ -5,12 +5,13 @@
  *      Author: nick
  */
 
+
 #include <iconv.h>
 #include <cstring>
 #include <cstdio>
 #include <cstdlib>
 #include <iostream>
-#include "libusb.h"
+#include <libusb-1.0/libusb.h>
 
 using namespace std;
 

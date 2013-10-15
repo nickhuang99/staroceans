@@ -43,7 +43,7 @@ all: ptpusb
 ptpusb: $(OBJS) $(USER_OBJS)
 	@echo 'Building target: $@'
 	@echo 'Invoking: GCC C++ Linker'
-	g++ -L/home/nick/MyProjects/libusb-git/Debug -o "ptpusb" $(OBJS) $(USER_OBJS) $(LIBS)
+	g++  -o "ptpusb" $(OBJS) $(USER_OBJS) $(LIBS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 
