@@ -9,6 +9,10 @@
 #include <openssl/hmac.h>
 #include "simplexml.h"
 
+#define MinimumPartSize (5*1024*1024)
+
+#define TEN_MEGA (10*1024*1024)
+#define FIVE_MEGA (5*1024*1024)
 
 using namespace MyS3MultiPartUploader;
 
@@ -26,6 +30,7 @@ string getTimestamp();
 string doSignature(const string& strToSign, const string& strKey);
 string int2string(int number);
 string calculateMD5(FILE* stream, size_t offset, size_t size);
+
 size_t myReadFunc(void *ptr, size_t size, size_t nmemb, void *userdata);
 int mySimpleXmlGetUploadIdCallback(const char *elementPath, const char *data, int dataLen, void *callbackData);
 
@@ -57,7 +62,7 @@ void* uploadMultiPartThreadFunc(void* arg)
 		string str;
 		StringMap stringMap;
 		string strToSign, strUrl, strSubUrl, strCustomRequest;
-		string strPutRequest;
+		string strPutRequest, strPutRequestToSign;
 		StringMap headerMap;
 		bool bRetry = false;
 		PartDesc& partDesc = multiPartDesc.partDescVector[index];
@@ -88,7 +93,7 @@ void* uploadMultiPartThreadFunc(void* arg)
 			string strTimestamp = getTimestamp();
 			//PUT /ObjectName?partNumber=PartNumber&uploadId=UploadId
 			strPutRequest = "/" + multiPartDesc.object + "?partNumber=" + int2string(index + 1) + "&uploadId=" + multiPartDesc.uploadId;
-
+			//strPutRequestToSign = "/" + multiPartDesc.object + "?\npartNumber=" + int2string(index + 1) + "&amp;uploadId=" + multiPartDesc.uploadId;
 			FILE_LOG(logDEBUG)<<"[strPutRequest]"<< strPutRequest;
 
 			strUrl = "http://s3.amazonaws.com/" + multiPartDesc.bucket ;
@@ -231,10 +236,10 @@ bool MyS3::readKeyFile()
 
 
 bool MyS3::multiPartUpload(const string& bucketName, const string& objectName, const string& fileName, size_t nSuggestedPartNumber,
-	size_t nThreadNumber, const string& strMime)
+	size_t nThreadNumber)
 {
 	bool bResult = false;
-	if (initialize(bucketName, objectName, fileName, nSuggestedPartNumber, nThreadNumber, strMime))
+	if (initialize(bucketName, objectName, fileName, nSuggestedPartNumber, nThreadNumber))
 	{
 //#define NICK_DEBUG 1
 #ifdef NICK_DEBUG
@@ -297,10 +302,6 @@ string calculateMD5(FILE* stream, size_t offset, size_t size)
 	return myBase64Encoder.finalize();
 }
 
-void MyS3::addFileContentType(FILE* stream)
-{
-	multiPartDesc.contentType = "video/avi";
-}
 
 bool MyS3::abortUpload(const string& bucket, const string& object, const string& uploadId)
 {
@@ -472,9 +473,183 @@ StringPairVector MyS3::getAllUploadId(const string& bucket)
 	return stringPairVector;
 }
 
+string MyS3::getFileContentType(const string& fileName, FILE* stream)
+{
+	size_t pos = fileName.find_last_of('.');
+	if (pos != string::npos)
+	{
+		string ext = fileName.substr(pos + 1);
+		if (StringManager::icompare(ext, "avi") == 0)
+		{
+			return "video/avi";
+		}
+		if (StringManager::icompare(ext, "rmvb") == 0)
+		{
+			return "application/vnd.rn-realmedia-vbr";
+		}
+		if (StringManager::icompare(ext, "jpg") == 0 || StringManager::icompare(ext, "jpeg") == 0)
+		{
+			return "image/jpeg";
+		}
+		if (StringManager::icompare(ext, "png") == 0)
+		{
+			return "image/png";
+		}
+		if (StringManager::icompare(ext, "bmp") == 0)
+		{
+			return "image/bmp";
+		}
+	}
+	return "binary/octet-stream";
+}
+
+int MyS3::doDir(const path& dir, const string& bucket, const string& object, bool bUseHashName)
+{
+	int counter = 0;
+	directory_iterator it(dir), dirEnd;
+	while (it != dirEnd)
+	{
+
+		if (is_directory(*it))
+		{
+			string subObject = object + "/" + it->filename();
+			counter += doDir(*it, bucket, subObject, bUseHashName);
+		}
+		else
+		{
+			if (is_regular_file(*it))
+			{
+				counter += doFile(it->string(), bucket, object, bUseHashName);
+			}
+			else
+			{
+				cout<<"file is not regular:"<<it->filename()<<endl;
+			}
+		}
+		it ++;
+	}
+	return counter;
+}
+
+string MyS3::calculateFileMD5Name(const string& fileName)
+{
+	char buffer[MYS3_FILE_BUFFER_SIZE];
+	MyMD5 myMD5(true);
+	size_t totalSize, readSize, toReadSize;
+	totalSize = file_size(fileName);;
+	FILE* stream = fopen(fileName.c_str(), "rb");
+	string result;
+	if (stream)
+	{
+		while (totalSize > 0)
+		{
+			toReadSize = MYS3_FILE_BUFFER_SIZE;
+			if (toReadSize > totalSize)
+			{
+				toReadSize = totalSize;
+			}
+			readSize = fread(buffer, 1, toReadSize, stream);
+			string str(buffer, readSize);
+			myMD5.update(str);
+			totalSize -= readSize;
+		}
+		fclose(stream);
+		result = myMD5.finalize();
+		size_t pos = fileName.find_last_of('.');
+		if (pos != string::npos)
+		{
+			result += fileName.substr(pos);
+		}
+	}
+	return result;
+}
+
+int MyS3::doFile(const string& fileName, const string& bucket, const string& prefixObject, bool bUsingHashName)
+{
+	size_t fileSize = file_size(fileName);
+	string objectName;
+
+
+	if (fileSize > TEN_MEGA)
+	{
+		size_t nSuggestedNumber = fileSize / FIVE_MEGA;
+		size_t nThreadNumber = sysconf(_SC_NPROCESSORS_CONF);
+		if (bUsingHashName)
+		{
+			objectName = calculateFileMD5Name(fileName);
+		}
+		else
+		{
+			size_t pos = fileName.find_last_of('/');
+			if (pos != string::npos)
+			{
+				objectName = fileName.substr(pos + 1);
+			}
+			else
+			{
+				objectName = "unknown";
+			}
+		}
+		string object;
+		if (prefixObject.size() != 0)
+		{
+			object = prefixObject + "/" + objectName;
+		}
+		if (multiPartUpload(bucket, object, fileName, nSuggestedNumber, nThreadNumber))
+		{
+			return 1;
+		}
+	}
+	else
+	{
+		return uploadFile(bucket, prefixObject, fileName, bUsingHashName);
+	}
+	return 0;
+}
+
+bool MyS3::uploadDir(const string& bucket, const string& subObject, const string& dir, bool bUsingHashName)
+{
+	int counter = 0;
+	if (is_directory(dir))
+	{
+		directory_iterator it(dir), dirEnd;
+		while (it != dirEnd)
+		{
+
+			//cout<< it->filename()<<endl;
+			if (is_directory(*it))
+			{
+				string object;
+				if (subObject.size() != 0)
+				{
+					object = subObject + "/" + it->filename();
+				}
+				else
+				{
+					object = it->filename();
+				}
+				counter += doDir(*it, bucket, object, bUsingHashName);
+			}
+			else
+			{
+				if (is_regular_file(*it))
+				{
+					counter += doFile(it->string(), bucket, subObject, bUsingHashName);
+				}
+				else
+				{
+					cout<<"file is not regular:"<<it->filename()<<endl;
+				}
+			}
+			it ++;
+		}
+	}
+	return counter > 0;
+}
+
 
 bool MyS3::initialize(const string& bucketName, const string& objectName, const string& fileName, size_t nSuggestedPartNumber,
-	size_t nThreadNumber, const string& strMime)
+	size_t nThreadNumber)
 {
 	multiPartDesc.bucket = bucketName;
 	multiPartDesc.object = objectName;
@@ -482,12 +657,13 @@ bool MyS3::initialize(const string& bucketName, const string& objectName, const 
 	FILE* stream = fopen(fileName.c_str(), "rb");
 	if (stream != NULL)
 	{
+		multiPartDesc.contentType = getFileContentType(fileName, stream);
 		fseek(stream, 0L, SEEK_END);
 		long fileSize = ftell(stream);
 		long partSize = fileSize / nSuggestedPartNumber;
 		long lastPartSize = 0;
 		// check part size if bigger than minimum of 5M requirement
-		#define MinimumPartSize 5*1024*1024
+
 		if ( partSize < MinimumPartSize)
 		{
 			nSuggestedPartNumber = fileSize / MinimumPartSize;
@@ -526,7 +702,7 @@ bool MyS3::initialize(const string& bucketName, const string& objectName, const 
 			multiPartDesc.partDescVector.push_back(partDesc);
 		}
 		//addFileContentType(stream);
-		multiPartDesc.contentType = strMime;
+		multiPartDesc.contentType = getFileContentType(fileName, stream);
 		multiPartDesc.accessKey = accessKey;
 		multiPartDesc.secretAccessKey = secretAccessKey;
 		multiPartDesc.nThreadNumber = nThreadNumber;
@@ -546,7 +722,7 @@ bool MyS3::initialize(const string& bucketName, const string& objectName, const 
 			multiPartDesc.nThreadNumber = multiPartDesc.partCount;
 		}
 		pthread_mutex_init(&multiPartDesc.mutex, NULL);
-		//fclose(stream);
+		fclose(stream);
 		return true;
 	}
 	return false;
@@ -586,7 +762,6 @@ void MyS3::addDefaultHttpHeader(curl_slist*& slist, const string& strTimestamp, 
 	slist = curl_slist_append(slist, "User-Agent: Mozilla/4.0 (Compatible; ubuntu32; MyS3 1.0; Linux)");
 
 }
-
 
 string MyS3::createCompletePartBody()
 {
@@ -862,6 +1037,153 @@ bool MyS3::completeMultiPartUpload()
 	FILE_LOG(logDEBUG)<<"[ETag]"<< multiPartDesc.eTag;
 	return true;
 }
+
+size_t mySimpleReadFunc(void *ptr, size_t size, size_t nmemb, void *userdata)
+{
+	FILE* stream = (FILE*) userdata;
+
+	size_t toRead = size * nmemb;
+	size_t actualRead = fread(ptr, 1, toRead, stream);
+	return actualRead;
+}
+
+bool MyS3::uploadFile(const string& bucket, const string& subObject, const string& fileName, bool bUsingHashName)
+{
+	string str;
+	StringMap stringMap;
+	string strToSign, strUrl, strSubUrl, strCustomRequest;
+	string strPutRequest, object;
+	StringMap headerMap;
+
+	FILE* stream = fopen(fileName.c_str(), "rb");
+	if (stream == NULL)
+	{
+		return false;
+	}
+	fseek(stream, 0L, SEEK_END);
+	long fileSize = ftell(stream);
+
+	string strContentType = getFileContentType(fileName, stream);
+
+	string md5 = calculateMD5(stream, 0, fileSize);
+	fseek(stream, 0L, SEEK_SET);
+	if (subObject.size() != 0)
+	{
+		object = subObject + "/";
+	}
+	if (bUsingHashName)
+	{
+		object += calculateFileMD5Name(fileName);
+	}
+	else
+	{
+		size_t pos = fileName.find_last_of('/');
+		if (pos != string::npos)
+		{
+			object += fileName.substr(pos + 1);
+		}
+		else
+		{
+			object += "mytest";
+		}
+	}
+
+	string strTimestamp = getTimestamp();
+
+	strPutRequest = "/" + object;
+
+	FILE_LOG(logDEBUG)<<"[strPutRequest]"<< strPutRequest;
+
+	strUrl = "http://s3.amazonaws.com/" + bucket ;
+	FILE_LOG(logDEBUG)<<"[strUrl]"<< strUrl;
+	strToSign = "PUT\n";
+	strToSign += md5 + "\n";
+	strToSign += strContentType + "\n";
+	strToSign += strTimestamp + "\n";
+	strToSign += "x-amz-acl:public-read\nx-amz-storage-class:REDUCED_REDUNDANCY\n";
+	strToSign += "/" + bucket + strPutRequest;
+
+	FILE_LOG(logDEBUG)<<"[strToSign]"<< strToSign;
+
+	string strSignature = doSignature(strToSign, secretAccessKey);
+
+	FILE_LOG(logDEBUG)<<"[strSignature]"<< strSignature;
+	SimpleXml simple;
+	simplexml_initialize(&simple, mySimpleXmlCallback, &stringMap);
+
+	CURL* pCurl = curl_easy_init();
+
+	curl_easy_setopt(pCurl, CURLOPT_UPLOAD, 1L);
+
+	curl_easy_setopt(pCurl, CURLOPT_READFUNCTION, mySimpleReadFunc);
+	curl_easy_setopt(pCurl, CURLOPT_READDATA, stream);
+
+
+	strCustomRequest = "PUT " + strPutRequest;
+	curl_easy_setopt(pCurl, CURLOPT_CUSTOMREQUEST, strCustomRequest.c_str());
+	FILE_LOG(logDEBUG)<<"[strPutRequest]"<< strPutRequest;
+
+	curl_easy_setopt(pCurl, CURLOPT_VERBOSE, 1L);
+	curl_easy_setopt(pCurl, CURLOPT_WRITEDATA, &simple);
+	curl_easy_setopt(pCurl, CURLOPT_WRITEFUNCTION, myCurlCallback);
+	curl_easy_setopt(pCurl, CURLOPT_HEADERFUNCTION, writeHeader);
+	curl_easy_setopt(pCurl, CURLOPT_WRITEHEADER, &headerMap);
+
+	curl_easy_setopt(pCurl, CURLOPT_DEBUGFUNCTION, myDebugFunc);
+
+	curl_easy_setopt(pCurl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
+	struct curl_slist *slist=NULL;
+
+	str = "Host: " + bucket  + ".s3.amazonaws.com";
+	slist = curl_slist_append(slist, str.c_str());
+
+	str = "Date: " + strTimestamp;
+	FILE_LOG(logDEBUG)<<"[Date]"<< str;
+	slist = curl_slist_append(slist, str.c_str());
+
+	str = "Authorization: AWS ";
+	str += accessKey;
+	str += ":";
+	str += strSignature;
+	FILE_LOG(logDEBUG)<<"[Authorization]"<< str;
+	slist = curl_slist_append(slist, str.c_str());
+
+	slist = curl_slist_append(slist, "Accept-Encoding: identity");
+
+	slist = curl_slist_append(slist, "Transfer-Encoding: ");
+	slist = curl_slist_append(slist, "User-Agent: Mozilla/4.0 (Compatible; ubuntu32; MyS3 1.0; Linux)");
+
+	str = "Content-MD5: " + md5;
+	slist = curl_slist_append(slist, str.c_str());
+
+	str = "Content-Length: " + int2string(fileSize);
+	slist = curl_slist_append(slist, str.c_str());
+
+	str = "Content-Type: " + strContentType;
+	slist = curl_slist_append(slist, str.c_str());
+
+	slist = curl_slist_append(slist, "x-amz-acl: public-read");
+
+	slist = curl_slist_append(slist, "x-amz-storage-class: REDUCED_REDUNDANCY");
+
+	if (slist != NULL)
+	{
+		curl_easy_setopt(pCurl, CURLOPT_HTTPHEADER, slist);
+	}
+	curl_easy_setopt(pCurl, CURLOPT_URL, strUrl.c_str());
+
+	curl_easy_perform(pCurl);
+
+	curl_easy_cleanup(pCurl);
+	curl_slist_free_all(slist); /* free the list again */
+	simplexml_deinitialize(&simple);
+
+	string eTag = headerMap["ETag"];
+	FILE_LOG(logDEBUG)<<"[ETag]"<< eTag;
+	fclose(stream);
+	return true;
+}
+
 
 string getTimestamp()
 {

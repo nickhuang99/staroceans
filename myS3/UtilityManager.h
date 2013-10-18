@@ -62,16 +62,45 @@ namespace MyS3MultiPartUploader
 		string finalize();
     };
 
+/*
+	typedef bool (*TraverseHandler)(const string& parentName, const string& sonName);
 	class MyDir
 	{
 	private:
-
+		TraverseHandler dirHandler;
+		TraverseHandler fileHandler;
 	public:
-		MyDir(const string& rootDir){;}
-		virtual bool fileHandler(const string& dirName, const string& fileName){return true;}
-		virtual bool dirHandler(const string& parentDir, const string& dirName){return true;}
+		MyDir():dirHandler(NULL), fileHandler(NULL){;}
+		TraverseHandler setFileHandler(TraverseHandler newFileHandler);
+		TraverseHandler setDirHandler(TraverseHandler newDirHandler);
+		bool traverseDir(const string& rootDir);
 	};
+*/
+	class StringManager
+    {
+    public:
+        static StringVector split(const std::string& src, char* delimiter=" \t\n");
+        static std::string trim(const std::string& src, char* delimiter=" \t\n");
+        static std::string int2string(int num);
+        static bool string2int(const std::string& str, int& num);
+        static int icompare(const std::string& left, const std::string& right);
+        static int incompare(const std::string& left, const std::string& right, size_t len);
+    };
 
+    struct ci_char_traits : public std::char_traits<char>
+    {
+        static bool eq(char c1, char c2);
+
+        static bool ne(char c1, char c2);
+
+        static bool lt(char c1, char c2);
+
+        static int compare(const char* s1, const char* s2, size_t n);
+
+        static const char* find(const char* s, int n, char a);
+    };
+
+    typedef std::basic_string<char, ci_char_traits> ci_string;
 
 
 }

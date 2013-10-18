@@ -78,7 +78,7 @@
 	<windows.h>
 	<sys/time.h>
 
-1315980538 source:/home/nick/myprojects/myS3/main.cpp
+1316924504 source:/home/nick/myprojects/myS3/main.cpp
 	<iostream>
 	"stdafx.h"
 	"myS3.h"
@@ -113,23 +113,24 @@
 1300678818 source:/home/nick/myprojects/myS3/stdafx.cpp
 	"stdafx.h"
 
-1314796045 source:/home/nick/myprojects/myS3/UtilityManager.cpp
+1316615346 source:/home/nick/myprojects/myS3/UtilityManager.cpp
 	"UtilityManager.h"
 	<openssl/bio.h>
 	<openssl/evp.h>
 	<openssl/hmac.h>
 
-1316008054 /home/nick/myprojects/myS3/UtilityManager.h
+1316615346 /home/nick/myprojects/myS3/UtilityManager.h
 	"stdafx.h"
 	<openssl/md5.h>
 	<openssl/hmac.h>
 
-1315980133 /home/nick/myprojects/myS3/myS3.h
+1316699429 /home/nick/myprojects/myS3/myS3.h
 	"stdafx.h"
 	<curl/curl.h>
 	<pthread.h>
+	<boost/filesystem.hpp>
 
-1315980133 source:/home/nick/myprojects/myS3/myS3.cpp
+1316873340 source:/home/nick/myprojects/myS3/myS3.cpp
 	"myS3.h"
 	"UtilityManager.h"
 	<curl/curl.h>

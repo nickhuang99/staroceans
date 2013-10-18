@@ -12,9 +12,9 @@ int main(int argc, char** argv)
 {
 	size_t start = time(NULL);
 	MyS3 myS3;
-	if (argc == 7)
+	if (argc == 6)
 	{
-		string bucket, object, file, strMime;
+		string bucket, object, file;
 		int partNumber, threadNumber;
 
 		bucket = argv[1];
@@ -22,9 +22,9 @@ int main(int argc, char** argv)
 		file = argv[3];
 		partNumber = atoi(argv[4]);
 		threadNumber = atoi(argv[5]);
-		strMime = argv[6];
+
 		//myS3.multiPartUpload(string("nickhuang99"), string("japanese.rmvb"), string("japanese.rmvb"), 4, 6);
-		myS3.multiPartUpload(bucket, object, file, partNumber, threadNumber, strMime);
+		myS3.multiPartUpload(bucket, object, file, partNumber, threadNumber);
 		start = time(NULL) - start;
 		printf("total time: %d\n", start);
 	}
@@ -45,7 +45,28 @@ int main(int argc, char** argv)
 		}
 		else
 		{
-			printf("usage: %s bucket object file partNumber threadNumber mimeType\n", argv[0]);
+			if (argc == 4)
+			{
+				string bucket = argv[1];
+				string objectPrefix = argv[2];
+				string dirName = argv[3];
+
+				myS3.uploadDir(bucket, objectPrefix, dirName, false);
+			}
+			/*
+			if (argc == 4)
+			{
+				string bucket = argv[1];
+				string object = argv[2];
+				string fileName = argv[3];
+
+				myS3.uploadDir(bucket, object, fileName, false);
+			}
+			*/
+			else
+			{
+				printf("usage: %s bucket object file partNumber threadNumber\n", argv[0]);
+			}
 		}
 	}
 	/*

@@ -160,3 +160,207 @@ string MySH1::finalize()
 	return strSigned;
 }
 
+/*
+TraverseHandler MyDir::setFileHandler(TraverseHandler newFileHandler)
+{
+	TraverseHandler temp = fileHandler;
+	fileHandler = newFileHandler;
+	return temp;
+}
+
+TraverseHandler MyDir::setDirHandler(TraverseHandler newDirHandler)
+{
+	TraverseHandler temp = dirHandler;
+	dirHandler = newDirHandler;
+	return temp;
+}
+
+
+bool MyDir::doFile(const string& filePath, StringMap& stringMap, const string& prefix)
+{
+	//cout<<filePath.file_string()<<endl;
+	//cout<<filePath.filename()<<endl;
+	string str = prefix + "/" + urlEncode(filePath);
+
+	if (stringMap.insert(make_pair<string, string>(filePath, str)) == stringMap.end())
+	{
+		//cout<<"error"<<endl;
+	}
+}
+
+bool MyDir::doDir(const path& thePath)
+{
+	directory_iterator it(thePath), dirEnd;
+	while (it != dirEnd)
+	{
+		//cout<< it->filename()<<endl;
+		if (is_directory(*it))
+		{
+			//cout<< it->filename()<<endl;
+			// check if it has white space in between.
+			if (dirHandler == NULL || dirHandler(thePath.filename(), it->filename())
+			{
+				doDir(*it);
+			}
+		}
+		else
+		{
+			if (is_regular_file(*it))
+			{
+				//string str = urlEncode(it->filename());
+				if (fileHandler == NULL || fileHandler(thePath.filename(), it->filename())
+				{
+					doFile(it->filename(), stringMap, prefix);
+				}
+			}
+			else
+			{
+				//cout<<"file is not regular:"<<it->filename()<<endl;
+			}
+		}
+		it ++;
+	}
+}
+
+void MyDir::doTraverseDir(const string& rootDir)
+{
+	directory_iterator it(rootDir), dirEnd;
+	while (it != dirEnd)
+	{
+		if (is_directory(*it))
+		{
+			//cout<< it->filename()<<endl;
+			// check if it has white space in between.
+			if (dirHandler == NULL || dirHandler(thePath.filename(), it->filename())
+			{
+				doDir(*it);
+			}
+		}
+		else
+		{
+			if (is_regular_file(*it))
+			{
+				//string str = urlEncode(it->filename());
+				if (fileHandler == NULL || fileHandler(thePath.filename(), it->filename())
+				{
+					doFile(it->filename(), stringMap, prefix);
+				}
+			}
+			else
+			{
+				//cout<<"file is not regular:"<<it->filename()<<endl;
+			}
+		}
+		it ++;
+	}
+}
+
+bool MyDir::traverseDir(const string& rootDir)
+{
+	if (is_directory(rootDir))
+	{
+		doTraverseDir(rootDir);
+		return true;
+	}
+	return false;
+}
+*/
+
+
+bool ci_char_traits::eq(char c1, char c2)
+{
+    return toupper(c1) == toupper(c2);
+}
+bool ci_char_traits::ne(char c1, char c2)
+{
+    return toupper(c1) != toupper(c2);
+}
+bool ci_char_traits::lt(char c1, char c2)
+{
+    return toupper(c1) <  toupper(c2);
+}
+
+
+int ci_char_traits::compare(const char* s1, const char* s2, size_t n)
+{
+    while ( n-- != 0 )
+    {
+        if ( toupper(*s1) < toupper(*s2) ) return -1;
+        if ( toupper(*s1) > toupper(*s2) ) return 1;
+        ++s1;
+        ++s2;
+    }
+    return 0;
+}
+
+const char* ci_char_traits::find(const char* s, int n, char a)
+{
+    while ( n-- > 0 && toupper(*s) != toupper(a) )
+    {
+        ++s;
+    }
+    return s;
+}
+
+string StringManager::int2string(int number)
+{
+    stringstream stream;
+    stream << number;
+    return stream.str();
+}
+
+int StringManager::icompare(const std::string& left, const std::string& right)
+{
+    if (left.size() != right.size())
+    {
+        return left.size() - right.size();
+    }
+    else
+    {
+        for (int i = 0; i < left.size(); i ++)
+        {
+            char l = toupper(left[i]), r = toupper(right[i]);
+
+            if ( l != r )
+            {
+                return l - r;
+            }
+        }
+        return 0;
+    }
+}
+
+int StringManager::incompare(const std::string& left, const std::string& right, size_t len)
+{
+    int length = len;
+    if (length > left.size())
+    {
+        length = left.size();
+    }
+    if (length > right.size())
+    {
+        length = right.size();
+    }
+
+    for (int i = 0; i < length; i ++)
+    {
+        char l = toupper(left[i]), r = toupper(right[i]);
+        if ( l != r )
+        {
+            return l - r;
+        }
+    }
+    return 0;
+}
+
+
+bool StringManager::string2int(const std::string& str, int& number)
+{
+
+    return sscanf(str.c_str(), "%d", &number) == 1;
+}
+
+    /*
+    stringstream stream(str);
+    return (stream << number);
+    */
