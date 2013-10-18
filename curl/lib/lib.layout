@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<CodeBlocks_layout_file>
+	<ActiveTarget name="Debug" />
+	<File name="http.c" open="1" top="0" tabpos="8">
+		<Cursor position="93977" topLine="2874" />
+	</File>
+	<File name="ldap.c" open="1" top="0" tabpos="6">
+		<Cursor position="5845" topLine="178" />
+	</File>
+	<File name="setup_once.h" open="1" top="0" tabpos="1">
+		<Cursor position="2431" topLine="76" />
+	</File>
+	<File name="telnet.c" open="1" top="0" tabpos="2">
+		<Cursor position="1993" topLine="64" />
+	</File>
+	<File name="timeval.c" open="1" top="0" tabpos="4">
+		<Cursor position="1993" topLine="33" />
+	</File>
+	<File name="transfer.c" open="1" top="0" tabpos="9">
+		<Cursor position="91205" topLine="2779" />
+	</File>
+	<File name="url.c" open="1" top="1" tabpos="10">
+		<Cursor position="34214" topLine="1791" />
+	</File>
+	<File name="urldata.h" open="1" top="0" tabpos="11">
+		<Cursor position="56563" topLine="1432" />
+	</File>
+</CodeBlocks_layout_file>

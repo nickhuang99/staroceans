@@ -1,0 +1,272 @@
+# depslib dependency file v1.0
+1215675936 source:/home/nick/.codeblocks/myprojects/curl/curlutil.c
+	"setup.h"
+	"curlutil.h"
+
+1256761318 /home/nick/.codeblocks/myprojects/curl/setup.h
+	"curl_config.h"
+	"config-win32.h"
+	"config-mac.h"
+	"config-riscos.h"
+	"config-amigaos.h"
+	"config-symbian.h"
+	"config-tpf.h"
+	<windows.h>
+	<winsock2.h>
+	<ws2tcpip.h>
+	<winsock.h>
+	<sys/socket.h>
+	<stdio.h>
+	<floss.h>
+	<tcp.h>
+	<sys/timeval.h>
+	"strdup.h"
+	"setup_once.h"
+
+1315274069 /home/nick/.codeblocks/myprojects/curl/curl_config.h
+
+1215808206 /home/nick/.codeblocks/myprojects/curl/lib/strdup.h
+	"setup.h"
+
+1256761318 /home/nick/.codeblocks/myprojects/curl/lib/setup.h
+	"curl_config.h"
+	"config-win32ce.h"
+	"config-win32.h"
+	"config-mac.h"
+	"amigaos.h"
+	"config-symbian.h"
+	"config-os400.h"
+	"config-tpf.h"
+	"config-vxworks.h"
+	<curl/curlbuild.h>
+	<curl/curlrules.h>
+	"setup-os400.h"
+	<windows.h>
+	<winsock2.h>
+	<ws2tcpip.h>
+	<winsock.h>
+	<extra/stricmp.h>
+	<extra/strdup.h>
+	<strings.h>
+	<string.h>
+	<stdlib.h>
+	<sys/socket.h>
+	<netdb.h>
+	<tpf/sysapi.h>
+	<sockLib.h>
+	<ioLib.h>
+	<stdio.h>
+	<assert.h>
+	<errno.h>
+	<floss.h>
+	<curl/stdcheaders.h>
+	<sys/types.h>
+	<unistd.h>
+	<clib.h>
+	<io.h>
+	<sys/types.h>
+	<sys/stat.h>
+	<io.h>
+	<sys/types.h>
+	<sys/stat.h>
+	<sys/ioctl.h>
+	<tcp.h>
+	<sys/bsdskt.h>
+	<sys/timeval.h>
+	"setup_once.h"
+
+1315274069 /home/nick/.codeblocks/myprojects/curl/lib/curl_config.h
+
+1241387360 /home/nick/.codeblocks/myprojects/curl/lib/setup-os400.h
+	<sys/socket.h>
+	<netdb.h>
+	<qsossl.h>
+	<gssapi.h>
+
+1245779869 /home/nick/.codeblocks/myprojects/curl/lib/setup_once.h
+	<stdio.h>
+	<stdlib.h>
+	<string.h>
+	<stdarg.h>
+	<ctype.h>
+	<errno.h>
+	<sys/types.h>
+	<malloc.h>
+	<memory.h>
+	<sys/stat.h>
+	<sys/time.h>
+	<time.h>
+	<time.h>
+	<io.h>
+	<fcntl.h>
+	<stdbool.h>
+
+1171973595 /home/nick/.codeblocks/myprojects/curl/curlutil.h
+	"setup.h"
+
+1225138297 source:/home/nick/.codeblocks/myprojects/curl/getpass.c
+	"setup.h"
+	<stdio.h>
+	<string.h>
+	<unistd.h>
+	"getpass.h"
+	<fcntl.h>
+	<termios.h>
+	<termio.h>
+	"memdebug.h"
+	<conio.h>
+	<screen.h>
+	<nwconio.h>
+
+1242765988 /home/nick/.codeblocks/myprojects/curl/getpass.h
+
+1256851590 /home/nick/.codeblocks/myprojects/curl/lib/memdebug.h
+	"setup.h"
+	<curl/curl.h>
+	<sys/types.h>
+	<sys/socket.h>
+	<stdio.h>
+
+1221741738 source:/home/nick/.codeblocks/myprojects/curl/homedir.c
+	"setup.h"
+	<stdio.h>
+	<stdlib.h>
+	<string.h>
+	<pwd.h>
+	<unistd.h>
+	<unixlib.h>
+	"homedir.h"
+	"memdebug.h"
+
+1242765988 /home/nick/.codeblocks/myprojects/curl/homedir.h
+
+1257337747 source:/home/nick/.codeblocks/myprojects/curl/hugehelp.c
+	"setup.h"
+	"setup.h"
+	"hugehelp.h"
+	<stdio.h>
+	"setup.h"
+	"hugehelp.h"
+	<stdio.h>
+	<stdlib.h>
+	<zlib.h>
+
+1242765988 /home/nick/.codeblocks/myprojects/curl/hugehelp.h
+
+1256761318 source:/home/nick/.codeblocks/myprojects/curl/main.c
+	"setup.h"
+	<stdio.h>
+	<stdlib.h>
+	<string.h>
+	<stdarg.h>
+	<sys/types.h>
+	<sys/stat.h>
+	<ctype.h>
+	<errno.h>
+	<libgen.h>
+	<curl/curl.h>
+	"urlglob.h"
+	"writeout.h"
+	"getpass.h"
+	"homedir.h"
+	"curlutil.h"
+	"hugehelp.h"
+	"writeenv.h"
+	"rawstr.h"
+	<screen.h>
+	<nwconio.h>
+	"version.h"
+	<io.h>
+	<unistd.h>
+	<fcntl.h>
+	<utime.h>
+	<sys/utime.h>
+	<limits.h>
+	<sys/poll.h>
+	<poll.h>
+	<locale.h>
+	"curlx.h"
+	<iconv.h>
+	<netinet/in.h>
+	<netinet/tcp.h>
+	"os-specific.h"
+	"memdebug.h"
+	<dos.h>
+	<io.h>
+	<sys/types.h>
+	<sys/stat.h>
+	<io.h>
+	<sys/types.h>
+	<sys/stat.h>
+	<direct.h>
+
+1242765988 /home/nick/.codeblocks/myprojects/curl/urlglob.h
+
+1208464882 /home/nick/.codeblocks/myprojects/curl/writeout.h
+
+1242765988 /home/nick/.codeblocks/myprojects/curl/writeenv.h
+
+1234047217 /home/nick/.codeblocks/myprojects/curl/lib/rawstr.h
+	<curl/curl.h>
+
+1257338139 /home/nick/.codeblocks/myprojects/curl/version.h
+	<curl/curlver.h>
+
+1247176044 /home/nick/.codeblocks/myprojects/curl/lib/curlx.h
+	<curl/mprintf.h>
+	"strequal.h"
+	"strtoofft.h"
+	"timeval.h"
+	"nonblock.h"
+
+1224762559 /home/nick/.codeblocks/myprojects/curl/lib/strequal.h
+	<curl/curl.h>
+
+1219387546 /home/nick/.codeblocks/myprojects/curl/lib/strtoofft.h
+	"setup.h"
+
+1175631337 /home/nick/.codeblocks/myprojects/curl/lib/timeval.h
+	"setup.h"
+
+1247176526 /home/nick/.codeblocks/myprojects/curl/lib/nonblock.h
+	<curl/curl.h>
+
+1244657056 /home/nick/.codeblocks/myprojects/curl/os-specific.h
+
+1244657056 source:/home/nick/.codeblocks/myprojects/curl/os-specific.c
+	"setup.h"
+	<curl/curl.h>
+	"curlx.h"
+	"os-specific.h"
+	"memdebug.h"
+	"curlmsg_vms.h"
+
+1244413105 source:/home/nick/.codeblocks/myprojects/curl/urlglob.c
+	"setup.h"
+	<stdio.h>
+	<stdlib.h>
+	<string.h>
+	<ctype.h>
+	<curl/curl.h>
+	<curl/mprintf.h>
+	"urlglob.h"
+	"os-specific.h"
+	"memdebug.h"
+
+1225729393 source:/home/nick/.codeblocks/myprojects/curl/writeenv.c
+	"setup.h"
+	<curl/curl.h>
+	"writeenv.h"
+	<kernel.h>
+	<curl/mprintf.h>
+
+1253133458 source:/home/nick/.codeblocks/myprojects/curl/writeout.c
+	"setup.h"
+	<stdio.h>
+	<string.h>
+	<sys/types.h>
+	<sys/select.h>
+	<curl/curl.h>
+	<curl/mprintf.h>
+	"writeout.h"
+

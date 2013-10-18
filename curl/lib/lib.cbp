@@ -1,0 +1,339 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6" />
+	<Project>
+		<Option title="lib" />
+		<Option pch_mode="2" />
+		<Option compiler="gcc" />
+		<Build>
+			<Target title="Debug">
+				<Option output="lib" prefix_auto="1" extension_auto="1" />
+				<Option working_dir="" />
+				<Option object_output="obj/Debug/" />
+				<Option type="2" />
+				<Option compiler="gcc" />
+				<Option createDefFile="1" />
+				<Compiler>
+					<Add option="-Wall" />
+					<Add option="-g" />
+				</Compiler>
+			</Target>
+			<Target title="Release">
+				<Option output="lib" prefix_auto="1" extension_auto="1" />
+				<Option working_dir="" />
+				<Option object_output="obj/getHeadersRelease/" />
+				<Option type="2" />
+				<Option compiler="gcc" />
+				<Option createDefFile="1" />
+				<Compiler>
+					<Add option="-Wall" />
+					<Add option="-O2" />
+				</Compiler>
+				<Linker>
+					<Add option="-s" />
+				</Linker>
+			</Target>
+		</Build>
+		<Compiler>
+			<Add option="-DHAVE_CONFIG_H" />
+		</Compiler>
+		<Unit filename="amigaos.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="arpa_telnet.h" />
+		<Unit filename="base64.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="connect.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="connect.h" />
+		<Unit filename="content_encoding.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="content_encoding.h" />
+		<Unit filename="cookie.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="cookie.h" />
+		<Unit filename="curl_addrinfo.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="curl_addrinfo.h" />
+		<Unit filename="curl_base64.h" />
+		<Unit filename="curl_config.h" />
+		<Unit filename="curl_ldap.h" />
+		<Unit filename="curl_md5.h" />
+		<Unit filename="curl_memory.h" />
+		<Unit filename="curl_memrchr.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="curl_memrchr.h" />
+		<Unit filename="curl_rand.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="curl_rand.h" />
+		<Unit filename="curl_sspi.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="curl_sspi.h" />
+		<Unit filename="curlx.h" />
+		<Unit filename="dict.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="dict.h" />
+		<Unit filename="easy.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="easyif.h" />
+		<Unit filename="escape.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="escape.h" />
+		<Unit filename="file.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="file.h" />
+		<Unit filename="formdata.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="formdata.h" />
+		<Unit filename="ftp.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="ftp.h" />
+		<Unit filename="getenv.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="getinfo.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="getinfo.h" />
+		<Unit filename="gtls.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="gtls.h" />
+		<Unit filename="hash.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="hash.h" />
+		<Unit filename="hostares.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="hostasyn.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="hostip.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="hostip.h" />
+		<Unit filename="hostip4.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="hostip6.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="hostsyn.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="hostthre.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="http.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="http.h" />
+		<Unit filename="http_chunks.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="http_chunks.h" />
+		<Unit filename="http_digest.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="http_digest.h" />
+		<Unit filename="http_negotiate.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="http_negotiate.h" />
+		<Unit filename="http_ntlm.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="http_ntlm.h" />
+		<Unit filename="if2ip.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="if2ip.h" />
+		<Unit filename="inet_ntop.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="inet_ntop.h" />
+		<Unit filename="inet_pton.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="inet_pton.h" />
+		<Unit filename="krb4.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="krb4.h" />
+		<Unit filename="krb5.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="ldap.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="libcurl.rc" />
+		<Unit filename="llist.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="llist.h" />
+		<Unit filename="md5.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="memdebug.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="memdebug.h" />
+		<Unit filename="mprintf.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="multi.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="multiif.h" />
+		<Unit filename="netrc.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="netrc.h" />
+		<Unit filename="nonblock.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="nonblock.h" />
+		<Unit filename="nss.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="nssg.h" />
+		<Unit filename="nwlib.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="nwos.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="parsedate.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="parsedate.h" />
+		<Unit filename="progress.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="progress.h" />
+		<Unit filename="qssl.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="qssl.h" />
+		<Unit filename="rawstr.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="rawstr.h" />
+		<Unit filename="security.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="select.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="select.h" />
+		<Unit filename="sendf.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="sendf.h" />
+		<Unit filename="setup-os400.h" />
+		<Unit filename="setup.h" />
+		<Unit filename="setup_once.h" />
+		<Unit filename="share.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="share.h" />
+		<Unit filename="slist.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="slist.h" />
+		<Unit filename="sockaddr.h" />
+		<Unit filename="socks.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="socks.h" />
+		<Unit filename="socks_gssapi.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="socks_sspi.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="speedcheck.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="speedcheck.h" />
+		<Unit filename="splay.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="splay.h" />
+		<Unit filename="ssh.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="ssh.h" />
+		<Unit filename="sslgen.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="sslgen.h" />
+		<Unit filename="ssluse.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="ssluse.h" />
+		<Unit filename="strdup.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="strdup.h" />
+		<Unit filename="strequal.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="strequal.h" />
+		<Unit filename="strerror.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="strerror.h" />
+		<Unit filename="strtok.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="strtok.h" />
+		<Unit filename="strtoofft.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="strtoofft.h" />
+		<Unit filename="telnet.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="telnet.h" />
+		<Unit filename="tftp.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="tftp.h" />
+		<Unit filename="timeval.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="timeval.h" />
+		<Unit filename="transfer.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="transfer.h" />
+		<Unit filename="url.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="url.h" />
+		<Unit filename="urldata.h" />
+		<Unit filename="version.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Extensions>
+			<code_completion />
+			<debugger />
+		</Extensions>
+	</Project>
+</CodeBlocks_project_file>

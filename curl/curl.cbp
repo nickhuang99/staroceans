@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6" />
+	<Project>
+		<Option title="curl" />
+		<Option pch_mode="2" />
+		<Option compiler="gcc" />
+		<Build>
+			<Target title="Debug">
+				<Option output="bin/Debug/curl" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/getHeadersDebug/" />
+				<Option type="3" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-g" />
+				</Compiler>
+			</Target>
+			<Target title="Release">
+				<Option output="bin/getHeadersRelease/curl" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/getHeadersRelease/" />
+				<Option type="3" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-O2" />
+				</Compiler>
+				<Linker>
+					<Add option="-s" />
+				</Linker>
+			</Target>
+		</Build>
+		<Compiler>
+			<Add option="-Wall" />
+			<Add option="-fexceptions" />
+			<Add option="-DHAVE_CONFIG_H" />
+			<Add directory="lib" />
+			<Add directory="include" />
+			<Add option="-fPIC" />
+		</Compiler>
+		<Linker>
+			<Add library="lib/lib.a" />
+			<Add library="z" />
+			<Add library="ssl" />
+			<Add library="idn" />
+			<Add library="rt" />
+			<Add library="ldap" />
+		</Linker>
+		<Unit filename="curl_config.h" />
+		<Unit filename="curlutil.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="curlutil.h" />
+		<Unit filename="getpass.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="getpass.h" />
+		<Unit filename="homedir.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="homedir.h" />
+		<Unit filename="hugehelp.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="hugehelp.h" />
+		<Unit filename="main.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="os-specific.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="os-specific.h" />
+		<Unit filename="setup.h" />
+		<Unit filename="urlglob.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="urlglob.h" />
+		<Unit filename="version.h" />
+		<Unit filename="writeenv.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="writeenv.h" />
+		<Unit filename="writeout.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="writeout.h" />
+		<Extensions>
+			<code_completion />
+			<debugger />
+		</Extensions>
+	</Project>
+</CodeBlocks_project_file>
