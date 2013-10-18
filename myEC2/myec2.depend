@@ -1,0 +1,46 @@
+# depslib dependency file v1.0
+1300063045 source:/home/nick/.codeblocks/MyProjects/myec2/main.cpp
+	<curl/curl.h>
+	<stdio.h>
+	<stdarg.h>
+	<map>
+	<string.h>
+	<time.h>
+	<string>
+	<sstream>
+	<iostream>
+	<openssl/evp.h>
+	<openssl/bio.h>
+	<openssl/hmac.h>
+
+1300437570 source:/home/nick/myproject/myec2/main.cpp
+	"myEC2.h"
+
+1300412859 source:/home/nick/myproject/myec2/simplexml.c
+	<libxml/parser.h>
+	<string.h>
+	"simplexml.h"
+
+1300404631 /home/nick/myproject/myec2/simplexml.h
+
+1300420972 /home/nick/myproject/myec2/myEC2.h
+	<curl/curl.h>
+	<stdio.h>
+	<stdarg.h>
+	<map>
+	<set>
+	<vector>
+	<string.h>
+	<string>
+	<time.h>
+	<string>
+	<sstream>
+	<iostream>
+	<openssl/evp.h>
+	<openssl/bio.h>
+	<openssl/hmac.h>
+	"simplexml.h"
+
+1300437860 source:/home/nick/myproject/myec2/myEC2.cpp
+	"myEC2.h"
+

@@ -1,0 +1,143 @@
+# depslib dependency file v1.0
+1301872139 source:/home/nick/.codeblocks/myprojects/myS3/UtilityManager.cpp
+	"UtilityManager.h"
+	<openssl/bio.h>
+	<openssl/evp.h>
+	<openssl/hmac.h>
+
+1301817154 /home/nick/.codeblocks/myprojects/myS3/UtilityManager.h
+	"stdafx.h"
+	<openssl/md5.h>
+
+1301700716 /home/nick/.codeblocks/myprojects/myS3/stdafx.h
+	<stdio.h>
+	<map>
+	<set>
+	<vector>
+	<string.h>
+	<string>
+	<time.h>
+	<string>
+	<sstream>
+	<iostream>
+	<fstream>
+	"log.h"
+	"ExceptionManager.h"
+
+1301617893 /home/nick/.codeblocks/myprojects/myS3/log.h
+	<sstream>
+	<string>
+	<stdio.h>
+	<windows.h>
+	<sys/time.h>
+
+1300771441 /home/nick/.codeblocks/myprojects/myS3/ExceptionManager.h
+	<stdexcept>
+
+1300578375 source:/home/nick/.codeblocks/myprojects/myS3/log.cpp
+	"log.h"
+
+1313907782 source:/home/nick/.codeblocks/myprojects/myS3/main.cpp
+	<iostream>
+	"stdafx.h"
+	"myEC2.h"
+
+1313909475 source:/home/nick/.codeblocks/myprojects/myS3/myEC2.cpp
+	"myEC2.h"
+	<curl/curl.h>
+	<openssl/evp.h>
+	<sys/socket.h>
+	<netdb.h>
+	<arpa/inet.h>
+	<unistd.h>
+	<openssl/hmac.h>
+	"simplexml.h"
+	"UtilityManager.h"
+
+1313906373 /home/nick/.codeblocks/myprojects/myS3/myEC2.h
+	"stdafx.h"
+	<stdarg.h>
+
+1300404631 /home/nick/.codeblocks/myprojects/myS3/simplexml.h
+
+1300412859 source:/home/nick/.codeblocks/myprojects/myS3/simplexml.c
+	<libxml/parser.h>
+	<string.h>
+	"simplexml.h"
+
+1300678818 source:/home/nick/.codeblocks/myprojects/myS3/stdafx.cpp
+	"stdafx.h"
+
+1315787122 source:/home/nick/myprojects/myS3/log.cpp
+	"log.h"
+
+1301617893 /home/nick/myprojects/myS3/log.h
+	<sstream>
+	<string>
+	<stdio.h>
+	<windows.h>
+	<sys/time.h>
+
+1315980538 source:/home/nick/myprojects/myS3/main.cpp
+	<iostream>
+	"stdafx.h"
+	"myS3.h"
+	<time.h>
+	<stdlib.h>
+
+1315927103 /home/nick/myprojects/myS3/stdafx.h
+	<stdio.h>
+	<map>
+	<set>
+	<vector>
+	<string.h>
+	<string>
+	<time.h>
+	<string>
+	<sstream>
+	<iostream>
+	<fstream>
+	"log.h"
+	"ExceptionManager.h"
+
+1300771441 /home/nick/myprojects/myS3/ExceptionManager.h
+	<stdexcept>
+
+1300412859 source:/home/nick/myprojects/myS3/simplexml.c
+	<libxml/parser.h>
+	<string.h>
+	"simplexml.h"
+
+1300404631 /home/nick/myprojects/myS3/simplexml.h
+
+1300678818 source:/home/nick/myprojects/myS3/stdafx.cpp
+	"stdafx.h"
+
+1314796045 source:/home/nick/myprojects/myS3/UtilityManager.cpp
+	"UtilityManager.h"
+	<openssl/bio.h>
+	<openssl/evp.h>
+	<openssl/hmac.h>
+
+1316008054 /home/nick/myprojects/myS3/UtilityManager.h
+	"stdafx.h"
+	<openssl/md5.h>
+	<openssl/hmac.h>
+
+1315980133 /home/nick/myprojects/myS3/myS3.h
+	"stdafx.h"
+	<curl/curl.h>
+	<pthread.h>
+
+1315980133 source:/home/nick/myprojects/myS3/myS3.cpp
+	"myS3.h"
+	"UtilityManager.h"
+	<curl/curl.h>
+	<openssl/evp.h>
+	<sys/socket.h>
+	<netdb.h>
+	<arpa/inet.h>
+	<unistd.h>
+	<openssl/hmac.h>
+	"simplexml.h"
+
