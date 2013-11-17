@@ -137,14 +137,9 @@ public:
 	}
 };
 
-void test1()
+void test0()
 {
 	Escape e;
 	cout <<e.lowest(vector<string>(), vector<string>()) << endl;
 }
 
-int main()
-{
-
-	return 0;
-}
