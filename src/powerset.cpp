@@ -6,25 +6,17 @@
  */
 #include <iostream>
 #include <cstdio>
-#include <vector>
 #include <string>
 #include <cstdint>
 #include <bitset>
 #include <ctime>
 #include <boost/dynamic_bitset.hpp>
 
+#include "powerset.h"
+
 using namespace std;
 
 
-class SubsetsGenerator
-{
-
-public:
-	vector< vector<int> > generateSubsets(int N);
-	vector< vector<int> > generateSubsets2(int N);
-	vector< vector<int> > generateSubsets3(int N);
-	void printSubsets(const vector<vector<int> >& subsets);
-};
 
 // assume N is smaller than 64
 vector< vector<int> > SubsetsGenerator::generateSubsets3(int N)
@@ -54,7 +46,11 @@ vector< vector<int> > SubsetsGenerator::generateSubsets3(int N)
 				subsets.push_back(i);
 			}
 		}
-		result.push_back(subsets);
+		//bypass empty set
+		if (!subsets.empty())
+		{
+			result.push_back(subsets);
+		}
 	}
 	return result;
 }
@@ -92,7 +88,11 @@ vector< vector<int> > SubsetsGenerator::generateSubsets2(int N)
 				subsets.push_back(i);
 			}
 		}
-		result.push_back(subsets);
+		//bypass empty set
+		if (!subsets.empty())
+		{
+			result.push_back(subsets);
+		}
 	}
 	return result;
 }
@@ -119,9 +119,27 @@ vector< vector<int> > SubsetsGenerator::generateSubsets(int N)
 				subsets.push_back(j);
 			}
 		}
-		result.push_back(subsets);
+		//bypass empty set
+		if (!subsets.empty())
+		{
+			result.push_back(subsets);
+		}
 	}
 	return result;
+}
+
+ostream& operator <<(ostream& io, const vector<int>& vec)
+{
+	cout <<"[";
+	for (size_t i = 0; i < vec.size(); i ++)
+	{
+		cout << vec[i];
+		if (i < vec.size() - 1)
+		{
+			cout <<",";
+		}
+	}
+	cout << "]" << endl;
 }
 
 void SubsetsGenerator::printSubsets(const vector<vector<int> >& subsets)
@@ -193,11 +211,7 @@ void test2()
 	//g.printSubsets(subsets);
 }
 
-int main()
-{
-	test2();
-	return 0;
-}
+
 
 
 
