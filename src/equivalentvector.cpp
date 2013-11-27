@@ -79,7 +79,7 @@ public:
 	}
 };
 
-int main()
+static int test0()
 {
 	EquivalentVector eq;
 	vector<int> left = {4, 1, 3, 4};
