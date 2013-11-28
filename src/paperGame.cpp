@@ -136,7 +136,7 @@ public:
 };
 
 
-int main()
+static int test0()
 {
 	PaperGame p;
 	cout << p.mostMoves(5, 4, 3) << endl;
