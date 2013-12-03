@@ -191,7 +191,7 @@ public:
 	}
 };
 
-int main()
+static int test0()
 {
 	AnomalousCancellation a;
 	cout << a.reducedFraction(4784, 7475) << endl;
