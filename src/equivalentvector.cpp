@@ -13,7 +13,7 @@
  */
 
 #include <vector>
-#include <cstdint>
+#include <stdint.h>
 #include <algorithm>
 #include "powerset.h"
 
@@ -82,10 +82,12 @@ public:
 static int test0()
 {
 	EquivalentVector eq;
+	/*
 	vector<int> left = {4, 1, 3, 4};
 	vector<int> right = {5, 3, 4, 5};
 	cout << left << endl;
 	cout << right << endl;
 	cout << eq.is_equivalent(left, right) << endl;
+	*/
 	return 0;
 }

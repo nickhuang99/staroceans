@@ -7,7 +7,7 @@
 #include <iostream>
 #include <cstdio>
 #include <string>
-#include <cstdint>
+#include <stdint.h>
 #include <bitset>
 #include <ctime>
 #include <boost/dynamic_bitset.hpp>
